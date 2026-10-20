@@ -26,10 +26,11 @@ for a "demo video", "bug repro video" or "annotated walkthrough" and it triggers
 
 The skill recorded itself against a Shopify-style checkout page with a planted bug: the subtotal sums
 each line's unit price and ignores the quantity badges, so a $252.20 order is billed at $186.20. The
-"Before" chapter drives the buggy page and rings the wrong values; the "After" chapter repeats the same
-frames against the fixed page.
+video opens with a "Before: the bug" card, drives the buggy page and rings the wrong values, then an
+"After: the fix" card introduces the same frames against the fixed page. Every caption carries the chapter
+name, so it is always clear which build is on screen.
 
-- 🎬 **MP4:** [`checkout-bug.mp4`](annotated-demo-video/examples/checkout/output/checkout-bug.mp4) (50 s)
+- 🎬 **MP4:** [`checkout-bug.mp4`](annotated-demo-video/examples/checkout/output/checkout-bug.mp4) (63 s)
 - 🌐 **HTML player:** [`checkout-bug.html`](annotated-demo-video/examples/checkout/output/checkout-bug.html)
   (download and open; step rail, keyboard controls, light and dark mode)
 - 🖼 **Contact sheet:** [`sheet.png`](annotated-demo-video/examples/checkout/output/sheet.png)

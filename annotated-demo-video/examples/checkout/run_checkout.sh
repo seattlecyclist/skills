@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Records the before/after checkout bug demo and builds every output.
-# Expect 7 frames, checkout-bug.mp4, checkout-bug.html and sheet.png in ${1:-/tmp/wt-checkout}.
+# Expect 9 frames, checkout-bug.mp4, checkout-bug.html and sheet.png in ${1:-/tmp/wt-checkout}.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"; OUT="${1:-/tmp/wt-checkout}"
 python3 -m http.server 8766 --bind 127.0.0.1 --directory "$HERE" >/dev/null 2>&1 & SERVER=$!

@@ -114,7 +114,7 @@ async function act(page, step, base, dir) {
   const steps = sb.steps || [];
   const total = steps.filter(s => s.shot && s.shot.type !== "title").length;
   const manifest = { title: sb.title, kicker: sb.kicker || "", note: sb.note || "", viewport: { width: W, height: H }, theme, frames: [] };
-  let n = 0;
+  let n = 0, chapter = "";
   if (sb.base_url) await gotoSafe(page, sb.base_url);
 
   for (const [i, step] of steps.entries()) {
@@ -129,8 +129,10 @@ async function act(page, step, base, dir) {
         offset = await page.evaluate(o => __wt.titleCard(o), { kicker: shot.kicker ?? sb.kicker, title: shot.title, body: shot.body, height: H });
       } else {
         n += 1;
+        if (shot.chapter) chapter = shot.chapter;
+        const count = [sb.show_chapter !== false && chapter, sb.show_count !== false && `${n} / ${total}`].filter(Boolean).join("  ·  ");
         offset = await page.evaluate(o => __wt.frame(o), { selector: shot.selector, target: shot.target, title: shot.title, body: shot.body,
-          count: sb.show_count === false ? "" : `${n} / ${total}`, height: H, side: shot.side || "right" });
+          count, height: H, side: shot.side || "right" });
       }
       await page.evaluate(() => __wt.ready());
       await page.waitForTimeout(150);

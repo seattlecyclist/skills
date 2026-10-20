@@ -3,23 +3,94 @@
   "kicker": "Ridgeline Outfitters · checkout bug, before and after",
   "note": "Recorded from the example checkout page with sample cart data. Before shows the bug; After shows the same cart with the fix.",
   "base_url": "http://127.0.0.1:8766/checkout.html",
-  "viewport": { "width": 1440, "height": 900 },
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
   "freeze_time": "2026-10-20T09:00:00Z",
   "steps": [
-    { "shot": { "type": "title", "title": "Checkout subtotal ignores quantities",
-                "body": "Lena's three-line cart is under-billed on the payment step. First the bug, then the same cart after the fix." } },
-    { "shot": { "selector": "#line-items", "title": "Three lines, six items", "chapter": "Before: the bug",
-                "body": "Trail Runner ×1, Merino socks ×3 and a cap ×2. Each line's price already shows price × quantity." } },
-    { "shot": { "selector": "#subtotal", "target": "#totals", "title": "Subtotal reads {{ #subtotal }}",
-                "body": "The lines add up to $222.00. The subtotal counts each line once and drops the ×3 and the ×2." } },
-    { "shot": { "selector": "#total", "target": "#totals", "title": "Total reads {{ #total }}",
-                "body": "Tax is 10% of the wrong subtotal, so the error compounds. Lena is charged {{ #total }} for a $252.20 order." } },
-    { "shot": { "selector": "#total", "target": "#totals", "title": "What actually happened", "side": "left",
-                "body": "✗ subtotal() sums unit prices, not price × quantity. ✗ Tax is derived from that figure. Net: every multi-quantity order is under-billed." } },
-    { "do": [ { "action": "goto", "url": "checkout-fixed.html" }, { "action": "wait_for", "selector": "#line-items li" } ],
-      "shot": { "selector": "#subtotal", "target": "#totals", "title": "Subtotal reads {{ #subtotal }}", "chapter": "After: the fix",
-                "body": "Same cart, same prices. Each line now contributes price × quantity: $120 + $54 + $48." } },
-    { "shot": { "selector": "#total", "target": "#totals", "title": "Total reads {{ #total }}",
-                "body": "Tax follows the corrected subtotal and shipping is unchanged. Lena pays what the cart shows." } }
+    {
+      "shot": {
+        "type": "title",
+        "title": "Checkout subtotal ignores quantities",
+        "body": "Lena's three-line cart is under-billed on the payment step. First the bug, then the same cart after the fix."
+      }
+    },
+    {
+      "shot": {
+        "type": "title",
+        "kicker": "Part 1 of 2 · Before the fix",
+        "title": "Before: the bug",
+        "body": "Lena's cart on the current build. Watch the subtotal and total against the line prices."
+      }
+    },
+    {
+      "shot": {
+        "selector": "#line-items",
+        "title": "Three lines, six items",
+        "chapter": "Before: the bug",
+        "body": "Trail Runner ×1, Merino socks ×3 and a cap ×2. Each line's price already shows price × quantity."
+      }
+    },
+    {
+      "shot": {
+        "selector": "#subtotal",
+        "target": "#totals",
+        "title": "Subtotal reads {{ #subtotal }}",
+        "body": "The lines add up to $222.00. The subtotal counts each line once and drops the ×3 and the ×2."
+      }
+    },
+    {
+      "shot": {
+        "selector": "#total",
+        "target": "#totals",
+        "title": "Total reads {{ #total }}",
+        "body": "Tax is 10% of the wrong subtotal, so the error compounds. Lena is charged {{ #total }} for a $252.20 order."
+      }
+    },
+    {
+      "shot": {
+        "selector": "#total",
+        "target": "#totals",
+        "title": "What actually happened",
+        "side": "left",
+        "body": "✗ subtotal() sums unit prices, not price × quantity. ✗ Tax is derived from that figure. Net: every multi-quantity order is under-billed."
+      }
+    },
+    {
+      "shot": {
+        "type": "title",
+        "kicker": "Part 2 of 2 · After the fix",
+        "title": "After: the fix",
+        "body": "The same cart on the fixed build. One line changed: each line now contributes price × quantity."
+      },
+      "do": [
+        {
+          "action": "goto",
+          "url": "checkout-fixed.html"
+        },
+        {
+          "action": "wait_for",
+          "selector": "#line-items li"
+        }
+      ]
+    },
+    {
+      "shot": {
+        "selector": "#subtotal",
+        "target": "#totals",
+        "title": "Subtotal reads {{ #subtotal }}",
+        "chapter": "After: the fix",
+        "body": "Same cart, same prices. Each line now contributes price × quantity: $120 + $54 + $48."
+      }
+    },
+    {
+      "shot": {
+        "selector": "#total",
+        "target": "#totals",
+        "title": "Total reads {{ #total }}",
+        "body": "Tax follows the corrected subtotal and shipping is unchanged. Lena pays what the cart shows."
+      }
+    }
   ]
 }

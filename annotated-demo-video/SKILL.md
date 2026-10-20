@@ -200,6 +200,9 @@ Interaction patterns (the ones that bite):
   to reload the new state.
 - **Before/after:** serve the fixed build on a second URL (or a second checkout on another port) and
   `goto` it at the start of the "After" chapter; the frames repeat the same selectors and `{{ }}` values.
+  Open each chapter with its own title card (`"type": "title"` with a `kicker` such as "Before" / "After")
+  so the boundary is visible in the MP4 too, not only in the player's step rail; every caption card also
+  carries the current chapter name.
 - To read a value back for your own checks, **`return` it from `page.evaluate`** (console.log inside the
   browser is not captured to your stdout).
 
@@ -277,6 +280,7 @@ The `//` comments below are explanation only; real storyboards are plain JSON (s
   "freeze_time": "2026-10-14T09:00:00Z",          // optional: pins Date.now() in the page
   "timezone": "UTC", "locale": "en-US", "color_scheme": "light",
   "show_count": true,                             // "3 / 12" on caption cards
+  "show_chapter": true,                           // current chapter name on caption cards ("Before · 3 / 12")
   "theme": { "accent": "#0E6E78" },               // optional overrides of assets/theme.json
   "theme_file": "brand-theme.json",               // or a whole theme, relative to the storyboard
   "steps": [
