@@ -57,7 +57,10 @@ frames against the fixed page. Every caption carries the chapter name.
 
 Click the image to play the video (63 s):
 
+<video src="https://github.com/seattlecyclist/skills/blob/claude/inspiring-goldberg-v4zhas/annotated-demo-video/examples/checkout/output/checkout-bug.mp4" controls="controls" style="max-width: 100%;">
+</video>
 [![Checkout bug demo, shown in the HTML player on the frame where the subtotal is wrong](annotated-demo-video/examples/checkout/output/player.png)](annotated-demo-video/examples/checkout/output/checkout-bug.mp4)
+
 
 - 🎬 Video: [checkout-bug.mp4](annotated-demo-video/examples/checkout/output/checkout-bug.mp4)
 - 🌐 HTML player: [checkout-bug.html](annotated-demo-video/examples/checkout/output/checkout-bug.html) (download and open)
