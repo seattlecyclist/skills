@@ -1,0 +1,16 @@
+<!doctype html><meta charset="utf-8"><title>New task</title><link rel="stylesheet" href="style.css">
+<nav><b>Tasks</b><a href="index.html">Board</a></nav>
+<main><form class="card" id="task-form" action="index.html">
+  <h2>New task</h2>
+  <label for="title">Title</label><input id="title" name="title">
+  <label for="owner">Owner</label><select id="owner" name="owner"><option>Sam</option><option>Ari</option><option>Jo</option></select>
+  <label for="due">Due</label><select id="due" name="due"><option>Mon</option><option>Wed</option><option>Fri</option></select>
+  <p><button class="btn" type="submit">Save task</button></p>
+</form></main>
+<script>
+document.getElementById('task-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  location.href = 'index.html?added=' + encodeURIComponent([f.get('title'), f.get('owner'), f.get('due')].join('|'));
+});
+</script>

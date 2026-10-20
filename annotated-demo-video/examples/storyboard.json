@@ -1,0 +1,20 @@
+{
+  "title": "Adding a task",
+  "kicker": "Tasks · new in this release",
+  "note": "Recorded from the demo site with sample data.",
+  "base_url": "http://127.0.0.1:8765/index.html",
+  "viewport": { "width": 1440, "height": 900 },
+  "freeze_time": "2026-10-14T09:00:00Z",
+  "steps": [
+    { "shot": { "type": "title", "title": "Adding a task", "body": "Three clicks from the board to a new task, and the summary keeps up." } },
+    { "shot": { "selector": "#new-task", "title": "Start from the board", "body": "The New task button sits at the top right.", "chapter": "Create" } },
+    { "do": [ { "action": "click", "selector": "#new-task" }, { "action": "wait_for", "selector": "#task-form" },
+              { "action": "fill", "label": "Title", "value": "Plan the launch email" },
+              { "action": "select", "label": "Owner", "value": "Jo" },
+              { "action": "select", "label": "Due", "value": "Fri" } ],
+      "shot": { "selector": "#task-form", "title": "Fill in the task", "body": "A title, an owner and a day. Nothing else is required." } },
+    { "do": [ { "action": "click", "role": "button", "name": "Save task" }, { "action": "wait_for", "text": "Task added." } ],
+      "shot": { "selector": "tr.new", "target": "#tasks", "title": "It lands on the board", "body": "The new row appears in this week's table.", "chapter": "Result" } },
+    { "shot": { "selector": "#summary", "title": "And the summary counts it", "body": "Far down the page, the summary now reads 3 tasks. The frame scrolls to it on its own." } }
+  ]
+}

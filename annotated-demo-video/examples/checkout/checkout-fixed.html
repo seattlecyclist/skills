@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Checkout · Ridgeline Outfitters</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="style.css">
+<header><span class="brand">Ridgeline Outfitters</span><span class="steps">Cart › Information › Shipping › <b>Payment</b></span></header>
+<div class="layout">
+  <div class="form">
+    <section id="contact"><h2>Contact</h2><label>Email</label><input value="lena.ortiz@example.com"></section>
+    <section id="shipping"><h2>Shipping address</h2>
+      <div class="row"><div><label>First name</label><input value="Lena"></div><div><label>Last name</label><input value="Ortiz"></div></div>
+      <label>Address</label><input value="412 Pine Street">
+      <div class="row"><div><label>City</label><input value="Seattle"></div><div><label>ZIP code</label><input value="98101"></div></div>
+    </section>
+    <section id="payment"><h2>Payment</h2>
+      <div class="pay"><div class="card">Credit card</div>
+        <label>Card number</label><input value="•••• •••• •••• 4242">
+        <div class="row"><div><label>Expiration</label><input value="08 / 28"></div><div><label>Security code</label><input value="•••"></div></div>
+      </div>
+      <button class="btn" id="pay-button" type="button">Pay now</button>
+    </section>
+  </div>
+  <aside class="summary">
+    <ul class="items" id="line-items"></ul>
+    <div class="discount"><input placeholder="Discount code"><button type="button">Apply</button></div>
+    <div class="totals" id="totals">
+      <div><span>Subtotal</span><span id="subtotal"></span></div>
+      <div><span>Shipping</span><span id="shipping-cost"></span></div>
+      <div><span>Estimated taxes</span><span id="tax"></span></div>
+      <div class="grand"><span>Total</span><span><small>USD</small><span id="total"></span></span></div>
+    </div>
+  </aside>
+</div>
+<script src="cart.js"></script>
+<script>
+// FIX: each line contributes price × quantity.
+function subtotal(items) {
+  return items.reduce((sum, item) => sum + item.price * item.qty, 0);
+}
+render(subtotal);
+</script>

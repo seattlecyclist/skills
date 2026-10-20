@@ -1,0 +1,21 @@
+{
+  "font_css": "https://fonts.googleapis.com/css2?family=Outfit:wght@500..750&family=Hanken+Grotesk:wght@400..600&family=Azeret+Mono:wght@400;500&display=swap",
+  "display_font": "Outfit, 'Helvetica Neue', system-ui, sans-serif",
+  "body_font": "'Hanken Grotesk', 'Helvetica Neue', system-ui, sans-serif",
+  "mono_font": "'Azeret Mono', ui-monospace, Menlo, monospace",
+
+  "accent": "#5B3FD6",
+  "card_bg": "#15132A",
+  "card_text": "#FFFFFF",
+  "card_body": "#E6E2FF",
+  "kicker": "#CFC3FF",
+  "dim": "rgba(21,19,42,.38)",
+  "title_bg": "linear-gradient(135deg,#15132A,#2A2152)",
+
+  "player": {
+    "light": { "bg": "#F6F5FA", "panel": "#FFFFFF", "ink": "#15132A", "muted": "#5E5B74", "line": "#E3E1EE",
+               "accent": "#5B3FD6", "accent_wash": "#EEEAFF", "accent_ink": "#3E25A8", "on_accent": "#FFFFFF" },
+    "dark":  { "bg": "#110F1E", "panel": "#1A1830", "ink": "#EDEBF7", "muted": "#A7A3C0", "line": "#2B2845",
+               "accent": "#9C86FF", "accent_wash": "#2A2152", "accent_ink": "#CFC3FF", "on_accent": "#110F1E" }
+  }
+}
