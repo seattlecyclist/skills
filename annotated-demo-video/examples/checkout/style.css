@@ -1,0 +1,29 @@
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#fff;color:#202223}
+header{display:flex;align-items:center;justify-content:space-between;padding:18px 48px;border-bottom:1px solid #e1e3e5}
+header .brand{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
+header .steps{color:#6d7175;font-size:.85rem}header .steps b{color:#202223}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 440px;min-height:calc(100vh - 65px)}
+.form{padding:36px 48px 48px}
+.summary{background:#fafafa;border-left:1px solid #e1e3e5;padding:36px 40px}
+h2{font-size:1.1rem;margin:0 0 12px}
+section{margin-bottom:30px}
+label{display:block;font-size:.8rem;color:#6d7175;margin:0 0 4px}
+input{font:inherit;width:100%;padding:11px 12px;border:1px solid #c9cccf;border-radius:6px;margin-bottom:12px;background:#fff}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pay{border:1px solid #c9cccf;border-radius:8px;padding:14px;background:#fff}
+.pay .card{display:flex;gap:8px;align-items:center;margin-bottom:12px;font-weight:600}
+.btn{display:block;width:100%;background:#1a1a1a;color:#fff;border:0;border-radius:6px;padding:16px;font:600 16px inherit;cursor:pointer;margin-top:8px}
+.items{list-style:none;margin:0 0 20px;padding:0 0 20px;border-bottom:1px solid #e1e3e5}
+.items li{display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:8px 0}
+.thumb{width:64px;height:64px;border-radius:8px;border:1px solid #e1e3e5;background:#eef0f2;position:relative}
+.thumb .qty{position:absolute;top:-8px;right:-8px;min-width:22px;height:22px;border-radius:11px;background:#6d7175;color:#fff;font-size:.75rem;font-weight:600;display:grid;place-items:center;padding:0 6px}
+.items .name{font-weight:600}.items .meta{color:#6d7175;font-size:.82rem}
+.items .price{font-variant-numeric:tabular-nums}
+.discount{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:20px}
+.discount input{margin:0}.discount button{font:inherit;padding:0 16px;border:1px solid #c9cccf;border-radius:6px;background:#fff;color:#6d7175}
+.totals{display:grid;gap:8px}
+.totals div{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums}
+.totals .muted{color:#6d7175}
+.totals .grand{font-size:1.25rem;font-weight:700;border-top:1px solid #e1e3e5;padding-top:12px;margin-top:6px}
+.totals .grand small{font-size:.75rem;color:#6d7175;font-weight:400;margin-right:8px}

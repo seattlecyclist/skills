@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>Tasks</title><link rel="stylesheet" href="style.css">
+<nav><b>Tasks</b><a href="index.html">Board</a><a href="new.html" class="btn" id="new-task">New task</a></nav>
+<main>
+  <div id="flash"></div>
+  <div class="card"><h2>This week</h2>
+    <table id="tasks"><tr><th>Task</th><th>Owner</th><th>Due</th></tr>
+      <tr><td>Draft release notes</td><td>Sam</td><td>Mon</td></tr>
+      <tr><td>Review onboarding copy</td><td>Ari</td><td>Wed</td></tr>
+    </table></div>
+  <div class="spacer">(more of the page)</div>
+  <div class="card" id="summary"><h2>Summary</h2><p><span id="count">2</span> tasks this week.</p></div>
+</main>
+<script>
+const added = new URLSearchParams(location.search).get('added');
+if (added) {
+  const [t, o, d] = added.split('|');
+  const tr = document.createElement('tr'); tr.className = 'new';
+  [t, o, d].forEach(v => { const td = document.createElement('td'); td.textContent = v; tr.appendChild(td); });
+  document.getElementById('tasks').appendChild(tr);
+  document.getElementById('count').textContent = '3';
+  document.getElementById('flash').innerHTML = '<div class="flash">Task added.</div>';
+}
+</script>

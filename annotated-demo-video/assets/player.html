@@ -1,0 +1,84 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<title>{{TITLE}}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="{{FONT_CSS}}">
+<style>
+/* Layout: one stage (the annotated frame) with a step rail; accent = the step you are on. */
+:root{{{LIGHT}}
+--display:{{DISPLAY_FONT}};--body:{{BODY_FONT}};--mono:{{MONO_FONT}}}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){{{DARK}}color-scheme:dark}}
+:root[data-theme="dark"]{{{DARK}}color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+.wrap{max-width:1280px;margin:0 auto;padding-inline:24px;padding-block:28px 64px;display:grid;gap:20px}
+@media (max-width:560px){.wrap{padding-inline:16px}}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+h1{font-family:var(--display);font-weight:720;letter-spacing:-.03em;font-size:clamp(1.8rem,3.6vw,2.6rem);line-height:1.05;margin:6px 0 0;text-wrap:balance}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+@media (max-width:960px){.layout{grid-template-columns:1fr}}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-width:0}
+.screen{position:relative;aspect-ratio:{{ASPECT}};max-width:100%;background:#000}
+.screen img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .45s ease}
+.screen img.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.screen img{transition:none}}
+.bar{height:3px;background:var(--line)}
+.bar i{display:block;height:100%;width:0;background:var(--accent)}
+.controls{display:flex;align-items:center;gap:10px;padding:12px 14px;flex-wrap:wrap}
+button{font:600 14px var(--body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:10px;padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);min-width:88px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.count{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-left:auto;font-variant-numeric:tabular-nums}
+.rail{display:grid;gap:4px;max-height:calc(100vh - 60px);overflow:auto;position:sticky;top:20px}
+.rail button{text-align:left;display:grid;grid-template-columns:28px minmax(0,1fr);gap:8px;border:1px solid transparent;background:transparent;padding:9px 10px;font-weight:500}
+.rail button span.n{font-family:var(--mono);font-size:.75rem;color:var(--muted);padding-top:2px}
+.rail button b{display:block;font-weight:600;font-size:.92rem}
+.rail button small{display:block;color:var(--muted);font-size:.8rem;font-weight:400;line-height:1.35}
+.rail button[aria-current="true"]{background:var(--accent-wash);border-color:var(--accent)}
+.rail button[aria-current="true"] span.n{color:var(--accent-ink)}
+.chapter{font-family:var(--mono);font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 10px 2px}
+.note{font-size:.88rem;color:var(--muted);margin:0}
+</style>
+<div class="wrap">
+  <header>
+    <div><span class="eyebrow">{{EYEBROW}}</span><h1>{{TITLE}}</h1></div>
+    <p class="note">{{NOTE}}</p>
+  </header>
+  <div class="layout">
+    <div class="stage">
+      <div class="screen" id="screen" aria-live="polite"></div>
+      <div class="bar"><i id="prog"></i></div>
+      <div class="controls">
+        <button id="prev" aria-label="Previous step">Back</button>
+        <button id="play" class="primary">Pause</button>
+        <button id="next" aria-label="Next step">Next</button>
+        <span class="count" id="count"></span>
+      </div>
+    </div>
+    <nav class="rail" id="rail" aria-label="Steps"></nav>
+  </div>
+</div>
+<script>
+const FRAMES = {{FRAMES}};
+(function(){
+  const screen=document.getElementById('screen'), rail=document.getElementById('rail'), prog=document.getElementById('prog');
+  const imgs=FRAMES.map(f=>{const im=new Image();im.src=f.src;im.alt=f.title+'. '+f.body;screen.appendChild(im);return im});
+  const btns=FRAMES.map((f,i)=>{
+    if(f.chapter){const c=document.createElement('div');c.className='chapter';c.textContent=f.chapter;rail.appendChild(c)}
+    const b=document.createElement('button');b.innerHTML='<span class="n"></span><span><b></b><small></small></span>';
+    b.querySelector('.n').textContent=String(i+1).padStart(2,'0');b.querySelector('b').textContent=f.title;b.querySelector('small').textContent=f.body;
+    b.onclick=()=>{go(i);pause()};rail.appendChild(b);return b});
+  let i=0,playing=!matchMedia('(prefers-reduced-motion: reduce)').matches,t0=performance.now();
+  const playBtn=document.getElementById('play');
+  function go(n){i=(n+FRAMES.length)%FRAMES.length;imgs.forEach((im,k)=>im.classList.toggle('on',k===i));btns.forEach((b,k)=>b.setAttribute('aria-current',k===i));
+    document.getElementById('count').textContent=(i+1)+' / '+FRAMES.length;t0=performance.now();prog.style.width=playing?'0%':((i+1)/FRAMES.length*100)+'%'}
+  function pause(){playing=false;playBtn.textContent='Play';prog.style.width=((i+1)/FRAMES.length*100)+'%'}
+  function play(){playing=true;playBtn.textContent='Pause';t0=performance.now()}
+  playBtn.onclick=()=>playing?pause():play();
+  document.getElementById('prev').onclick=()=>{go(i-1);pause()};
+  document.getElementById('next').onclick=()=>{go(i+1);pause()};
+  document.addEventListener('keydown',e=>{if(e.key==='ArrowRight'){go(i+1);pause()}if(e.key==='ArrowLeft'){go(i-1);pause()}if(e.key===' '&&e.target===document.body){e.preventDefault();playing?pause():play()}});
+  (function tick(now){if(playing){const p=(now-t0)/FRAMES[i].ms;prog.style.width=Math.min(p,1)*100+'%';if(p>=1)go(i+1)}requestAnimationFrame(tick)})(performance.now());
+  go(0); if(!playing) pause();
+})();
+</script>
