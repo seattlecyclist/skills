@@ -55,8 +55,6 @@ quantities, so a $252.20 order is billed at $186.20. The video opens with a "Bef
 drives the buggy page and rings the wrong values, then an "After: the fix" card introduces the same
 frames against the fixed page. Every caption carries the chapter name.
 
-Click the image to play the video (63 s):
-
 
 https://github.com/user-attachments/assets/68274163-33cb-4c1b-8b47-ae092297337d
 
