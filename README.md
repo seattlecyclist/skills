@@ -6,6 +6,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 | Skill | What it does |
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
+| [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
 
 ## Install
 
@@ -16,6 +17,7 @@ Clone the repo and symlink (or copy) the skills you want into `~/.claude/skills/
 git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
+ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
 ```
 
 Claude Code picks the skill up on the next session. Invoke it with its slash command, or just describe
@@ -116,3 +118,74 @@ For Rails apps whose flows need fixtures or sign-in helpers, the Capybara adapte
 frames from inside a system test.
 
 Full workflow, storyboard reference, theming and pitfalls: [annotated-demo-video/SKILL.md](annotated-demo-video/SKILL.md).
+
+---
+
+## woodworking-plans
+
+Turns a project idea into a plan a woodworker can build from, in the look of a classic woodworking
+magazine's drawings supplement: white letter pages, peach-filled line drawings, a green material list
+box, a blue hardware box and red only for identifying marks. It adds what paper can't do: a three.js
+exploded view you can turn, explode, step through and isolate parts in, pan and zoom drawings, an
+inch/mm toggle and a printable letter-size PDF built in the browser.
+
+The model is the plan. Claude writes a parametric `plan.js` (parts, joints, bores, hardware), and the
+page renders from it, so a change like "make it 6 inches wider" flows through every drawing, list and
+cutting diagram.
+
+**What you get**
+
+- A numbered exploded view, material and hardware lists, a shopping list and a shop cut list sorted
+  for the saw.
+- Dimensioned part layouts, section views, joinery details and cutting diagrams with cut order.
+- Jigs, full-size patterns and story sticks tiled at 100% in the PDF, build steps with "Show in 3D",
+  and a finishing schedule.
+
+**Why it is a guardrail**
+
+- A geometric model check runs on every build: interference, joint contact, tenon seating,
+  connectivity, wood movement and bores, before anything is drawn.
+- Every design and every later change gets an adversarial review that walks each change against the
+  parts it touches and mates with, recorded on the plan's Revisions & Review sheet.
+- `selftest.js` proves the checks still catch known breaks.
+
+### Demo
+
+A queen bed with castle-joint posts and a slatted headboard, the worked example in
+[woodworking-plans/examples/castle-bed/](woodworking-plans/examples/castle-bed/):
+
+![Exploded view of the castle-joint bed with numbered balloons](woodworking-plans/examples/castle-bed/exploded-view.png)
+
+- 🌐 Plan page: [castle-bed/plan.html](woodworking-plans/examples/castle-bed/plan.html) (download and open)
+- 🗄 Casework example: [modern-dresser/plan.html](woodworking-plans/examples/modern-dresser/plan.html), an
+  8-drawer plywood dresser with slides and full drawer boxes
+
+### Usage
+
+**Prerequisites:** Node 18+. The page loads three.js, html2canvas and jsPDF from jsDelivr. For
+screenshots and the PDF test, `render_check.js` uses Playwright with Chromium.
+
+**Self-test:**
+
+```bash
+export WP=~/.claude/skills/woodworking-plans
+node $WP/scripts/selftest.js
+```
+
+**Ask Claude** for a plan:
+
+> Draw me plans for a walnut side table, 24" tall, with mortise and tenon aprons and a drawer.
+
+Claude asks once for anything that governs the design, writes `plan.js` from the skeleton, runs the
+model check and the adversarial review, and publishes the page.
+
+**Or drive it by hand:**
+
+```bash
+cp $WP/examples/skeleton/plan.js .
+node $WP/scripts/build_plan.js plan.js --check     # model check only
+node $WP/scripts/build_plan.js plan.js plan.html   # check and build the page
+node $WP/scripts/render_check.js plan.js --pdf     # screenshots, PDF test, problem list
+```
+
+Full workflow, schema and review procedure: [woodworking-plans/SKILL.md](woodworking-plans/SKILL.md).
