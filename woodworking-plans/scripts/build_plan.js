@@ -101,13 +101,14 @@ function review() {
     const mech = R.errors.concat(R.warnings).filter(m => (m.parts || []).some(id => scope.has(String(id))) || bs.some(b => m.msg.includes('Bore ' + b.id)));
     const checks = [];
     checks.push({ check: 'Dimensions of ' + touch.map(id => '{#' + id + '}').join(' ') + ': cut list re-derived by hand from PARAMS', evidence: 'TODO', result: 'TODO' });
-    for (const j of js) checks.push({ check: j.id + ' ' + (j.title || j.type) + ' ' + j.parts.map(id => '{#' + id + '}').join(' ') + ': engages, proportions (joinery.md), tools, assembly order, load path', evidence: 'TODO', result: 'TODO' });
+    for (const j of js) checks.push({ check: j.id + ' ' + (j.title || j.type) + ' ' + j.parts.map(id => '{#' + id + '}').join(' ') + ': both halves present and matching, engages, proportions (joinery.md), tools, assembly order, load path', evidence: 'TODO', result: 'TODO' });
     if (bs.length) checks.push({ check: 'Fasteners ' + bs.map(b => b.id).join(', ') + ': can be bored and fitted once assembled, length, nut engagement', evidence: 'TODO', result: 'TODO' });
     if (mates.size) checks.push({ check: 'Mates ' + [...mates.keys()].map(id => '{#' + id + '}').join(' ') + ': still fit, clearances to anything that moves', evidence: 'TODO', result: 'TODO' });
     checks.push({ check: 'Paperwork: ' + paper.map(p => p.ref).join('; '), evidence: 'TODO', result: 'TODO' });
     if (diff && diff.parts.some(d => d.unlisted)) checks.push({ check: 'Also moved, not listed in the change: ' + diff.parts.filter(d => d.unlisted).map(d => '{#' + d.id + '}').join(' '), evidence: 'TODO', result: 'TODO' });
     const existing = (plan.review || []).find(x => x.change === c.id);
-    res.push({ change: c, touch, mates: [...mates].map(([id, via]) => ({ id, via })), joints: js.map(j => j.id), bores: bs.map(b => b.id), paper: paper.concat(notes), mech, existing: !!existing,
+    const halves = js.map(j => j.id + ' ' + j.type + ' ' + j.parts.map(nm).join(' + ') + ': ' + jointHalves(M, j, bores, F));
+    res.push({ change: c, touch, halves, mates: [...mates].map(([id, via]) => ({ id, via })), joints: js.map(j => j.id), bores: bs.map(b => b.id), paper: paper.concat(notes), mech, existing: !!existing,
       record: { rev: c.rev, change: c.id, verdict: 'TODO', mates: [...mates.keys()], checks } });
   }
   if (flags.has('--json')) { console.log(JSON.stringify({ check: { errors: R.errors, warnings: R.warnings }, validation: V, diff, changes: res }, null, 2)); return; }
@@ -125,8 +126,12 @@ function review() {
     P.push('', '## ' + r.change.id + ': ' + (r.change.summary || ''));
     if (r.change.reason) P.push('Reason: ' + r.change.reason);
     P.push('Touches: ' + r.touch.map(nm).join(', '));
+    // curves and angles on these parts, for the grain, tool and blank checks
+    const shaped = r.touch.map(id => M.byId[id]).filter(p => p && p.local.shapes.length);
+    if (shaped.length) P.push('Shaped: ' + shaped.map(p => nm(p.id) + ' (' + [...new Set(p.local.shapes.map(sh => sh.kind + (sh.kind === 'roundover' || sh.kind === 'chamfer' ? ' ' + F(sh.size) : '') + (sh.prof.arcs.length ? ', R ' + sh.prof.arcs.map(a => F(a.r)).join('/') : '')))].join('; ') + ')').join(', ') + '. Check the blank, grain along each curve, and the tool for each radius.');
     P.push('Mates: ' + (r.mates.length ? r.mates.map(m => nm(m.id) + ' (' + m.via.join(', ') + ')').join(', ') : 'none'));
     P.push('Joints in scope: ' + (r.joints.join(', ') || 'none') + (r.bores.length ? '. Bores: ' + r.bores.join(', ') : ''));
+    if (r.halves.length) { P.push('Joints and fittings, both halves (verify each against the drawings, steps and hardware list):'); for (const h of r.halves) P.push('  - ' + h); }
     P.push('Mechanical checks on these parts: ' + (r.mech.length ? '' : 'all pass (interference, seating, contact, walls, bores, tools)'));
     for (const m of r.mech) P.push('  - ' + m.code + ': ' + m.msg);
     P.push('Paperwork to re-read:');
@@ -139,6 +144,29 @@ function review() {
   }
   P.push('', 'Attack every line with references/adversarial-review.md. A passing check is not a passing review.');
   console.log(P.join('\n'));
+}
+// What the model has for each half of a joint: mortises cut for tenons, cuts filled by a mating
+// part, bores. "none" on a joint that needs them is what the reviewer must fail.
+function jointHalves(M, j, bores, F) {
+  const ids = j.parts.map(String), out = [];
+  // a tenon belongs to the tenon joint that names both parts, not to every joint that lists them
+  const own = m => /tenon/.test(j.type) || !(plan.joints || []).some(k => k !== j && /tenon/.test(k.type) && k.parts.map(String).includes(m.host) && k.parts.map(String).includes(m.guest));
+  const ms = M.mortises.filter(m => ids.includes(m.host) && ids.includes(m.guest) && own(m));
+  const size = b => [0, 1, 2].map(a => b.max[a] - b.min[a]).filter(v => v > 1e-6).sort((a, c) => a - c).map(F).join(' x ');
+  if (ms.length) {
+    const groups = {};
+    for (const m of ms) { const k = '#' + m.guest + ' tenon ' + size(m.tenon) + ' in #' + m.host + ' mortise ' + size(m.box) + (m.through ? ' (through)' : ''); groups[k] = (groups[k] || 0) + 1; }
+    for (const k in groups) out.push(groups[k] + ' x ' + k);
+  } else if (/tenon/.test(j.type)) out.push('no tenon in a mortise (MISSING)');
+  const housed = new Set();
+  for (const a of ids) for (const b of ids) if (a !== b && M.byId[a] && M.byId[b]) {
+    for (const IA of M.byId[a].instances) for (const c of IA.cuts) if (!c.mortise) for (const IB of M.byId[b].instances) if (IB.pre && IB.pre.cells.some(cell => core.inter(cell, c))) housed.add('#' + a + ' cut ' + size(core.inter(c, IA.pre.bbox || c) || c) + ' filled by #' + b);
+  }
+  out.push(...housed);
+  const bs = bores.filter(b => b.joint === j.id);
+  if (bs.length) out.push(bs.map(b => b.id + ' ' + (b.label || b.kind) + ' ' + F(core.parseLen(b.d)) + (b.copies ? ' x' + b.copies.length : '')).join(', '));
+  if (j.fasteners) out.push('fasteners: ' + j.fasteners);
+  return out.join('; ') || 'contact only';
 }
 function baseDiff() {
   const b = opt('--base'); if (!b) return null;
@@ -159,6 +187,8 @@ function baseDiff() {
     if (p.material !== q.material) what.push('material ' + q.material + ' → ' + p.material);
     const cutKey = x => x.local.cuts.concat(x.local.tenons).map(a => a.min.concat(a.max).map(v => v.toFixed(4)).join(',')).sort().join('|');
     if (cutKey(p) !== cutKey(q)) what.push('joinery cut differently');
+    const shapeKey = x => JSON.stringify((x.shape || []).filter(core.isShape));
+    if (shapeKey(p) !== shapeKey(q)) what.push('curves or angles reshaped');
     const moved = p.instances.filter((I, i) => q.instances[i] && box(I, ra) !== box(q.instances[i], rb));
     if (moved.length) {
       const I = moved[0], J0 = q.instances[I.index];

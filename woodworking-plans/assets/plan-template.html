@@ -221,6 +221,23 @@ svg.dw .cutn{font-family:var(--f-sans);font-weight:700;fill:var(--red-2)}
 svg.dw .gr{stroke:var(--ink-2);stroke-width:.7;vector-effect:non-scaling-stroke;fill:none}
 svg.dw .grh{fill:var(--ink-2)}
 svg.dw .face.sec{fill:url(#sechatch)}
+/* joint details: shaded faces by direction, cut faces darker, a missing mortise in red */
+svg.dw .jdf{stroke-width:.5;vector-effect:non-scaling-stroke;stroke-linejoin:round}
+svg.dw .jdf2{fill:#fbe3cb;stroke:#fbe3cb} svg.dw .jdf0{fill:#f2d3bc;stroke:#f2d3bc} svg.dw .jdf1{fill:#e6bf9f;stroke:#e6bf9f}
+svg.dw .jdf.in{fill:#a9764f;stroke:#a9764f}
+svg.dw .hw .jdf{fill:var(--steel);stroke:var(--steel)}
+svg.dw .jde{stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke;stroke-linecap:round}
+svg.dw .jdm{stroke:var(--red-2);stroke-width:1.8;stroke-dasharray:6 3;vector-effect:non-scaling-stroke;fill:none}
+svg.dw .jdb{fill:#fff;stroke:var(--ink);stroke-width:.8;vector-effect:non-scaling-stroke}
+svg.dw .jdl line{stroke:var(--ink);stroke-width:.6;vector-effect:non-scaling-stroke}
+svg.dw .jdl circle{fill:var(--ink)}
+svg.dw .jdl text{font-family:var(--f-sans);font-weight:400;fill:var(--ink)}
+svg.dw .jdl.bad line{stroke:var(--red-2)} svg.dw .jdl.bad circle,svg.dw .jdl.bad text{fill:var(--red-2);font-weight:700}
+figure.jd .jdt{font:400 .86rem/1.35 var(--f-sans);margin-top:6px}
+figure.jd .jdt th{text-align:left;font-weight:700;padding-right:10px;white-space:nowrap;vertical-align:top}
+figure.jd .jdt p.note{margin:.4em 0 0}
+.jdx{color:var(--red-2);font-weight:700}
+figure.jd-bad figcaption .ft{color:var(--red-2)}
 svg.dw .cpl{stroke:var(--ink);stroke-width:2;stroke-dasharray:14 3 3 3;vector-effect:non-scaling-stroke;fill:none}
 svg.dw .cpa{fill:var(--ink)}
 svg.dw .stick{fill:var(--part);stroke:var(--ink);stroke-width:1;vector-effect:non-scaling-stroke}
@@ -400,6 +417,12 @@ figcaption .zb button.one{width:auto;padding:0 4px}
   function project(svg, items, view) {
     const faces = [];
     for (const it of items) {
+      // curves and angles: the shape's own faces turned toward the viewer, flat or curved
+      if (it.solid.shaped) {
+        const dv = [0, 0, 0]; dv[view.drop] = view.sign;
+        for (const G of C.faces(it.solid, dv)) faces.push({ it, d: G.depth * view.sign, shaped: G });
+        continue;
+      }
       const S = C.surface(it.solid);
       const byPlane = {};
       for (const q of S.quads) {
@@ -415,6 +438,15 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     const groups = {};
     for (const f of faces) {
       const g = svgEl('g', { 'data-part': f.it.part || '' }, svg);
+      if (f.shaped) {
+        const G = f.shaped, P2 = p => X(uu(p)).toFixed(2) + ' ' + Y(vv(p)).toFixed(2);
+        const onCut = view.secAt != null && G.flat && Math.abs(Math.abs(G.n[view.drop]) - 1) < 1e-6 && Math.abs(G.w * G.n[view.drop] - view.secAt) < 1e-4;
+        svgEl('path', Object.assign({ class: 'face' + (f.it.wood ? '' : ' hw') + (onCut ? ' sec' : ''), d: G.polys.map(v => 'M' + v.map(P2).join('L') + 'Z').join('') }, onCut && f.it.wood && view.hatch ? { style: 'fill:url(#' + view.hatch + ')' } : {}), g);
+        let d = '';
+        for (const [a, b] of G.edges) { if (Math.hypot(uu(a) - uu(b), vv(a) - vv(b)) < 1e-5) continue; d += 'M' + P2(a) + 'L' + P2(b); }
+        svgEl('path', { class: 'edge', d }, g);
+        continue;
+      }
       const pts = q => q.v.map(p => X(uu(p)).toFixed(2) + ',' + Y(vv(p)).toFixed(2)).join(' ');
       // one path per face region, so adjacent cells fill without anti-aliased seams
       const onCut = view.secAt != null && Math.abs(f.d - view.secAt) < 1e-5;
@@ -481,36 +513,76 @@ figcaption .zb button.one{width:auto;padding:0 4px}
   const TILE = { w: 7.5, h: 8.75, lap: 0.25 };
   const tileCount = (w, h) => Math.max(1, Math.ceil((w - TILE.lap) / (TILE.w - TILE.lap))) * Math.max(1, Math.ceil((h - TILE.lap) / (TILE.h - TILE.lap)));
   window.PlanTile = TILE;
-  // pan/zoom on an svg viewBox: drag to pan, ctrl+wheel / pinch / buttons to zoom, double-click zooms in
+  // pan/zoom on an svg viewBox: drag to move, pinch / ctrl+wheel / double-click / buttons to zoom (at the
+  // pointer), arrows and + - 0 once the drawing has focus. The view can't be dragged off the drawing, and
+  // Reset view puts it back. Its styles ride along, so an older page served with this function gets them too.
   function panzoom(wrap, svg, fig) {
+    if (!document.getElementById('pzcss')) document.head.appendChild(Object.assign(document.createElement('style'), { id: 'pzcss', textContent:
+      'figure .svgw{user-select:none;-webkit-user-select:none}figure .svgw.pzdrag{cursor:grabbing}' +
+      '.pzhint{position:absolute;left:6px;bottom:6px;font:400 .72rem/1.2 var(--f-sans);color:var(--ink);background:rgba(255,255,255,.9);padding:3px 7px;border-radius:3px;pointer-events:none;opacity:0;transition:opacity .2s}' +
+      'figure .svgw:hover .pzhint,figure .svgw:focus-visible .pzhint{opacity:.85}figure.pzused .pzhint{display:none}' +
+      '.pzreset{position:absolute;right:6px;top:6px;font:600 .72rem/1 var(--f-sans);padding:5px 9px;border:1px solid var(--ink);border-radius:3px;background:#fff;color:var(--ink);cursor:pointer}.pzreset:hover{background:var(--sel-soft)}.pzreset[hidden]{display:none}' +
+      '@media (hover:none){figcaption .zb{opacity:1}}html.printing .pzhint,html.printing .pzreset{display:none!important}@media print{.pzhint,.pzreset{display:none!important}}' }));
     const base = svg.dataset.vb.split(' ').map(Number);
     let vb = base.slice();
-    const set = () => svg.setAttribute('viewBox', vb.join(' '));
+    const hint = Object.assign(document.createElement('div'), { className: 'pzhint', textContent: 'Drag to move · pinch or ctrl+scroll to zoom' });
+    const reset = Object.assign(document.createElement('button'), { type: 'button', className: 'pzreset', textContent: 'Reset view', hidden: true });
+    wrap.append(hint, reset);
+    fig.querySelectorAll('.zb button').forEach(b => { b.title = b.getAttribute('aria-label'); });
+    // keep half the view (or half the drawing, zoomed out) on the drawing
+    const set = () => {
+      const ox = Math.min(vb[2], base[2]) / 2, oy = Math.min(vb[3], base[3]) / 2;
+      vb[0] = Math.min(base[0] + base[2] - ox, Math.max(base[0] + ox - vb[2], vb[0]));
+      vb[1] = Math.min(base[1] + base[3] - oy, Math.max(base[1] + oy - vb[3], vb[1]));
+      svg.setAttribute('viewBox', vb.join(' '));
+      reset.hidden = vb.every((v, i) => Math.abs(v - base[i]) < base[2] * 1e-4);
+    };
+    const fit = () => { vb = base.slice(); set(); };
     const zoomAt = (f, cx, cy) => {
       const r = wrap.getBoundingClientRect();
       const px = cx == null ? .5 : (cx - r.left) / r.width, py = cy == null ? .5 : (cy - r.top) / r.height;
       const nw = Math.min(base[2] * 1.5, Math.max(base[2] / 30, vb[2] / f)), nh = nw * vb[3] / vb[2];
-      vb = [vb[0] + (vb[2] - nw) * px, vb[1] + (vb[3] - nh) * py, nw, nh]; set();
+      vb = [vb[0] + (vb[2] - nw) * px, vb[1] + (vb[3] - nh) * py, nw, nh]; set(); fig.classList.add('pzused');
     };
-    const pts = new Map(); let last = null, pinch = null;
-    wrap.addEventListener('pointerdown', e => { wrap.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = [e.clientX, e.clientY]; if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); } });
+    const moveBy = (dx, dy) => { const k = vb[2] / wrap.getBoundingClientRect().width; vb[0] -= dx * k; vb[1] -= dy * k; set(); };
+    // a move under 4px is a click (it picks what's under the pointer), not a drag
+    const pts = new Map(); let last = null, down = null, pinch = null, dragging = false;
+    wrap.addEventListener('pointerdown', e => {
+      if (e.button > 0 || e.target.closest('button')) return;
+      wrap.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]); last = down = [e.clientX, e.clientY];
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch = Math.hypot(a[0] - b[0], a[1] - b[1]); }
+    });
     wrap.addEventListener('pointermove', e => {
       if (!pts.has(e.pointerId)) return;
       pts.set(e.pointerId, [e.clientX, e.clientY]);
-      const r = wrap.getBoundingClientRect();
       if (pts.size === 2 && pinch) { const [a, b] = [...pts.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt(d / pinch, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); pinch = d; return; }
-      const k = vb[2] / r.width;
-      vb[0] -= (e.clientX - last[0]) * k; vb[1] -= (e.clientY - last[1]) * k; last = [e.clientX, e.clientY]; set();
+      if (!dragging && Math.hypot(e.clientX - down[0], e.clientY - down[1]) <= 4) return;
+      if (!dragging) { dragging = true; wrap.classList.add('pzdrag'); fig.classList.add('pzused'); }
+      moveBy(e.clientX - last[0], e.clientY - last[1]); last = [e.clientX, e.clientY];
     });
-    const up = e => { pts.delete(e.pointerId); if (pts.size < 2) pinch = null; if (pts.size === 1) last = [...pts.values()][0]; };
+    const up = e => {
+      pts.delete(e.pointerId); if (pts.size < 2) pinch = null;
+      if (pts.size === 1) last = [...pts.values()][0];
+      if (!pts.size) { dragging = false; wrap.classList.remove('pzdrag'); }
+    };
     wrap.addEventListener('pointerup', up); wrap.addEventListener('pointercancel', up);
     wrap.addEventListener('wheel', e => { if (!e.ctrlKey && !e.metaKey && !wrap.matches(':focus-within')) return; e.preventDefault(); zoomAt(Math.exp(-e.deltaY * 0.0025), e.clientX, e.clientY); }, { passive: false });
-    wrap.addEventListener('dblclick', e => zoomAt(1.8, e.clientX, e.clientY));
+    wrap.addEventListener('dblclick', e => { if (!e.target.closest('button')) zoomAt(1.8, e.clientX, e.clientY); });
+    wrap.addEventListener('keydown', e => {
+      const r = wrap.getBoundingClientRect(), k = e.key, step = r.width / 8;
+      if (k === 'ArrowLeft') moveBy(step, 0); else if (k === 'ArrowRight') moveBy(-step, 0);
+      else if (k === 'ArrowUp') moveBy(0, step); else if (k === 'ArrowDown') moveBy(0, -step);
+      else if (k === '+' || k === '=') zoomAt(1.5); else if (k === '-' || k === '_') zoomAt(1 / 1.5);
+      else if (k === '0') fit(); else return;
+      e.preventDefault();
+    });
+    reset.addEventListener('click', () => { fit(); wrap.focus({ preventScroll: true }); });
     wrap.tabIndex = 0;
+    wrap.setAttribute('aria-label', 'Drawing: drag or use the arrow keys to move, + and - to zoom, 0 to reset');
     fig.querySelector('.zb').addEventListener('click', e => {
       const z = e.target.dataset.z; if (!z) return;
-      if (z === 'one') { const on = !fig.classList.contains('actual'); fig.classList.toggle('actual', on); e.target.setAttribute('aria-pressed', on); vb = base.slice(); set(); return; }
-      if (z === 'in') zoomAt(1.5); else if (z === 'out') zoomAt(1 / 1.5); else if (z === 'fit') { vb = base.slice(); set(); }
+      if (z === 'one') { const on = !fig.classList.contains('actual'); fig.classList.toggle('actual', on); e.target.setAttribute('aria-pressed', on); fit(); return; }
+      if (z === 'in') zoomAt(1.5); else if (z === 'out') zoomAt(1 / 1.5); else if (z === 'fit') fit();
       else if (z === 'fs') { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); else if (fig.requestFullscreen) fig.requestFullscreen().catch(() => {}); }
     });
   }
@@ -584,7 +656,7 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     }).filter(r => r.max[0] - r.min[0] > 1e-6 && r.max[1] - r.min[1] > 1e-6 && r.max[2] - r.min[2] > 1e-6);
     for (const p of M.parts) if (p.shape && p.shape.length) for (const I of p.instances) {
       const adds = clip(I.adds); if (!adds.length) continue;
-      const S = C.solid(adds, I.cuts, clip(I.tenons)); if (S.bbox) out.push({ part: p.id, solid: S, wood: !p.isHardware });
+      const S = C.solid(adds, I.cuts, clip(I.tenons), I.shp); if (S.bbox) out.push({ part: p.id, solid: S, wood: !p.isHardware });
     }
     return out;
   }
@@ -610,7 +682,7 @@ figcaption .zb button.one{width:auto;padding:0 4px}
   const partFigs = [];
   for (const p of M.parts) {
     if (p.isHardware || !p.shape || p.drawing === false) continue;
-    if (!p.local.cuts.length && !p.local.tenons.length && !p.drawing) continue;
+    if (!p.local.cuts.length && !p.local.tenons.length && !p.local.shapes.length && !p.drawing) continue;
     const S = p.localSolid, b = S.bbox; if (!b) continue;
     const ext = [0, 1, 2].map(a => b.max[a] - b.min[a]);
     const lA = ext.indexOf(Math.max(...ext));
@@ -630,9 +702,43 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       // chain dimensions from cut and tenon boundaries
       // features that show in this view: open to the viewer-side face, or cut clean through
       const feats = p.local.cuts.concat(p.local.tenons).filter(f => f.max[drop] >= b.max[drop] - 1e-6 || (f.min[drop] <= b.min[drop] + 1e-6 && f.max[drop] >= b.max[drop] - 1e-6));
+      // curves and angles seen face on: their written points join the chains, arcs get a radius
+      const pts3 = [], at3 = (sh, q) => { const r = [0, 0, 0], [ua, va] = [[1, 2], [0, 2], [0, 1]][sh.axis]; r[ua] = q[0]; r[va] = q[1]; return r; };
+      const onPart = (q, axes) => axes.every(a => q[a] >= b.min[a] - 1e-6 && q[a] <= b.max[a] + 1e-6);
+      for (const sh of p.local.shapes) {
+        if (sh.kind === 'roundover' || sh.kind === 'chamfer') continue;
+        if (sh.kind === 'lathe') {
+          const rmax = Math.max(...sh.prof.nodes.map(q => q[0]));
+          if (sh.axis === drop) {
+            const c3 = at3(sh, sh.center), t = svgEl('text', { class: 'dtx', x: X(c3[U]), y: Y(c3[V]) + fs * 2.2, 'font-size': fs, 'text-anchor': 'middle' }, svg);
+            t.textContent = '⌀' + FT(2 * rmax);
+            continue;
+          }
+          // a turning seen from the side: where each section starts, and its diameter there
+          let last = -Infinity;
+          for (const q of sh.prof.nodes.slice().sort((x, y) => x[1] - y[1])) {
+            const r3 = [0, 0, 0]; r3[sh.axis] = q[1]; pts3.push(r3);
+            if ((q[1] - last) * K < fs * 1.6) continue;
+            last = q[1];
+            const o = [U, V].find(x => x !== sh.axis), c3 = [0, 0, 0]; c3[sh.axis] = q[1]; c3[o] = b.max[o];
+            const t = svgEl('text', { class: 'dtx', x: X(c3[U]) + (U === sh.axis ? 0 : fs * 0.4), y: Y(c3[V]) - (V === sh.axis ? 0 : fs * 0.4), 'font-size': fs * 0.8, 'text-anchor': 'start' }, svg); t.textContent = '⌀' + FT(2 * q[0]);
+          }
+          continue;
+        }
+        if (sh.axis !== drop) continue;
+        if (sh.prof.nodes.length <= 10) for (const q of sh.prof.nodes) { const r3 = at3(sh, q); if (onPart(r3, [U, V])) pts3.push(r3); }
+        for (const A of sh.prof.arcs) {
+          if (A.r > 240) continue;
+          const m = at3(sh, A.mid);
+          if (m[U] < b.min[U] - 0.05 || m[U] > b.max[U] + 0.05 || m[V] < b.min[V] - 0.05 || m[V] > b.max[V] + 0.05) continue;
+          const t = svgEl('text', { class: 'dtx', x: X(m[U]), y: Y(m[V]) + fs * 1.2, 'font-size': fs * 0.85, 'text-anchor': 'middle' }, svg);
+          t.textContent = A.circle ? (A.rv && Math.abs(A.rv - A.r) > 1e-6 ? FT(2 * A.r) + ' × ' + FT(2 * A.rv) + ' oval' : '⌀' + FT(2 * A.r)) : 'R ' + FT(A.r);
+        }
+      }
       const chain = (axis) => {
         const cs = [b.min[axis], b.max[axis]];
         for (const f of feats) for (const c of [f.min[axis], f.max[axis]]) if (c > b.min[axis] + 1e-6 && c < b.max[axis] - 1e-6) cs.push(c);
+        for (const q of pts3) if (q[axis] > b.min[axis] + 1e-6 && q[axis] < b.max[axis] - 1e-6) cs.push(q[axis]);
         return [...new Set(cs.map(c => +c.toFixed(5)))].sort((x, y) => x - y);
       };
       const cu = chain(U), cv = chain(V);
@@ -670,7 +776,9 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     if (p.qty > 1) svgEl('text', { class: 'red', x: side ? bx + br * 1.5 : bx, y: side ? by : by + br * 2.1, 'font-size': br * 1.05, 'text-anchor': side ? 'start' : 'middle', 'dominant-baseline': 'central' }, ga).textContent = 'All ' + p.qty;
     return s;
     }, guess, longPart);
-    partFigs.push(figure(s, p.name + ' Layout', (p.drawing && p.drawing.sub) || 'Face and Edge Views', longPart));
+    // edge treatments are said, not dimensioned: "1/4" round-over, top edges"
+    const eased = [...new Set(p.local.shapes.filter(sh => sh.kind === 'roundover' || sh.kind === 'chamfer').map(sh => FT(sh.size) + ' ' + (sh.kind === 'roundover' ? 'round-over' : 'chamfer') + ', ' + [].concat(sh.src.edges || 'all').join(' and ') + ' edges'))];
+    partFigs.push(figure(s, p.name + ' Layout', [(p.drawing && p.drawing.sub) || 'Face and Edge Views'].concat(eased).join(' · '), longPart));
   }
 
   // ---- authored detail drawings (also used by patterns, shop aids and "don't" panels) ----
@@ -840,6 +948,374 @@ figcaption .zb button.one{width:auto;padding:0 4px}
   if (joints.length) {
     const jr = joints.map((j, i) => '<tr><td class="n">' + esc(j.id || 'J' + (i + 1)) + '</td><td><b>' + esc(j.title || j.type) + '</b>' + (j.note ? '<div class="note">' + rich(j.note) + '</div>' : '') + '</td><td>' + (j.parts || []).map(String).map(chip).join('') + '</td><td>' + esc([j.glue ? 'Glue' : 'No glue', j.fasteners].filter(Boolean).join(' · ')) + '</td><td><button class="b" type="button" data-joint="' + i + '">Show</button></td></tr>').join('');
     sheet('Joinery', '<p>Every connection in the plan, what holds it, and where it is. <b>Show</b> isolates the joint in the exploded view.</p><div class="tw"><table class="plain"><thead><tr><th>No.</th><th>Joint</th><th>Parts</th><th>Held by</th><th></th></tr></thead><tbody>' + jr + '</tbody></table></div>');
+  }
+
+  // ---- joint details: every joint drawn on its own, from the model, the mating parts pulled apart ----
+  // Each detail crops the parts to where they meet, slides them apart the way the joint goes together,
+  // and dimensions what was cut for it: tenons and their mortises, dados, grooves, rabbets, laps, slots
+  // and bores. Nothing here is authored, so a tenon with no mortise cut for it shows up in red.
+  function jointDetails() {
+    const figsOut = [], E = 1e-4;
+    const box = (min, max) => ({ min: min.slice(), max: max.slice() });
+    const ext = a => [0, 1, 2].map(i => a.max[i] - a.min[i]);
+    const mid = a => [0, 1, 2].map(i => (a.min[i] + a.max[i]) / 2);
+    const grow = (a, d) => box(a.min.map(v => v - d), a.max.map(v => v + d));
+    const shift = (a, o) => box(a.min.map((v, i) => v + o[i]), a.max.map((v, i) => v + o[i]));
+    const union = list => list.reduce((u, a) => u ? box(u.min.map((v, i) => Math.min(v, a.min[i])), u.max.map((v, i) => Math.max(v, a.max[i]))) : box(a.min, a.max), null);
+    // overlap that may be flat (two faces touching); null when apart or meeting only along an edge
+    function meet(a, b, tol) {
+      const min = [], max = []; let flat = 0;
+      for (let i = 0; i < 3; i++) {
+        min[i] = Math.max(a.min[i], b.min[i]); max[i] = Math.min(a.max[i], b.max[i]);
+        if (max[i] - min[i] < -tol) return null;
+        if (max[i] - min[i] <= E) { flat++; const m = (min[i] + max[i]) / 2; min[i] = max[i] = m; }
+      }
+      return flat > 1 ? null : { min, max };
+    }
+    const solidVol = (S, a) => { let v = 0; for (const c of S.cells) { const x = C.inter(c, a); if (x) v += C.vol(x); } return v; };
+    const bodyOf = (p, I) => union(I.adds.filter((a, k) => !p.local.tenons.includes(p.local.adds[k]))) || I.bbox;
+    const NAMES = { dado: 'Dado', groove: 'Groove', rabbet: 'Rabbet', 'half-lap': 'Lap', castle: 'Slot', bridle: 'Slot', housed: 'Housing', notch: 'Notch' };
+
+    (P.joints || []).forEach((j, ji) => {
+      const jid = j.id || 'J' + (ji + 1), title = j.title || j.type || 'Joint';
+      const ids = [...new Set((j.parts || []).map(String))];
+      const pool = ids.map(id => M.byId[id]).filter(p => p && p.shape && p.shape.length);
+      const tol = (j.gap != null ? C.parseLen(j.gap) : 0) + 0.02;
+      // the first two parts in the joint's list that meet, and every place they meet
+      let pair = null, places = 0;
+      for (let a = 0; a < pool.length && !pair; a++) for (let b = a + 1; b < pool.length && !pair; b++) {
+        const hits = [];
+        for (const IA of pool[a].instances) for (const IB of pool[b].instances) {
+          if (!IA.bbox || !IB.bbox) continue;
+          const r = meet(IA.bbox, IB.bbox, tol);
+          if (r) hits.push({ A: { p: pool[a], I: IA }, B: { p: pool[b], I: IB }, R: r });
+        }
+        if (hits.length) { pair = hits[0]; places = hits.length; }
+      }
+      const spec = [], problems = [];
+      const held = [/glue/i.test(j.fasteners || '') ? '' : j.glue ? 'Glue' : 'No glue', j.fasteners].filter(Boolean).join(' · ');
+      if (!pair) {
+        problems.push(pool.length < 2 ? 'This joint names fewer than two parts that are drawn in the model.' : 'These parts don’t meet anywhere in the model, so there is nothing to join.');
+        const card = T('<figure class="jd jd-bad" data-joint="' + ji + '"><figcaption><span class="ft">' + esc(jid + ' ' + title) + '</span></figcaption>' + jdTable(ids, spec, problems, held, j.note) + '</figure>');
+        figsOut.push(card); return;
+      }
+      // the window: where the parts meet, plus some wood around it; a long seam is shown along its first 5"
+      const R = box(pair.R.min, pair.R.max);
+      const crop = [0, 1, 2].filter(i => R.max[i] - R.min[i] > 8);
+      for (const i of crop) R.max[i] = R.min[i] + 5;
+      const typical = crop.length > 0;
+      const m = Math.max(1.5, Math.min(4, Math.max(...ext(R)) * 0.6));
+      let W = grow(R, m);
+      // features may widen the window, but not along a seam cut short
+      const cap = box([0, 1, 2].map(i => crop.includes(i) ? W.min[i] : -Infinity), [0, 1, 2].map(i => crop.includes(i) ? W.max[i] : Infinity));
+      // the joint's other parts that come to the same place (a castle's second rail)
+      const used = [pair.A, pair.B];
+      for (const p of pool) for (const I of p.instances) {
+        if (used.length >= 4 || used.some(u => u.I === I) || !I.bbox) continue;
+        if (meet(I.bbox, grow(R, 0.05), tol)) used.push({ p, I });
+      }
+      // grow the window to take in every tenon and cut that makes up the joint
+      const zone = grow(R, 0.01);
+      for (const u of used) for (const f of u.I.tenons.concat(u.I.cuts)) if (C.inter(f, zone)) { const k = C.inter(C.inter(f, u.I.bbox) || f, cap); if (k) W = union([W, k]); }
+      for (const u of used) {
+        u.adds = u.I.adds.map(a => C.inter(a, W)).filter(Boolean);
+        u.tenons = u.I.tenons.map(a => C.inter(a, W)).filter(Boolean);
+        u.S = C.solid(u.adds, u.I.cuts, u.tenons, u.I.shp);
+        u.body = bodyOf(u.p, u.I);
+        u.off = [0, 0, 0];
+      }
+      // the part that stays put: the one with the most cut away where they meet, else the biggest
+      const cutVol = u => u.I.cuts.reduce((s, c) => { const x = C.inter(c, zone); return s + (x ? C.vol(x) : 0); }, 0);
+      const bulk = u => C.vol(u.I.bbox);
+      const host = used.slice().sort((a, b) => (cutVol(b) - cutVol(a)) || (bulk(b) - bulk(a)))[0];
+      // which way each other part comes out of the joint
+      const opening = (cut, b) => [2, 0, 1].map(a => {
+        const lo = cut.min[a] <= b.min[a] + E, hi = cut.max[a] >= b.max[a] - E;
+        return lo !== hi ? { a, s: hi ? 1 : -1 } : null;
+      }).filter(Boolean);
+      let axis = null;
+      for (const g of used) {
+        if (g === host) continue;
+        const gc = mid(g.body), hc = mid(host.body);
+        let ax = null, sg = 0;
+        const ten = g.I.tenons.find(t => C.inter(t, grow(host.I.bbox, E)));
+        if (ten) {
+          for (let a = 0; a < 3; a++) if (ten.max[a] <= g.body.min[a] + E || ten.min[a] >= g.body.max[a] - E) { ax = a; sg = ten.min[a] >= g.body.max[a] - E ? -1 : 1; }
+        }
+        if (ax == null) {
+          const cut = host.I.cuts.map(c => C.inter(c, grow(g.I.bbox, E))).find(Boolean);
+          const full = cut && host.I.cuts.find(c => C.inter(c, grow(g.I.bbox, E)));
+          if (full) {
+            const ops = opening(C.inter(full, host.I.bbox) || full, host.I.bbox);
+            const best = ops.sort((p, q) => Math.abs(gc[q.a] - hc[q.a]) / ext(host.I.bbox)[q.a] - Math.abs(gc[p.a] - hc[p.a]) / ext(host.I.bbox)[p.a])[0];
+            if (best) { ax = best.a; sg = best.s; }
+          }
+        }
+        if (ax == null) {
+          const own = g.I.cuts.find(c => C.inter(c, grow(host.I.bbox, E)));
+          const ops = own ? opening(C.inter(own, g.I.bbox) || own, g.I.bbox) : [];
+          if (ops.length) { ax = ops[0].a; sg = -ops[0].s; }
+        }
+        if (ax == null) {
+          const r = ext(R), rel = [0, 1, 2].map(a => Math.abs(gc[a] - hc[a]) / (ext(g.I.bbox)[a] + ext(host.I.bbox)[a] || 1));
+          ax = r.indexOf(Math.min(...r));
+          if (r.filter(v => v <= E).length !== 1) ax = rel.indexOf(Math.max(...rel));
+          sg = gc[ax] >= hc[ax] ? 1 : -1;
+        }
+        // far enough to clear the tenon or housing, plus a gap the reader can see
+        const go = Math.max(0, Math.min(g.I.bbox.max[ax], host.I.bbox.max[ax]) - Math.max(g.I.bbox.min[ax], host.I.bbox.min[ax]));
+        g.off[ax] = sg * (go + Math.max(1.5, Math.max(...ext(W)) * 0.45));
+        g.dir = { a: ax, s: sg };
+        if (axis == null) axis = g.dir;
+      }
+      axis = axis || { a: 0, s: 1 };
+
+      // view from above, front and right, but always from the side the joint opens to
+      const s = [1, -1, 1];
+      s[axis.a] = axis.s;
+      for (const c of host.I.cuts) { const x = C.inter(c, zone); if (!x) continue; for (const o of opening(C.inter(c, host.I.bbox) || c, host.I.bbox)) if (o.a !== axis.a && o.a !== 2) s[o.a] = o.s; }
+      const cw = s.map((v, i) => v * (i === axis.a ? 0.8 : 1)), cl = Math.hypot(...cw), cv = cw.map(v => v / cl);
+      const rl = Math.hypot(cv[0], cv[1]) || 1, right = [-cv[1] / rl, cv[0] / rl, 0];
+      const up = [cv[1] * right[2] - cv[2] * right[1], cv[2] * right[0] - cv[0] * right[2], cv[0] * right[1] - cv[1] * right[0]];
+      const dot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+      const pr = p => [dot(p, right), dot(p, up)];
+      const at = (u, p) => pr(p.map((v, i) => v + u.off[i]));
+
+      // what was cut, per part: tenons, their mortises, housings and laps, each dimensioned
+      const feats = [];
+      for (const g of used) for (const t of g.tenons) {
+        const hostU = used.find(h => h !== g && C.inter(t, grow(h.I.bbox, -E)));
+        if (!hostU) continue;
+        const e = [0, 1, 2].find(a => t.max[a] <= g.body.min[a] + E || t.min[a] >= g.body.max[a] - E);
+        if (e == null) continue;
+        const rest = [0, 1, 2].filter(a => a !== e), sz = ext(t);
+        const th = sz[rest[0]] <= sz[rest[1]] ? rest[0] : rest[1], wd = rest.find(a => a !== th);
+        feats.push({ kind: 'tenon', u: g, b: t, e, th, wd });
+        spec.push({ k: 'Tenon', part: g.p.id, text: F(sz[th]) + ' thick × ' + F(sz[wd]) + ' wide × ' + F(sz[e]) + ' long' });
+        const seated = solidVol(hostU.S, t), mort = hostU.I.cuts.map(c => C.inter(c, grow(t, E))).filter(Boolean);
+        const mb = mort.length ? C.inter(union(mort.map(c => hostU.I.cuts.find(q => C.inter(q, c)))), hostU.I.bbox) : null;
+        if (seated > 1e-4 || !mb) {
+          problems.push('No mortise is cut in ' + partName(hostU.p.id) + ' (#' + hostU.p.id + ') for this tenon. The model shows the tenon going into solid wood; declare the joint so the mortise is cut.');
+          feats.push({ kind: 'missing', u: hostU, b: t, e, th, wd });
+        } else {
+          const ms = ext(mb);
+          feats.push({ kind: 'mortise', u: hostU, b: mb, e, th, wd });
+          spec.push({ k: 'Mortise', part: hostU.p.id, text: F(ms[th]) + ' × ' + F(ms[wd]) + ', ' + F(ms[e]) + ' deep' + (mb.min[e] <= hostU.I.bbox.min[e] + E && mb.max[e] >= hostU.I.bbox.max[e] - E ? ' (through)' : '') });
+        }
+      }
+      const kindName = NAMES[j.type] || (/lap/i.test(j.type || '') ? 'Lap' : 'Housing');
+      for (const g of used) for (const c of g.I.cuts) {
+        if (feats.some(f => f.kind === 'mortise' && f.u === g && C.inter(f.b, c))) continue;
+        const mates = used.filter(h => h !== g && C.inter(c, h.I.bbox));
+        if (!mates.length) continue;
+        const k = C.inter(C.inter(c, g.I.bbox) || c, W); if (!k) continue;
+        const ops = opening(C.inter(c, g.I.bbox) || c, g.I.bbox), hb = ext(g.I.bbox), ks = ext(k);
+        const dep = (ops.find(o => o.a === (g === host ? axis.a : (g.dir || axis).a)) || ops[0] || { a: ks.indexOf(Math.min(...ks)) }).a;
+        const through = a => k.min[a] <= g.I.bbox.min[a] + E && k.max[a] >= g.I.bbox.max[a] - E;
+        const others = [0, 1, 2].filter(a => a !== dep && !(through(a) && ks[a] > 3));
+        const wd = others.sort((a, b) => ks[a] - ks[b])[0];
+        const name = j.type === 'castle' && g !== host ? 'Lap' : kindName;
+        feats.push({ kind: 'cut', u: g, b: k, dep, wd, len: others[1], name });
+        spec.push({ k: name, part: g.p.id, text: (wd != null ? F(ks[wd]) + ' wide × ' : '') + F(ks[dep]) + ' deep' + (others[1] != null ? ' × ' + F(ks[others[1]]) + ' long' : '') });
+        void hb;
+      }
+      // two parts in the same wood with no tenon or cut to explain it
+      for (let a = 0; a < used.length; a++) for (let b = a + 1; b < used.length; b++) {
+        const A = used[a], B = used[b];
+        let v = 0; const hit = [];
+        for (const c of A.S.cells) if (!c.tenon) for (const d of B.S.cells) if (!d.tenon) { const x = C.inter(c, d); if (x) { v += C.vol(x); hit.push(x); } }
+        if (v > 1e-3) feats.push({ kind: 'missing', u: B === host ? B : A, b: union(hit), label: 'Nothing cut here' });
+        if (v > 1e-3) problems.push(partName(A.p.id) + ' (#' + A.p.id + ') and ' + partName(B.p.id) + ' (#' + B.p.id + ') overlap with nothing cut to take one into the other.');
+      }
+      // bores for this joint that fall in the window, split between the parts they pass through
+      const bores = C.expandBores(P).filter(b => b.joint === jid && b.v && C.inter(grow(box(b.at, b.at), 0.01), grow(W, 0.5)));
+      const boreFeats = [];
+      for (const b of bores.slice(0, 4)) {
+        const dep = C.parseLen(b.depth != null ? b.depth : b.len || 1), end = b.at.map((v, i) => v + b.v[i] * dep);
+        for (const u of used) {
+          const bb = grow(u.I.bbox, E);
+          let t0 = 0, t1 = 1;
+          for (let a = 0; a < 3; a++) {
+            const p0 = b.at[a], d = end[a] - p0;
+            if (Math.abs(d) < E) { if (p0 < bb.min[a] || p0 > bb.max[a]) { t0 = 1; t1 = 0; } continue; }
+            const ta = (bb.min[a] - p0) / d, tb = (bb.max[a] - p0) / d;
+            t0 = Math.max(t0, Math.min(ta, tb)); t1 = Math.min(t1, Math.max(ta, tb));
+          }
+          if (t1 - t0 > E) boreFeats.push({ u, b, p0: b.at.map((v, i) => v + (end[i] - v) * t0), p1: b.at.map((v, i) => v + (end[i] - v) * t1), entry: t0 < E });
+        }
+      }
+      const seenB = new Set();
+      for (const b of bores) { if (seenB.has(b.id)) continue; seenB.add(b.id); spec.push({ k: b.kind ? b.kind[0].toUpperCase() + b.kind.slice(1) : 'Bore', part: null, text: (b.label ? esc(b.label) + ', ' : '') + F(C.parseLen(b.d)) + ' hole, ' + F(C.parseLen(b.depth != null ? b.depth : b.len || 0)) + ' deep' }); }
+
+      // ---- draw ----
+      const order = used.slice().sort((a, b) => dot(mid(shift(a.I.bbox, a.off)), cv) - dot(mid(shift(b.I.bbox, b.off)), cv));
+      const allPts = [];
+      for (const u of used) {
+        if (u.S.shaped) { for (const P of u.S.mesh.polys) for (const q of P.v) allPts.push(at(u, q)); continue; }
+        for (const c of u.S.cells) for (const x of [c.min[0], c.max[0]]) for (const y of [c.min[1], c.max[1]]) for (const z of [c.min[2], c.max[2]]) allPts.push(at(u, [x, y, z]));
+      }
+      const cu = allPts.reduce((a, p) => a + p[0], 0) / (allPts.length || 1), cvv = allPts.reduce((a, p) => a + p[1], 0) / (allPts.length || 1);
+      const span = [Math.max(...allPts.map(p => p[0])) - Math.min(...allPts.map(p => p[0])), Math.max(...allPts.map(p => p[1])) - Math.min(...allPts.map(p => p[1]))];
+      const svg = settle(fs => {
+        const svg = newSVG();
+        const poly = (g, pts, cls) => svgEl('polygon', { class: cls, points: pts.map(q => X(q[0]).toFixed(2) + ',' + Y(q[1]).toFixed(2)).join(' ') }, g);
+        const seg = (g, a, b, cls) => svgEl('line', { class: cls, x1: X(a[0]).toFixed(2), y1: Y(a[1]).toFixed(2), x2: X(b[0]).toFixed(2), y2: Y(b[1]).toFixed(2) }, g);
+        for (const u of order) {
+          const g = svgEl('g', { class: 'jdp' + (u.p.isHardware ? ' hw' : '') }, svg);
+          if (u.S.shaped) {
+            // curves and angles: the exact faces, far to near, shaded by the way they face
+            for (const f of C.faces(u.S, cv).sort((a, b) => a.depth - b.depth)) {
+              const ax = [0, 1, 2].reduce((m, i) => Math.abs(f.n[i]) > Math.abs(f.n[m]) ? i : m, 0);
+              for (const v of f.polys) poly(g, v.map(q => at(u, q)), 'jdf jdf' + ax);
+              for (const e of f.edges) seg(g, at(u, e[0]), at(u, e[1]), 'jde');
+            }
+            continue;
+          }
+          const S = u.S, G = [S.xs, S.ys, S.zs], N = [S.nx, S.ny, S.nz];
+          const full = (i, j2, k) => S.occ(i, j2, k) > 0;
+          const cells = [];
+          for (let i = 0; i < S.nx; i++) for (let j2 = 0; j2 < S.ny; j2++) for (let k = 0; k < S.nz; k++) if (full(i, j2, k)) cells.push([i, j2, k]);
+          const rank = c => c.reduce((t, v, a) => t + (s[a] > 0 ? v : N[a] - 1 - v), 0);
+          cells.sort((a, b) => rank(a) - rank(b));
+          for (const c of cells) {
+            const faces = [];
+            for (let a = 0; a < 3; a++) {
+              const nb = c.slice(); nb[a] += s[a];
+              if (full(nb[0], nb[1], nb[2])) continue;
+              const b = (a + 1) % 3, d = (a + 2) % 3, pa = G[a][c[a] + (s[a] > 0 ? 1 : 0)];
+              const P3 = (vb, vd) => { const p = [0, 0, 0]; p[a] = pa; p[b] = vb; p[d] = vd; return p; };
+              const b0 = G[b][c[b]], b1 = G[b][c[b] + 1], d0 = G[d][c[d]], d1 = G[d][c[d] + 1];
+              const q = [P3(b0, d0), P3(b1, d0), P3(b1, d1), P3(b0, d1)];
+              const ctr = P3((b0 + b1) / 2, (d0 + d1) / 2);
+              const inCut = u.I.cuts.some(k => ctr.every((v, i) => v > k.min[i] - E && v < k.max[i] + E) && [0, 1, 2].some(i => i !== a && ctr[i] > k.min[i] + E && ctr[i] < k.max[i] - E));
+              // outline only where this flat face ends: no coplanar face continues past the edge
+              const cont = (ax, dd) => { const n = c.slice(); n[ax] += dd; if (!full(n[0], n[1], n[2])) return false; const n2 = n.slice(); n2[a] += s[a]; return !full(n2[0], n2[1], n2[2]); };
+              const ed = [];
+              if (!cont(d, -1)) ed.push([q[0], q[1]]);
+              if (!cont(b, 1)) ed.push([q[1], q[2]]);
+              if (!cont(d, 1)) ed.push([q[2], q[3]]);
+              if (!cont(b, -1)) ed.push([q[3], q[0]]);
+              faces.push({ q, cls: 'jdf jdf' + a + (inCut ? ' in' : ''), ed });
+            }
+            for (const f of faces) poly(g, f.q.map(p => at(u, p)), f.cls);
+            for (const f of faces) for (const e of f.ed) seg(g, at(u, e[0]), at(u, e[1]), 'jde');
+          }
+        }
+        const boxEdges = (g, u, b, cls) => {
+          const P8 = [0, 1, 2, 3, 4, 5, 6, 7].map(n => [n & 1 ? b.max[0] : b.min[0], n & 2 ? b.max[1] : b.min[1], n & 4 ? b.max[2] : b.min[2]]);
+          for (let n = 0; n < 8; n++) for (const bit of [1, 2, 4]) if (!(n & bit)) seg(g, at(u, P8[n]), at(u, P8[n | bit]), cls);
+        };
+        const ov = svgEl('g', {}, svg);
+        // mortises are hidden inside the part: draw them dashed, as the shop drawings do
+        for (const f of feats) if (f.kind === 'mortise') boxEdges(ov, f.u, f.b, 'thin dash');
+        for (const f of feats) if (f.kind === 'missing') boxEdges(ov, f.u, f.b, 'jdm');
+        for (const bf of boreFeats) {
+          seg(ov, at(bf.u, bf.p0), at(bf.u, bf.p1), 'thin dash');
+          if (bf.entry) { const e = at(bf.u, bf.p0); svgEl('circle', { class: 'jdb', cx: X(e[0]), cy: Y(e[1]), r: Math.max(C.parseLen(bf.b.d) / 2 * K, fs * 0.18) }, ov); }
+        }
+        // dimensions: on the outside edge of each feature, away from the middle of the drawing
+        const placed = [], labels = [];
+        const outward = (p2) => { const dx = X(p2[0]) - X(cu), dy = Y(p2[1]) - Y(cvv), L = Math.hypot(dx, dy) || 1; return [dx / L, dy / L]; };
+        const dimAlong = (u, b, a, name) => {
+          const o = [(a + 1) % 3, (a + 2) % 3], cands = [];
+          for (const v1 of [b.min[o[0]], b.max[o[0]]]) for (const v2 of [b.min[o[1]], b.max[o[1]]]) {
+            const p = [0, 0, 0], q = [0, 0, 0]; p[a] = b.min[a]; q[a] = b.max[a]; p[o[0]] = q[o[0]] = v1; p[o[1]] = q[o[1]] = v2;
+            const A2 = at(u, p), B2 = at(u, q), m2 = [(A2[0] + B2[0]) / 2, (A2[1] + B2[1]) / 2];
+            cands.push({ A2, B2, m2, d: Math.hypot(m2[0] - cu, m2[1] - cvv) + placed.filter(z => Math.hypot(z[0] - m2[0], z[1] - m2[1]) < 0.5).length * -100 });
+          }
+          const c = cands.sort((x, y) => y.d - x.d)[0];
+          const sx = X(c.B2[0]) - X(c.A2[0]), sy = Y(c.B2[1]) - Y(c.A2[1]), L = Math.hypot(sx, sy) || 1;
+          if (L < fs * 0.25) return;
+          const n = [sy / L, -sx / L], w = outward(c.m2), sgn = n[0] * w[0] + n[1] * w[1] >= 0 ? 1 : -1;
+          const off = sgn * fs * 1.9 / K;
+          dim(svg, c.A2, c.B2, off, FT(b.max[a] - b.min[a]), fs * 0.85);
+          placed.push(c.m2);
+          if (name) {
+            const tx = X(c.m2[0]) + n[0] * sgn * fs * 3.3, ty = Y(c.m2[1]) + n[1] * sgn * fs * 3.3;
+            const t = svgEl('text', { class: 'lbl', x: tx, y: ty, 'font-size': fs * 0.8, 'text-anchor': Math.abs(n[0]) < 0.35 ? 'middle' : (n[0] * sgn > 0 ? 'start' : 'end'), 'dominant-baseline': 'central' }, svg);
+            t.textContent = name;
+            labels.push([tx, ty]);
+          }
+        };
+        // labels on faces, with a leader out to the side
+        const callout = (u, p3, text, cls) => {
+          const p = at(u, p3), w = outward(p), x0 = X(p[0]), y0 = Y(p[1]);
+          let lx = x0 + w[0] * fs * 4.2, ly = y0 + w[1] * fs * 3.2;
+          for (let tries = 0; tries < 6 && labels.some(l => Math.abs(l[0] - lx) < fs * 6 && Math.abs(l[1] - ly) < fs * 1.3); tries++) ly += fs * 1.4 * (w[1] >= 0 ? 1 : -1);
+          labels.push([lx, ly]);
+          const g = svgEl('g', { class: 'jdl' + (cls ? ' ' + cls : '') }, svg);
+          svgEl('line', { x1: x0, y1: y0, x2: lx, y2: ly }, g);
+          svgEl('circle', { cx: x0, cy: y0, r: fs * 0.12 }, g);
+          const t = svgEl('text', { x: lx + (w[0] >= 0 ? 1 : -1) * fs * 0.3, y: ly, 'font-size': fs * 0.85, 'text-anchor': w[0] >= 0 ? 'start' : 'end', 'dominant-baseline': 'central' }, g);
+          t.textContent = text;
+        };
+        const faceCtr = (b, a, side) => { const p = mid(b); p[a] = side > 0 ? b.max[a] : b.min[a]; return p; };
+        // twin tenons and their mortises are dimensioned and labelled once
+        const told = new Set();
+        for (const f of feats) {
+          const key = f.kind + '|' + f.u.p.id + '|' + ext(f.b).map(v => v.toFixed(3)).join(',');
+          if (told.has(key)) continue;
+          told.add(key);
+          if (f.kind === 'tenon') {
+            dimAlong(f.u, f.b, f.wd, 'Width'); dimAlong(f.u, f.b, f.th, 'Thickness'); dimAlong(f.u, f.b, f.e, 'Length');
+            callout(f.u, faceCtr(f.b, f.th, s[f.th]), 'Face cheek');
+            callout(f.u, faceCtr(f.b, f.wd, s[f.wd]), 'Edge cheek');
+            const sh = f.b.min[f.e] >= f.u.body.max[f.e] - E ? f.u.body.max[f.e] : f.u.body.min[f.e];
+            const sp = mid(f.b); sp[f.e] = sh; sp[f.wd] = s[f.wd] > 0 ? (f.b.max[f.wd] + f.u.body.max[f.wd]) / 2 : (f.b.min[f.wd] + f.u.body.min[f.wd]) / 2;
+            if (Math.abs(sp[f.wd] - mid(f.b)[f.wd]) > E) callout(f.u, sp, 'Shoulder');
+          } else if (f.kind === 'mortise') {
+            dimAlong(f.u, f.b, f.e, 'Depth');
+            callout(f.u, faceCtr(f.b, f.th, s[f.th] > 0 ? -1 : 1), 'Cheek');
+            callout(f.u, faceCtr(f.b, f.wd, s[f.wd] > 0 ? -1 : 1), 'End');
+          } else if (f.kind === 'missing') {
+            callout(f.u, mid(f.b), f.label || 'No mortise cut', 'bad');
+          } else if (f.kind === 'cut') {
+            dimAlong(f.u, f.b, f.dep, 'Depth');
+            if (f.wd != null) dimAlong(f.u, f.b, f.wd, 'Width');
+            callout(f.u, faceCtr(f.b, f.dep, s[f.dep] > 0 ? -1 : 1), f.name);
+          }
+        }
+        const lb = boreFeats.find(bf => bf.entry);
+        if (lb) callout(lb.u, lb.p0, lb.b.label || lb.b.kind || 'Bore');
+        // part numbers in balloons, as on the other drawings; a click picks the part
+        const balloons = [];
+        for (const u of used) {
+          const c3 = mid(u.S.bbox || u.I.bbox), p = at(u, c3), w = outward(p), r = fs * 0.95;
+          let bx = X(p[0]) + w[0] * fs * 0.5, by = Y(p[1]) + w[1] * fs * 0.5;
+          while (balloons.some(q => Math.hypot(q[0] - bx, q[1] - by) < r * 2.4)) { bx += r * 2.6; }
+          balloons.push([bx, by]);
+          const g = svgEl('g', { class: 'callout', 'data-part': u.p.id }, svg);
+          svgEl('circle', { cx: bx, cy: by, r }, g);
+          svgEl('text', { x: bx, y: by, 'font-size': fs * 1.05 }, g).textContent = u.p.id;
+        }
+        return svg;
+      }, fsFor(span[0] * K * 1.6, span[1] * K * 1.6, false), false);
+      const sub = [problems.length ? 'check the model' : 'exploded', places > 1 ? places + ' places' : '', typical ? 'typical section' : ''].filter(Boolean).join(', ');
+      const fig = figure(svg, jid + ' ' + title, sub, false, 1.8);
+      fig.classList.add('jd'); if (problems.length) fig.classList.add('jd-bad');
+      fig.dataset.joint = ji;
+      fig.appendChild(T(jdTable(ids, spec, problems, held, j.note)));
+      figsOut.push(fig);
+    });
+    return figsOut;
+  }
+  function jdTable(ids, spec, problems, held, note) {
+    problems = [...new Set(problems)];
+    const rows = [];
+    for (const r of spec) { const same = rows.find(q => q.k === r.k && q.part === r.part && q.text === r.text); if (same) same.n++; else rows.push(Object.assign({ n: 1 }, r)); }
+    spec = rows.map(r => Object.assign({}, r, { text: r.text + (r.n > 1 ? ' (' + r.n + ')' : '') }));
+    return '<div class="jdt">' + (problems.length ? '<p class="jdx">' + problems.map(esc).join('<br>') + '</p>' : '') +
+      '<table class="plain"><tbody>' + spec.map(r => '<tr><th>' + esc(r.k) + '</th><td>' + (r.part ? chip(r.part) + ' ' : '') + r.text + '</td></tr>').join('') +
+      '<tr><th>Parts</th><td>' + ids.map(chip).join('') + '</td></tr>' + (held ? '<tr><th>Held by</th><td>' + esc(held) + '</td></tr>' : '') +
+      '</tbody></table>' + (note ? '<p class="note">' + rich(note) + '</p>' : '') + '</div>';
+  }
+  {
+    const jd = jointDetails();
+    if (jd.length) {
+      const bad = jd.filter(f => f.classList.contains('jd-bad')).length;
+      const js = sheet('Joint Details', '<p>Each joint on its own, drawn from the model with the parts pulled apart the way they go together. Sizes are what to cut.' + (bad ? ' <b class="jdx">' + bad + ' joint' + (bad > 1 ? 's' : '') + ' in red need' + (bad > 1 ? '' : 's') + ' a fix in the model before you cut.</b>' : '') + '</p><div class="figs" id="figs-jd"></div>');
+      const host = js.querySelector('#figs-jd'); jd.forEach(f => host.appendChild(f));
+    }
   }
 
   // ---- shopping list and shop cut list: what to buy, then every part sorted the way it is cut,
@@ -1115,13 +1591,21 @@ try { renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDraw
 catch (e) { canvas.replaceWith(Object.assign(document.createElement('div'), { className: 'nogl', textContent: 'This browser could not start the 3D view. The drawings below show every part.' })); throw e; }
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 const scene = new THREE.Scene();
-const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -5000, 5000);
-camera.up.set(0, 0, 1);
+// two cameras: orthographic (parallel lines, like the drawings) and perspective (how the piece looks
+// standing in the room). The plan's view.perspective picks the first one; an app hosting the page can
+// set window.CUTSHEET_VIEW.perspective instead, and hears about the toggle by postMessage.
+const ortho = new THREE.OrthographicCamera(-1, 1, 1, -1, -5000, 5000);
+const FOV = 40, persp = new THREE.PerspectiveCamera(FOV, 1, 1, 5000);
+ortho.up.set(0, 0, 1); persp.up.set(0, 0, 1);
+const host = window.CUTSHEET_VIEW || {};
+let camera = (host.perspective != null ? host.perspective : P.view && P.view.perspective) ? persp : ortho;
+// distance from the target that fits a sphere of radius r in a perspective camera's narrower side
+const reach = (r, a) => { const h = THREE.MathUtils.degToRad(FOV) / 2; return r / Math.sin(a >= 1 ? h : Math.atan(Math.tan(h) * a)); };
 const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true; controls.dampingFactor = 0.12; controls.enableZoom = false; controls.zoomSpeed = 1.2;
 controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
 controls.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
-controls.enableZoom = true;
+controls.enableZoom = true; controls.zoomToCursor = true;
 // only zoom with the wheel once the viewer has been clicked, or with ctrl/meta held, so page scrolling still works
 let armed = false;
 canvas.addEventListener('pointerdown', () => { armed = true; });
@@ -1182,6 +1666,15 @@ for (const p of M.parts) {
       for (const v of q.v) { pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b); }
       idx.push(o, o + 1, o + 2, o, o + 2, o + 3);
     }
+    // curves and angles: each facet takes the plate's shade of the directions it faces, blended
+    const shadeOf = (a, sg) => { const sh = SHADE[a + ',' + sg] || [1, 0.3], c = base.clone(); if (sh[0] === 1) c.lerp(dark, sh[1]); else if (sh[0]) c.lerp(sh[0], sh[1]); if (a === ga) c.lerp(dark, 0.3); return c; };
+    for (const t of S.tris) {
+      const c = new THREE.Color(0, 0, 0);
+      for (let a = 0; a < 3; a++) { const w = t.n[a] * t.n[a]; if (w < 1e-6) continue; const k = shadeOf(a, t.n[a] > 0 ? 1 : -1); c.r += k.r * w; c.g += k.g * w; c.b += k.b * w; }
+      const o = pos.length / 3;
+      for (const v of t.v) { pos.push(v[0], v[1], v[2]); col.push(c.r, c.g, c.b); }
+      idx.push(o, o + 1, o + 2);
+    }
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -1233,7 +1726,13 @@ function frame() {
   const w = canvas.clientWidth, h = canvas.clientHeight, a = w / h;
   if (!w || !h) return;
   const r = curR * 1.08;
-  if (a >= 1) { camera.left = -r * a; camera.right = r * a; camera.top = r; camera.bottom = -r; }
+  if (camera === persp) {
+    // keep the look direction and target; stand back far enough that the frame fits
+    const D = reach(r, a), d = camera.position.clone().sub(controls.target);
+    if (d.lengthSq() < 1e-9) d.set(...VIEWS['Front right']);
+    camera.position.copy(controls.target).addScaledVector(d.normalize(), D);
+    camera.aspect = a; camera.near = Math.max(0.5, D - 4 * sphere.radius); camera.far = D + 4 * sphere.radius;
+  } else if (a >= 1) { camera.left = -r * a; camera.right = r * a; camera.top = r; camera.bottom = -r; }
   else { camera.left = -r; camera.right = r; camera.top = r / a; camera.bottom = -r / a; }
   camera.updateProjectionMatrix();
 }
@@ -1281,6 +1780,29 @@ document.getElementById('play').addEventListener('click', () => {
 });
 const vg = document.getElementById('views');
 for (const name in VIEWS) { const b = Object.assign(document.createElement('button'), { className: 'b', type: 'button', textContent: name }); b.addEventListener('click', () => { isolate = null; isoBtn.setAttribute('aria-pressed', 'false'); setView(VIEWS[name]); apply(); }); vg.appendChild(b); }
+const perBtn = Object.assign(document.createElement('button'), { className: 'b', type: 'button', id: 'per', textContent: 'Perspective', title: 'Draw the 3D view in perspective instead of parallel lines' });
+perBtn.setAttribute('aria-pressed', camera === persp);
+document.getElementById('lbl').before(perBtn);
+perBtn.addEventListener('click', () => {
+  const next = camera === persp ? ortho : persp;
+  next.position.copy(camera.position); camera = next; controls.object = camera;
+  perBtn.setAttribute('aria-pressed', camera === persp);
+  frame(); dirty = true;
+  if (parent !== window) parent.postMessage({ type: 'cutsheet:perspective', perspective: camera === persp }, '*');
+});
+// Move: a plain drag (one finger on a phone) slides the model instead of turning it; shift- or right-drag always does
+const mvBtn = Object.assign(document.createElement('button'), { className: 'b', type: 'button', id: 'mv', textContent: 'Move', title: 'Drag to slide the model instead of turning it' });
+mvBtn.setAttribute('aria-pressed', 'false');
+document.getElementById('lbl').before(mvBtn);
+mvBtn.addEventListener('click', () => {
+  const on = mvBtn.getAttribute('aria-pressed') !== 'true';
+  mvBtn.setAttribute('aria-pressed', on);
+  controls.mouseButtons.LEFT = on ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.touches.ONE = on ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  canvas.style.cursor = on ? 'move' : '';
+});
+const vhint = document.querySelector('.vbar .hint');
+if (vhint) vhint.textContent = 'Drag to orbit · Move, shift- or right-drag to slide · pinch or ctrl+scroll to zoom at the pointer';
 const lblBtn = document.getElementById('lbl'); let showLbl = true;
 lblBtn.addEventListener('click', () => { showLbl = !showLbl; lblBtn.setAttribute('aria-pressed', showLbl); dirty = true; });
 const isoBtn = document.getElementById('iso');
@@ -1517,7 +2039,8 @@ function sectionPlates() {
   const W = 1400, k = W / 860;
   const snap = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
   snap.setPixelRatio(1); snap.setClearColor(new THREE.Color('#ffffff'), 1);
-  const cam = new THREE.OrthographicCamera(-1, 1, 1, -1, -5000, 5000); cam.up.set(0, 0, 1);
+  const pc = camera === persp;
+  const cam = pc ? new THREE.PerspectiveCamera(FOV, 1, 1, 5000) : new THREE.OrthographicCamera(-1, 1, 1, -1, -5000, 5000); cam.up.set(0, 0, 1);
   const save = { explode, isolate, stepIdx, sel: bus.sel };
   explode = 1; isolate = null; stepIdx = -1; bus.sel = null; apply();
   for (const fig of figs) {
@@ -1528,17 +2051,24 @@ function sectionPlates() {
     const dir = new THREE.Vector3(...(VIEWS[S.view] || VIEWS[(P.view && P.view.start)] || VIEWS['Front right'])).normalize();
     const box = new THREE.Box3();
     for (const r of shown) { const b = r.I.solid.bbox; box.expandByPoint(new THREE.Vector3(...b.min).add(r.group.position)); box.expandByPoint(new THREE.Vector3(...b.max).add(r.group.position)); }
-    const c = box.getCenter(new THREE.Vector3());
-    cam.position.copy(c).addScaledVector(dir, 1000); cam.lookAt(c); cam.updateMatrixWorld();
-    // tight frame in view space, with room around it for the balloons
+    const c = box.getCenter(new THREE.Vector3()), br = box.getBoundingSphere(new THREE.Sphere()).radius;
+    // in perspective, stand as far back as the main view does for a piece this size
+    const D = pc ? reach(br * 1.08, 1) : 1000;
+    cam.position.copy(c).addScaledVector(dir, D); cam.lookAt(c); cam.updateMatrixWorld();
+    // tight frame in view space (in perspective, on the plane one unit in front of the eye), with room
+    // around it for the balloons
     let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-    for (const r of shown) { const b = r.I.solid.bbox; for (const X of [b.min[0], b.max[0]]) for (const Y of [b.min[1], b.max[1]]) for (const Z of [b.min[2], b.max[2]]) { const v = new THREE.Vector3(X, Y, Z).add(r.group.position).applyMatrix4(cam.matrixWorldInverse); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); } }
+    for (const r of shown) { const b = r.I.solid.bbox; for (const X of [b.min[0], b.max[0]]) for (const Y of [b.min[1], b.max[1]]) for (const Z of [b.min[2], b.max[2]]) { const v = new THREE.Vector3(X, Y, Z).add(r.group.position).applyMatrix4(cam.matrixWorldInverse); if (pc) v.divideScalar(-v.z); x0 = Math.min(x0, v.x); x1 = Math.max(x1, v.x); y0 = Math.min(y0, v.y); y1 = Math.max(y1, v.y); } }
     const pad = Math.max(x1 - x0, y1 - y0) * 0.09;
     x0 -= pad; x1 += pad; y0 -= pad; y1 += pad;
     const H = Math.round(Math.max(420, Math.min(1100, W * (y1 - y0) / (x1 - x0))));
     const want = W / H; let sw = x1 - x0, sh = y1 - y0;
     if (sw / sh < want) { const d = sh * want - sw; x0 -= d / 2; x1 += d / 2; } else { const d = sw / want - sh; y0 -= d / 2; y1 += d / 2; }
-    Object.assign(cam, { left: x0, right: x1, top: y1, bottom: y0 }); cam.updateProjectionMatrix();
+    if (pc) {
+      const n = Math.max(0.5, D - 4 * br);
+      cam.projectionMatrix.makePerspective(x0 * n, x1 * n, y1 * n, y0 * n, n, D + 4 * br);
+      cam.projectionMatrixInverse.copy(cam.projectionMatrix).invert();
+    } else { Object.assign(cam, { left: x0, right: x1, top: y1, bottom: y0 }); cam.updateProjectionMatrix(); }
     snap.setSize(W, H, false);
     for (const m of lineMats) { m.resolution.set(W, H); m.linewidth = 1.5 * k; }
     snap.render(scene, cam);
@@ -1576,5 +2106,12 @@ requestAnimationFrame(loop);
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { apply(); });
 new MutationObserver(() => apply()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 // orbit zoom changes camera.zoom; fold it into the frame so the callouts and fit stay in sync
-controls.addEventListener('change', () => { if (camera.zoom !== 1) { curR /= camera.zoom; camera.zoom = 1; frame(); } });
+// in perspective, orbit zoom moves the camera instead; read the new frame off its distance
+controls.addEventListener('change', () => {
+  if (camera.zoom !== 1) { curR /= camera.zoom; camera.zoom = 1; frame(); }
+  if (camera === persp && !tw) {
+    const a = camera.aspect, D = camera.position.distanceTo(controls.target), want = reach(curR * 1.08, a);
+    if (Math.abs(D - want) > want * 1e-3) { curR *= D / want; frame(); }
+  }
+});
 </script>

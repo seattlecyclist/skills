@@ -109,7 +109,7 @@
 
   // Decompose (union of adds) minus (union of cuts) into grid cells.
   // Returns {xs, ys, zs, occ(i,j,k) -> 0|1|2 (2 = tenon), cells:[{min,max,tenon}], bbox}
-  function solid(adds, cuts, tenons) {
+  function boxSolid(adds, cuts, tenons) {
     cuts = cuts || []; tenons = tenons || [];
     const all = adds.concat(cuts);
     const xs = uniq(all.flatMap(a => [a.min[0], a.max[0]]));
@@ -135,7 +135,7 @@
   }
 
   // Surface quads and crease edges for rendering. Quads: {n:[axis,sign], v:[4 pts]}. Edges: [[p,q],...]
-  function surface(S) {
+  function boxSurface(S) {
     const { xs, ys, zs, nx, ny, nz, occ } = S;
     const C = [xs, ys, zs];
     const quads = [];
@@ -192,6 +192,660 @@
     return { quads, edges: merged };
   }
 
+  // ---------- shaped parts: curves, angles and turnings ----------
+  // A part is still its blank (boxes less box cuts), then shaped like the wood is: `outline` keeps
+  // what lies inside a profile seen along one axis (an arched top, a round top, a taper, a splayed
+  // leg), `cutout` removes what lies inside one (a mitre, a curved cutout, a cove), `lathe` keeps
+  // what lies inside a turned profile, and `roundover` / `chamfer` ease the blank's edges. Tenons
+  // are never trimmed. The drawings, 3D view and patterns get the exact shape (a mesh cut by BSP);
+  // the checks see it as cells on a lattice that every part shares, so two mitred faces meet cell
+  // for cell, and cells the curve passes through are counted as touching, not as interference.
+  const CURVE_TOL = 0.006;   // chord error of a drawn curve, in inches
+  const FACES = { left: [0, -1], right: [0, 1], front: [1, -1], back: [1, 1], bottom: [2, -1], top: [2, 1] };
+  const AXN = { x: 0, y: 1, z: 2 };
+  // the drawing axes (u, v) of a profile seen along axis a
+  const plAxes = a => a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
+  const isShape = s => !!(s && (s.outline || s.cutout || s.lathe || s.roundover != null || s.chamfer != null));
+  let SID = 0;   // surface ids: the facets of one curve share one, so no crease is drawn between them
+  const JIT = [1.17e-7, 2.31e-7, 3.07e-7];
+
+  const sub2 = (a, b) => [a[0] - b[0], a[1] - b[1]], len2 = a => Math.hypot(a[0], a[1]);
+  const cross2 = (a, b) => a[0] * b[1] - a[1] * b[0];
+  function arcSteps(r, sweep) {
+    const st = Math.min(Math.PI / 16, 2 * Math.acos(Math.max(-1, 1 - CURVE_TOL / Math.max(r, 1e-6))));
+    return 2 * Math.max(1, Math.ceil(Math.abs(sweep) / st / 2));   // even, so an arc's middle is a point
+  }
+  function circum(a, b, c) {
+    const d = 2 * (a[0] * (b[1] - c[1]) + b[0] * (c[1] - a[1]) + c[0] * (a[1] - b[1]));
+    if (Math.abs(d) < 1e-12) return null;
+    const A = a[0] * a[0] + a[1] * a[1], B = b[0] * b[0] + b[1] * b[1], Cc = c[0] * c[0] + c[1] * c[1];
+    return [(A * (b[1] - c[1]) + B * (c[1] - a[1]) + Cc * (a[1] - b[1])) / d, (A * (c[0] - b[0]) + B * (a[0] - c[0]) + Cc * (b[0] - a[0])) / d];
+  }
+  // points along an arc about c from p0 (left out) to p1, counter-clockwise (dir 1) or clockwise (-1)
+  function arcTo(p0, p1, c, dir) {
+    const r = len2(sub2(p0, c));
+    const a0 = Math.atan2(p0[1] - c[1], p0[0] - c[0]), a1 = Math.atan2(p1[1] - c[1], p1[0] - c[0]);
+    let sw = a1 - a0;
+    if (dir > 0) while (sw <= 1e-9) sw += 2 * Math.PI; else while (sw >= -1e-9) sw -= 2 * Math.PI;
+    const n = arcSteps(r, sw), out = [];
+    for (let i = 1; i < n; i++) { const t = a0 + sw * i / n; out.push([c[0] + r * Math.cos(t), c[1] + r * Math.sin(t)]); }
+    out.push(p1.slice());
+    return { pts: out, c, r, sweep: sw };
+  }
+  // centripetal Catmull-Rom through p0 and the listed points
+  function curveTo(p0, list) {
+    const P = [p0].concat(list), out = [];
+    const ext = (a, b) => [2 * a[0] - b[0], 2 * a[1] - b[1]];
+    for (let i = 0; i < P.length - 1; i++) {
+      const a = i ? P[i - 1] : ext(P[0], P[1]), b = P[i], c = P[i + 1], d = i + 2 < P.length ? P[i + 2] : ext(P[i + 1], P[i]);
+      const ta = 0, tb = ta + Math.sqrt(len2(sub2(b, a)) || 1e-9), tc = tb + Math.sqrt(len2(sub2(c, b)) || 1e-9), td = tc + Math.sqrt(len2(sub2(d, c)) || 1e-9);
+      const n = Math.max(4, Math.min(48, Math.ceil(len2(sub2(c, b)) / 0.2)));
+      const L = (p, q, t0, t1, t) => [(p[0] * (t1 - t) + q[0] * (t - t0)) / (t1 - t0), (p[1] * (t1 - t) + q[1] * (t - t0)) / (t1 - t0)];
+      for (let k = 1; k <= n; k++) {
+        const t = tb + (tc - tb) * k / n;
+        const A1 = L(a, b, ta, tb, t), A2 = L(b, c, tb, tc, t), A3 = L(c, d, tc, td, t);
+        const B1 = L(A1, A2, ta, tc, t), B2 = L(A2, A3, tb, td, t);
+        out.push(k === n ? c.slice() : L(B1, B2, tb, tc, t));
+      }
+    }
+    return out;
+  }
+
+  // A profile: points [u, v] (or [u, v, r] to round that corner), { arc: [u, v], through | center |
+  // rise }, { curve: [[u, v], ...] }, or a whole { circle: [cu, cv, r] } / { ellipse: [cu, cv, ru, rv] }.
+  // -> { pts (counter-clockwise, closed), sid (surface id of the edge from pts[i] to pts[i+1]),
+  //      nodes (the points as written, for dimensions), arcs ({ c, r, mid } for radius labels) }
+  function profile(spec, open) {
+    const L = parseLen, P2 = q => [L(q[0]), L(q[1])];
+    const pts = [], sid = [], nodes = [], arcs = [], fil = [];
+    if (spec && !Array.isArray(spec) && (spec.circle || spec.ellipse)) {
+      const e = (spec.circle || spec.ellipse).map(L), ru = e[2], rv = spec.circle ? e[2] : e[3];
+      const n = 4 * Math.ceil(arcSteps(Math.max(ru, rv), 2 * Math.PI) / 4), id = ++SID;
+      for (let i = 0; i < n; i++) { const t = 2 * Math.PI * i / n; pts.push([e[0] + ru * Math.cos(t), e[1] + rv * Math.sin(t)]); sid.push(id); }
+      for (const t of [0, 1, 2, 3]) nodes.push([e[0] + ru * Math.cos(t * Math.PI / 2), e[1] + rv * Math.sin(t * Math.PI / 2)]);
+      arcs.push({ c: [e[0], e[1]], r: ru, rv, mid: [e[0] + ru * Math.SQRT1_2, e[1] + rv * Math.SQRT1_2], circle: true });
+      return { pts, sid, nodes, arcs, fil };
+    }
+    if (!Array.isArray(spec) || !spec.length) throw new Error('A profile needs a list of points, or a circle or ellipse.');
+    const add = (p, id) => { if (pts.length) sid[pts.length - 1] = id; pts.push(p); sid.push(null); };
+    // which way is out: a positive rise bulges away from the inside of the profile (a lathe profile's
+    // inside is toward its axis)
+    const ends = spec.map(e => Array.isArray(e) ? P2(e) : e.arc ? P2(e.arc) : e.curve ? P2(e.curve[e.curve.length - 1]) : null).filter(Boolean);
+    if (open && ends.length) ends.push([0, ends[ends.length - 1][1]], [0, ends[0][1]]);
+    const outward = area2(ends) >= 0 ? -1 : 1;   // counter-clockwise: the inside is on the left
+    for (const e of spec) {
+      if (Array.isArray(e)) {
+        const p = P2(e); add(p, ++SID); nodes.push(p);
+        if (e.length > 2 && L(e[2]) > 0) fil[pts.length - 1] = L(e[2]);
+        continue;
+      }
+      if (!pts.length) throw new Error('A profile starts with a point.');
+      const p0 = pts[pts.length - 1], id = ++SID;
+      if (e.arc) {
+        const p1 = P2(e.arc); let A;
+        if (e.center) {
+          const c = P2(e.center), cr = cross2(sub2(p0, c), sub2(p1, c));
+          let dir = e.ccw != null ? (e.ccw ? 1 : -1) : (cr >= 0 ? 1 : -1);
+          if (e.long && e.ccw == null) dir = -dir;
+          A = arcTo(p0, p1, c, dir);
+        } else {
+          let m;
+          if (e.through) m = P2(e.through);
+          else if (e.rise != null) {
+            const d = sub2(p1, p0), l = len2(d) || 1, rs = L(e.rise);
+            m = [(p0[0] + p1[0]) / 2 - outward * d[1] / l * rs, (p0[1] + p1[1]) / 2 + outward * d[0] / l * rs];
+          } else throw new Error('An arc needs through, center or rise.');
+          const c = circum(p0, m, p1);
+          if (!c) { add(p1, id); nodes.push(p1); continue; }   // a straight "arc" is a line
+          A = arcTo(p0, p1, c, cross2(sub2(m, p0), sub2(p1, m)) > 0 ? 1 : -1);
+        }
+        for (const q of A.pts) add(q, id);
+        nodes.push(p1);
+        const ma = Math.atan2(p0[1] - A.c[1], p0[0] - A.c[0]) + A.sweep / 2;
+        arcs.push({ c: A.c, r: A.r, mid: [A.c[0] + A.r * Math.cos(ma), A.c[1] + A.r * Math.sin(ma)] });
+      } else if (e.curve) {
+        const list = e.curve.map(P2);
+        for (const q of curveTo(p0, list)) add(q, id);
+        nodes.push(list[list.length - 1]);
+      } else throw new Error('Unknown profile entry: ' + JSON.stringify(e));
+    }
+    // a closing entry that lands on the start point
+    if (pts.length > 2 && len2(sub2(pts[0], pts[pts.length - 1])) < 1e-6) { const id = sid[pts.length - 2]; pts.pop(); sid.pop(); sid[pts.length - 1] = id; }
+    if (!open) sid[pts.length - 1] = sid[pts.length - 1] || ++SID;
+    return { pts, sid, nodes, arcs, fil };
+  }
+  // round the corners that asked for it ([u, v, r]): only straight edges meet there
+  function fillet(P) {
+    if (!P.fil.length) return P;
+    const n = P.pts.length, pts = [], sid = [];
+    for (let i = 0; i < n; i++) {
+      const p = P.pts[i], r = P.fil[i];
+      if (!r) { pts.push(p); sid.push(P.sid[i]); continue; }
+      const a = P.pts[(i - 1 + n) % n], b = P.pts[(i + 1) % n];
+      const d1 = sub2(a, p), d2 = sub2(b, p), l1 = len2(d1), l2 = len2(d2);
+      const u1 = [d1[0] / l1, d1[1] / l1], u2 = [d2[0] / l2, d2[1] / l2];
+      const th = Math.acos(Math.max(-1, Math.min(1, u1[0] * u2[0] + u1[1] * u2[1])));
+      if (th < 1e-3 || th > Math.PI - 1e-3) { pts.push(p); sid.push(P.sid[i]); continue; }
+      const t = Math.min(r / Math.tan(th / 2), l1 * 0.999, l2 * 0.999), rr = t * Math.tan(th / 2);
+      const bis = [u1[0] + u2[0], u1[1] + u2[1]], bl = len2(bis), h = rr / Math.sin(th / 2);
+      const c = [p[0] + bis[0] / bl * h, p[1] + bis[1] / bl * h];
+      const s = [p[0] + u1[0] * t, p[1] + u1[1] * t], e = [p[0] + u2[0] * t, p[1] + u2[1] * t];
+      const A = arcTo(s, e, c, cross2(u1, u2) < 0 ? 1 : -1), id = ++SID;
+      pts.push(s); sid.push(id);
+      A.pts.forEach((q, k) => { pts.push(q); sid.push(k === A.pts.length - 1 ? P.sid[i] : id); });
+      P.arcs.push({ c, r: rr, mid: [c[0] - bis[0] / bl * rr, c[1] - bis[1] / bl * rr] });
+    }
+    return Object.assign({}, P, { pts, sid });
+  }
+  function area2(pts) { let s = 0; for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; }
+  function ccw(P) {
+    if (area2(P.pts) >= 0) return P;
+    const n = P.pts.length;
+    return Object.assign({}, P, { pts: P.pts.slice().reverse(), sid: P.pts.map((_, k) => P.sid[((n - 2 - k) % n + n) % n]) });
+  }
+  function inPoly(q, pts) {
+    let c = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const a = pts[i], b = pts[j];
+      if ((a[1] > q[1]) !== (b[1] > q[1]) && q[0] < (b[0] - a[0]) * (q[1] - a[1]) / (b[1] - a[1]) + a[0]) c = !c;
+    }
+    return c;
+  }
+  // ear clipping, for the end caps of a prism (a cap may be concave; BSP polygons must be convex)
+  function triangulate(pts) {
+    const idx = pts.map((_, i) => i), tris = [];
+    let guard = 0;
+    while (idx.length > 3 && guard++ < 10000) {
+      let cut = false;
+      for (let k = 0; k < idx.length; k++) {
+        const i0 = idx[(k - 1 + idx.length) % idx.length], i1 = idx[k], i2 = idx[(k + 1) % idx.length];
+        const a = pts[i0], b = pts[i1], c = pts[i2];
+        if (cross2(sub2(b, a), sub2(c, b)) <= 1e-12) continue;
+        let ear = true;
+        for (const j of idx) {
+          if (j === i0 || j === i1 || j === i2) continue;
+          const p = pts[j];
+          if (cross2(sub2(b, a), sub2(p, a)) > 1e-12 && cross2(sub2(c, b), sub2(p, b)) > 1e-12 && cross2(sub2(a, c), sub2(p, c)) > 1e-12) { ear = false; break; }
+        }
+        if (!ear) continue;
+        tris.push([i0, i1, i2]); idx.splice(k, 1); cut = true; break;
+      }
+      if (!cut) { idx.splice(0, 1); }   // degenerate: drop a point rather than hang
+    }
+    if (idx.length === 3) tris.push(idx.slice());
+    return tris;
+  }
+
+  // ---- BSP solids, after csg.js (Evan Wallace, MIT): polygons {v: [pts], n, w, s} ----
+  const PEPS = 1e-5;
+  const sub3 = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const dot3 = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const lerp3 = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+  function poly(v, s) {
+    // Newell's normal: fine for the long thin facets curves make
+    const n = [0, 0, 0];
+    for (let i = 0; i < v.length; i++) { const a = v[i], b = v[(i + 1) % v.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); }
+    const l = Math.hypot(n[0], n[1], n[2]);
+    if (l < 1e-12) return null;
+    const nn = [n[0] / l, n[1] / l, n[2] / l];
+    return { v, n: nn, w: dot3(nn, v[0]), s };
+  }
+  const flip = P => ({ v: P.v.slice().reverse(), n: P.n.map(x => -x), w: -P.w, s: P.s });
+  const TY = new Uint8Array(4096);
+  function split(pl, P, coF, coB, F, B) {
+    let type = 0;
+    const n = pl.n, V = P.v;
+    for (let i = 0; i < V.length; i++) { const v = V[i], t = n[0] * v[0] + n[1] * v[1] + n[2] * v[2] - pl.w, ty = t < -PEPS ? 2 : t > PEPS ? 1 : 0; type |= ty; TY[i] = ty; }
+    const types = type === 3 ? TY.slice(0, V.length) : null;
+    if (type === 0) (dot3(pl.n, P.n) > 0 ? coF : coB).push(P);
+    else if (type === 1) F.push(P);
+    else if (type === 2) B.push(P);
+    else {
+      const f = [], b = [];
+      for (let i = 0; i < P.v.length; i++) {
+        const j = (i + 1) % P.v.length, ti = types[i], tj = types[j], vi = P.v[i], vj = P.v[j];
+        if (ti !== 2) f.push(vi);
+        if (ti !== 1) b.push(ti !== 2 ? vi.slice() : vi);
+        if ((ti | tj) === 3) {
+          const t = (pl.w - dot3(pl.n, vi)) / dot3(pl.n, sub3(vj, vi)), v = lerp3(vi, vj, t);
+          f.push(v); b.push(v.slice());
+        }
+      }
+      if (f.length >= 3) F.push({ v: f, n: P.n, w: P.w, s: P.s });
+      if (b.length >= 3) B.push({ v: b, n: P.n, w: P.w, s: P.s });
+    }
+  }
+  function bsp(polys) { const N = { plane: null, front: null, back: null, polys: [] }; if (polys && polys.length) build(N, polys); return N; }
+  function build(N, polys) {
+    if (!polys.length) return;
+    if (!N.plane) N.plane = { n: polys[0].n, w: polys[0].w };
+    const F = [], B = [];
+    for (const P of polys) split(N.plane, P, N.polys, N.polys, F, B);
+    if (F.length) { N.front = N.front || bsp(); build(N.front, F); }
+    if (B.length) { N.back = N.back || bsp(); build(N.back, B); }
+  }
+  function invert(N) {
+    N.polys = N.polys.map(flip);
+    if (N.plane) N.plane = { n: N.plane.n.map(x => -x), w: -N.plane.w };
+    if (N.front) invert(N.front); if (N.back) invert(N.back);
+    const t = N.front; N.front = N.back; N.back = t;
+  }
+  function clipPolys(N, polys) {
+    if (!N.plane) return polys.slice();
+    let F = [], B = [];
+    for (const P of polys) split(N.plane, P, F, B, F, B);
+    if (N.front) F = clipPolys(N.front, F);
+    B = N.back ? clipPolys(N.back, B) : [];
+    return F.concat(B);
+  }
+  function clipTo(N, O) { N.polys = clipPolys(O, N.polys); if (N.front) clipTo(N.front, O); if (N.back) clipTo(N.back, O); }
+  function allPolys(N) { let out = N.polys.slice(); if (N.front) out = out.concat(allPolys(N.front)); if (N.back) out = out.concat(allPolys(N.back)); return out; }
+  function csgSubtract(a, b) {
+    if (!a.length || !b.length) return a;
+    const A = bsp(a), B = bsp(b);
+    invert(A); clipTo(A, B); clipTo(B, A); invert(B); clipTo(B, A); invert(B); build(A, allPolys(B)); invert(A);
+    return allPolys(A);
+  }
+  const bboxPolys = polys => { if (!polys.length) return null; const b = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] }; for (const P of polys) for (const v of P.v) for (let k = 0; k < 3; k++) { b.min[k] = Math.min(b.min[k], v[k]); b.max[k] = Math.max(b.max[k], v[k]); } return b; };
+  function boxPolys(a, s) {
+    const out = [];
+    for (let ax = 0; ax < 3; ax++) for (const sg of [-1, 1]) {
+      const b = (ax + 1) % 3, c = (ax + 2) % 3, pa = sg > 0 ? a.max[ax] : a.min[ax];
+      const mk = (bv, cv) => { const p = [0, 0, 0]; p[ax] = pa; p[b] = bv; p[c] = cv; return p; };
+      const v = sg > 0 ? [mk(a.min[b], a.min[c]), mk(a.max[b], a.min[c]), mk(a.max[b], a.max[c]), mk(a.min[b], a.max[c])]
+        : [mk(a.min[b], a.min[c]), mk(a.min[b], a.max[c]), mk(a.max[b], a.max[c]), mk(a.max[b], a.min[c])];
+      out.push(poly(v, s || null));
+    }
+    return out;
+  }
+  // a profile (counter-clockwise in u, v) pushed along axis a from s0 to s1
+  function prismPolys(P, a, s0, s1) {
+    const [ua, va] = plAxes(a), out = [];
+    const at = (q, s) => { const p = [0, 0, 0]; p[ua] = q[0]; p[va] = q[1]; p[a] = s; return p; };
+    const n = P.pts.length;
+    const orient = (v, want, s) => { let Q = poly(v, s); if (!Q) return; if (dot3(Q.n, want) < 0) Q = flip(Q); out.push(Q); };
+    for (let i = 0; i < n; i++) {
+      const p = P.pts[i], q = P.pts[(i + 1) % n], d = sub2(q, p), w = [0, 0, 0];
+      w[ua] = d[1]; w[va] = -d[0];   // outward, right of travel
+      orient([at(p, s0), at(q, s0), at(q, s1), at(p, s1)], w, P.sid[i]);
+    }
+    for (const t of triangulate(P.pts)) for (const [s, sg] of [[s0, -1], [s1, 1]]) { const w = [0, 0, 0]; w[a] = sg; orient(t.map(k => at(P.pts[k], s)), w, null); }
+    return out;
+  }
+  // a turned profile [r, along] revolved about axis a through (cu, cv)
+  function lathePolys(P, a, c) {
+    const [ua, va] = plAxes(a), out = [];
+    const rmax = Math.max(...P.pts.map(q => q[0]));
+    const N = Math.max(24, 4 * Math.ceil(arcSteps(rmax, 2 * Math.PI) / 4));
+    const at = (r, s, k) => { const t = 2 * Math.PI * k / N, p = [0, 0, 0]; p[ua] = c[0] + r * Math.cos(t); p[va] = c[1] + r * Math.sin(t); p[a] = s; return p; };
+    const n = P.pts.length;
+    for (let i = 0; i < n; i++) {
+      const p = P.pts[i], q = P.pts[(i + 1) % n];
+      if (p[0] < 1e-9 && q[0] < 1e-9) continue;
+      const out2 = [q[1] - p[1], -(q[0] - p[0])];   // outward in (r, along): right of travel
+      for (let k = 0; k < N; k++) {
+        const v = [at(p[0], p[1], k), at(q[0], q[1], k), at(q[0], q[1], k + 1), at(p[0], p[1], k + 1)].filter((x, j, arr) => j === 0 || len2(sub2([x[ua], x[va]], [arr[j - 1][ua], arr[j - 1][va]])) > 1e-9 || Math.abs(x[a] - arr[j - 1][a]) > 1e-9);
+        if (v.length < 3) continue;
+        let Q = poly(v, P.sid[i]); if (!Q) continue;
+        const t = 2 * Math.PI * (k + 0.5) / N, w = [0, 0, 0]; w[ua] = out2[0] * Math.cos(t); w[va] = out2[0] * Math.sin(t); w[a] = out2[1];
+        if (dot3(Q.n, w) < 0) Q = flip(Q);
+        out.push(Q);
+      }
+    }
+    return out;
+  }
+
+  // ---- compiling a part's shapes (part coordinates) ----
+  const grow3 = (b, d) => ({ min: b.min.map(v => v - d), max: b.max.map(v => v + d) });
+  function unionBox(list) { let u = null; for (const a of list) u = u ? { min: u.min.map((v, k) => Math.min(v, a.min[k])), max: u.max.map((v, k) => Math.max(v, a.max[k])) } : { min: a.min.slice(), max: a.max.slice() }; return u; }
+  // the box of a profile's boundary that lies inside the blank: where the shape changes the wood
+  function boundaryBox(P, a, s0, s1, blank) {
+    const [ua, va] = plAxes(a), b = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
+    const n = P.pts.length;
+    const hit = q => {
+      if (q[0] < blank.min[ua] - EPS || q[0] > blank.max[ua] + EPS || q[1] < blank.min[va] - EPS || q[1] > blank.max[va] + EPS) return;
+      b.min[ua] = Math.min(b.min[ua], q[0]); b.max[ua] = Math.max(b.max[ua], q[0]); b.min[va] = Math.min(b.min[va], q[1]); b.max[va] = Math.max(b.max[va], q[1]);
+    };
+    for (let i = 0; i < n; i++) {
+      const p = P.pts[i], q = P.pts[(i + 1) % n], m = Math.max(1, Math.ceil(len2(sub2(q, p)) / 0.125));
+      for (let k = 0; k <= m; k++) hit([p[0] + (q[0] - p[0]) * k / m, p[1] + (q[1] - p[1]) * k / m]);
+    }
+    if (b.min[ua] > b.max[ua]) return null;
+    b.min[a] = Math.max(s0, blank.min[a]); b.max[a] = Math.min(s1, blank.max[a]);
+    for (const k of [ua, va]) { b.min[k] = Math.max(blank.min[k], b.min[k] - 1 / 16); b.max[k] = Math.min(blank.max[k], b.max[k] + 1 / 16); }
+    return b.max[a] > b.min[a] ? b : null;
+  }
+  function edgeList(spec, ext) {
+    const all = [];
+    for (const [fa, sa] of Object.values(FACES)) for (const [fb, sb] of Object.values(FACES)) if (fa < fb) all.push([[fa, sa], [fb, sb]]);
+    const named = n => {
+      n = String(n).toLowerCase().trim();
+      if (n === 'all') return all;
+      if (n === 'long') { const la = ext.indexOf(Math.max(...ext)); return all.filter(e => e[0][0] !== la && e[1][0] !== la); }
+      const ws = n.split(/[\s,+&-]+/).filter(Boolean).map(w => FACES[w]);
+      if (ws.some(w => !w)) throw new Error('Unknown edge "' + n + '": use top, bottom, front, back, left, right, a pair like top-front, long or all.');
+      if (ws.length === 1) return all.filter(e => e.some(f => f[0] === ws[0][0] && f[1] === ws[0][1]));
+      if (ws.length === 2 && ws[0][0] !== ws[1][0]) return all.filter(e => e.every(f => ws.some(w => w[0] === f[0] && w[1] === f[1])));
+      throw new Error('Edge "' + n + '" does not name an edge.');
+    };
+    const out = [], seen = new Set();
+    for (const n of [].concat(spec || 'all')) for (const e of named(n)) { const k = e.join(); if (!seen.has(k)) { seen.add(k); out.push(e); } }
+    return out;
+  }
+  function compileShapes(p, loc) {
+    const list = (p.shape || []).filter(isShape);
+    if (!list.length) return [];
+    const body = loc.adds.filter(a => !loc.tenons.includes(a));
+    const blank = unionBox(body.length ? body : loc.adds);
+    if (!blank) return [];
+    const big = grow3(blank, 1), out = [];
+    for (const s of list) {
+      const tool = s.tool;
+      if (s.outline || s.cutout) {
+        const a = AXN[s.axis || 'y'], keep = !!s.outline;
+        if (a == null) throw new Error('Part ' + p.id + ': a shape axis is x, y or z.');
+        const P = ccw(fillet(profile(s.outline || s.cutout)));
+        const sp = s.span ? s.span.map(parseLen).sort((x, y) => x - y) : [big.min[a], big.max[a]];
+        const region = boundaryBox(P, a, sp[0], sp[1], blank);
+        const [ua, va] = plAxes(a);
+        out.push({
+          kind: keep ? 'outline' : 'cutout', keep, axis: a, span: sp, prof: P, tool, region, vary: [ua, va], src: s,
+          removes: q => q[a] > sp[0] && q[a] < sp[1] && inPoly([q[ua], q[va]], P.pts) !== keep,
+          cutter() {
+            if (!keep) return prismPolys(P, a, sp[0], sp[1]);
+            const slab = { min: big.min.slice(), max: big.max.slice() }; slab.min[a] = Math.max(sp[0], big.min[a]); slab.max[a] = Math.min(sp[1], big.max[a]);
+            return csgSubtract(boxPolys(slab), prismPolys(P, a, slab.min[a] - 0.5, slab.max[a] + 0.5));
+          }
+        });
+      } else if (s.lathe) {
+        const a = AXN[s.axis || 'z'];
+        if (a == null) throw new Error('Part ' + p.id + ': a lathe axis is x, y or z.');
+        const [ua, va] = plAxes(a);
+        const c = s.center ? s.center.map(parseLen) : [(blank.min[ua] + blank.max[ua]) / 2, (blank.min[va] + blank.max[va]) / 2];
+        const raw = profile(s.lathe, true), first = raw.pts[0], last = raw.pts[raw.pts.length - 1];
+        const lo = Math.min(first[1], last[1]), hi = Math.max(first[1], last[1]);
+        // close along the axis, a little past each end so the cutter opens cleanly
+        const dir = last[1] >= first[1] ? 1 : -1;
+        const pts = [[0, first[1] - dir * 0.05], [first[0], first[1] - dir * 0.05]].concat(raw.pts, [[last[0], last[1] + dir * 0.05], [0, last[1] + dir * 0.05]]);
+        const sid = [++SID, raw.sid[0] || ++SID].concat(raw.sid.slice(0, -1).map(x => x || ++SID), [++SID, ++SID, ++SID]);
+        const P = ccw({ pts, sid, nodes: raw.nodes, arcs: raw.arcs, fil: [] });
+        const region = { min: blank.min.slice(), max: blank.max.slice() }; region.min[a] = Math.max(lo, blank.min[a]); region.max[a] = Math.min(hi, blank.max[a]);
+        out.push({
+          kind: 'lathe', keep: true, axis: a, span: [lo, hi], prof: P, center: c, tool: tool || 'lathe', region, vary: [0, 1, 2], src: s,
+          removes: q => {
+            if (q[a] <= lo || q[a] >= hi) return false;
+            return !inPoly([Math.hypot(q[ua] - c[0], q[va] - c[1]), q[a]], P.pts);
+          },
+          cutter() {
+            const slab = { min: big.min.slice(), max: big.max.slice() }; slab.min[a] = lo; slab.max[a] = hi;
+            return csgSubtract(boxPolys(slab), lathePolys(P, a, c));
+          }
+        });
+      } else {
+        // edge treatments: one small cutout along each edge of the blank
+        const r = parseLen(s.roundover != null ? s.roundover : s.chamfer), round = s.roundover != null;
+        const ext = [0, 1, 2].map(k => blank.max[k] - blank.min[k]);
+        for (const [[fa, sa], [fb, sb]] of edgeList(s.edges, ext)) {
+          const a = 3 - fa - fb, [ua, va] = plAxes(a);
+          const fu = ua === fa ? sa : sb, fv = va === fa ? sa : sb;   // which side of u and v the edge is on
+          const C = [fu > 0 ? blank.max[ua] : blank.min[ua], fv > 0 ? blank.max[va] : blank.min[va]];
+          const iu = -fu, iv = -fv, o = 0.05;   // inward along u and v; o: past the face so the cut opens
+          const A = [C[0] + iu * r, C[1]], B = [C[0], C[1] + iv * r];
+          let spec;
+          if (round) spec = [[A[0], C[1] - iv * o], [C[0] - iu * o, C[1] - iv * o], [C[0] - iu * o, B[1]], B, { arc: A, center: [C[0] + iu * r, C[1] + iv * r] }];
+          else spec = [[A[0], C[1] - iv * o], [C[0] - iu * o, C[1] - iv * o], [C[0] - iu * o, B[1]], B, A];
+          const P = ccw(profile(spec));
+          const sp = [blank.min[a] - 1, blank.max[a] + 1];
+          const region = { min: blank.min.slice(), max: blank.max.slice() };
+          region.min[ua] = Math.max(blank.min[ua], Math.min(C[0], A[0])); region.max[ua] = Math.min(blank.max[ua], Math.max(C[0], A[0]));
+          region.min[va] = Math.max(blank.min[va], Math.min(C[1], B[1])); region.max[va] = Math.min(blank.max[va], Math.max(C[1], B[1]));
+          out.push({
+            kind: round ? 'roundover' : 'chamfer', keep: false, axis: a, span: sp, prof: P, size: r, edge: [[fa, sa], [fb, sb]], tool: tool || (round ? 'router' : 'plane'), region, vary: [ua, va], src: s,
+            removes: q => inPoly([q[ua], q[va]], P.pts),
+            cutter: () => prismPolys(P, a, sp[0], sp[1])
+          });
+        }
+      }
+    }
+    for (const sh of out) { const f = sh.cutter; let memo = null; sh.cutter = () => memo || (memo = f()); }
+    return out;
+  }
+
+  // part coordinates <-> world, for one copy
+  function toWorldPt(q, inst) {
+    let p = q.slice();
+    if (inst.mirror === 'x') p[0] = -p[0];
+    if (inst.mirror === 'y') p[1] = -p[1];
+    p = rotPt(p, inst.rot);
+    const at = inst.at || [0, 0, 0];
+    return [p[0] + at[0], p[1] + at[1], p[2] + at[2]];
+  }
+  function toLocalPt(q, inst) {
+    const at = inst.at || [0, 0, 0];
+    const p = rotPt([q[0] - at[0], q[1] - at[1], q[2] - at[2]], -(inst.rot || 0));
+    if (inst.mirror === 'x') p[0] = -p[0];
+    if (inst.mirror === 'y') p[1] = -p[1];
+    return p;
+  }
+  function worldPolys(polys, inst) {
+    const flipIt = inst.mirror === 'x' || inst.mirror === 'y';
+    const out = [];
+    for (const P of polys) { let v = P.v.map(q => toWorldPt(q, inst)); if (flipIt) v = v.reverse(); const Q = poly(v, P.s); if (Q) out.push(Q); }
+    return out;
+  }
+  // does a copy's shaping remove the wood at world point q? (tenons are never trimmed)
+  function shapedAway(shp, q, tenons) {
+    if (!shp) return false;
+    if (tenons && tenons.some(t => inside(q, t))) return false;
+    const l = toLocalPt(q, shp.inst);
+    return shp.list.some(sh => sh.removes(l));
+  }
+
+  // The lattice the checks use: the blank's own planes, plus planes every 1/16" (1/8", 1/4" ... on
+  // long curves) through the part of the blank each shape changes, at the same world positions for
+  // every part. A cell is wood when its centre is; a cell the shape's boundary crosses is an edge cell.
+  function shapedCells(S) {
+    const base = S.base, shp = S.shp, G = [base.xs.slice(), base.ys.slice(), base.zs.slice()];
+    const regions = [];
+    for (const sh of shp.list) {
+      if (!sh.region) continue;
+      const R = inter(xformAABB(sh.region, shp.inst), base.bbox); if (!R) continue;
+      regions.push({ sh, R });
+      for (const la of sh.vary) {
+        const wa = axisAfterRot(la, shp.inst.rot), lo = R.min[wa], hi = R.max[wa];
+        let h = 1 / 16; while ((hi - lo) / h > 96) h *= 2;
+        G[wa].push(lo, hi);
+        for (let k = Math.ceil(lo / h - 1e-9); k * h < hi - 1e-9; k++) G[wa].push(k * h);
+      }
+    }
+    const C = G.map((g, a) => uniq(g).filter(v => v >= base.bbox.min[a] - EPS && v <= base.bbox.max[a] + EPS));
+    const nx = C[0].length - 1, ny = C[1].length - 1, nz = C[2].length - 1;
+    // which base cell each lattice step falls in
+    const map = C.map((g, a) => { const bg = [base.xs, base.ys, base.zs][a], out = []; let j = 0; for (let i = 0; i < g.length - 1; i++) { const m = (g[i] + g[i + 1]) / 2; while (j < bg.length - 2 && bg[j + 1] <= m) j++; out.push(m > bg[0] && m < bg[bg.length - 1] ? j : -1); } return out; });
+    const grid = new Uint8Array(Math.max(0, nx * ny * nz)), edge = new Uint8Array(grid.length);
+    const tenons = S.tenons;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
+      const bi = map[0][i], bj = map[1][j], bk = map[2][k];
+      if (bi < 0 || bj < 0 || bk < 0) continue;
+      const o = base.occ(bi, bj, bk); if (!o) continue;
+      const lo = [C[0][i], C[1][j], C[2][k]], hi = [C[0][i + 1], C[1][j + 1], C[2][k + 1]];
+      const c = [0, 1, 2].map(a => (lo[a] + hi[a]) / 2 + JIT[a]);
+      const g = (i * ny + j) * nz + k;
+      if (!shapedAway(shp, c, tenons)) grid[g] = o;
+      if (o === 2) continue;
+      // an edge cell: some corner is on the other side of a shape's boundary
+      const inR = regions.some(r => lo.every((v, a) => v < r.R.max[a] + EPS) && hi.every((v, a) => v > r.R.min[a] - EPS));
+      if (!inR) continue;
+      const here = !grid[g];
+      for (let m = 0; m < 8 && !edge[g]; m++) {
+        const q = [0, 1, 2].map(a => (m >> a) & 1 ? hi[a] - 1e-4 : lo[a] + 1e-4);
+        if (shapedAway(shp, q, tenons) !== here) edge[g] = 1;
+      }
+    }
+    const occ = (i, j, k) => (i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz) ? 0 : grid[(i * ny + j) * nz + k];
+    // cells, merged along the most divided axis where they are plain wood
+    const N = [nx, ny, nz], m = N.indexOf(Math.max(...N)), o1 = (m + 1) % 3, o2 = (m + 2) % 3, cells = [];
+    const id = (q) => (q[0] * ny + q[1]) * nz + q[2];
+    for (let i1 = 0; i1 < N[o1]; i1++) for (let i2 = 0; i2 < N[o2]; i2++) {
+      let run = null;
+      const flush = () => { if (run) cells.push(run); run = null; };
+      for (let im = 0; im < N[m]; im++) {
+        const q = [0, 0, 0]; q[m] = im; q[o1] = i1; q[o2] = i2;
+        const g = id(q), v = grid[g];
+        if (!v) { flush(); continue; }
+        const lo = [C[0][q[0]], C[1][q[1]], C[2][q[2]]], hi = [C[0][q[0] + 1], C[1][q[1] + 1], C[2][q[2] + 1]];
+        const e = !!edge[g], t = v === 2;
+        if (run && !e && !run.edge && run.tenon === t) { run.max[m] = hi[m]; continue; }
+        flush(); run = { min: lo, max: hi, tenon: t, edge: e };
+        if (e) flush();
+      }
+      flush();
+    }
+    return { xs: C[0], ys: C[1], zs: C[2], nx, ny, nz, occ, cells };
+  }
+
+  // the exact surface: the blank's faces, less each shape's cutter, then its crease lines
+  function shapedMesh(base, shp, tenons) {
+    let polys = [];
+    for (const q of boxSurface(base).quads) { const P = poly(q.v, null); if (P) polys.push(P); }
+    for (const sh of shp.list) {
+      if (!sh.region || !base.bbox) continue;
+      let cut = worldPolys(sh.cutter(), shp.inst);
+      if (!inter(bboxPolys(cut) || base.bbox, grow3(base.bbox, 1e-3))) continue;
+      for (const t of tenons) cut = csgSubtract(cut, boxPolys(grow3(t, 1e-4)));
+      polys = csgSubtract(polys, cut);
+    }
+    // snap, and drop slivers
+    const sn = v => Math.round(v * 1e5) / 1e5;
+    const out = [];
+    for (const P of polys) {
+      const v = [];
+      for (const q of P.v) { const s = q.map(sn); if (!v.length || len3(sub3(s, v[v.length - 1])) > 1e-6) v.push(s); }
+      while (v.length > 2 && len3(sub3(v[0], v[v.length - 1])) < 1e-6) v.pop();
+      if (v.length < 3) continue;
+      const Q = poly(v, P.s); if (!Q || polyArea(v) < 1e-8) continue;
+      Q.n = P.n; Q.w = dot3(P.n, v[0]); out.push(Q);
+    }
+    return { polys: out, lines: meshLines(out) };
+  }
+  const len3 = a => Math.hypot(a[0], a[1], a[2]);
+  function polyArea(v) { let n = [0, 0, 0]; for (let i = 1; i < v.length - 1; i++) { const a = sub3(v[i], v[0]), b = sub3(v[i + 1], v[0]); n = [n[0] + a[1] * b[2] - a[2] * b[1], n[1] + a[2] * b[0] - a[0] * b[2], n[2] + a[0] * b[1] - a[1] * b[0]]; } return len3(n) / 2; }
+  // every polygon edge, gathered by the line it lies on and cut into spans, each with the polygons
+  // on it. A span is a crease where two of them turn away from each other (not the facets of one curve).
+  function meshLines(polys) {
+    // lines are found by tolerance, not by an exact key: the short edges BSP splits off carry a
+    // direction good to only a few decimals
+    const buckets = new Map(), lines = [];
+    const opts = (v, cell, tol) => { const f = v / cell, i = Math.floor(f), r = f - i, o = [i]; if (r < tol / cell) o.push(i - 1); if (r > 1 - tol / cell) o.push(i + 1); return o; };
+    const keysOf = (vals, cells, tols) => { let ks = ['']; vals.forEach((v, k) => { const os = opts(v, cells[k], tols[k]); ks = ks.flatMap(x => os.map(o => x + o + ',')); }); return ks; };
+    const distTo = (p, L) => { const d = sub3(p, L.o), t = dot3(d, L.u); return len3(sub3(d, L.u.map(x => x * t))); };
+    const CELLS = [0.05, 0.05, 0.05, 0.1, 0.1, 0.1], TOLS = [0.01, 0.01, 0.01, 0.02, 0.02, 0.02];
+    polys.forEach((P, pi) => {
+      for (let i = 0; i < P.v.length; i++) {
+        const a = P.v[i], b = P.v[(i + 1) % P.v.length], d = sub3(b, a), l = len3(d);
+        if (l < 1e-6) continue;
+        let u = d.map(x => x / l);
+        const f = u.findIndex(x => Math.abs(x) > 1e-6); if (u[f] < 0) u = u.map(x => -x);
+        const o = sub3(a, u.map(x => x * dot3(a, u))), vals = u.concat(o);
+        let L = null;
+        for (const k of keysOf(vals, CELLS, TOLS)) {
+          for (const c of buckets.get(k) || []) if (Math.abs(dot3(c.u, u)) > 1 - 1e-5 && distTo(a, c) < 2e-4 && distTo(b, c) < 2e-4) { L = c; break; }
+          if (L) break;
+        }
+        if (!L) {
+          L = { u, o, segs: [] }; lines.push(L);
+          const k = vals.map((v, j) => Math.floor(v / CELLS[j])).join(',') + ',';
+          (buckets.get(k) || buckets.set(k, []).get(k)).push(L);
+        }
+        const ta = dot3(sub3(a, L.o), L.u), tb = dot3(sub3(b, L.o), L.u);
+        L.segs.push({ t0: Math.min(ta, tb), t1: Math.max(ta, tb), p: pi });
+      }
+    });
+    const spans = [];
+    for (const L of lines) {
+      const ts = uniq(L.segs.flatMap(s => [s.t0, s.t1]));
+      for (let i = 0; i < ts.length - 1; i++) {
+        const m = (ts[i] + ts[i + 1]) / 2, ps = [];
+        for (const s of L.segs) if (s.t0 < m && s.t1 > m && !ps.includes(s.p)) ps.push(s.p);
+        if (ps.length < 2) continue;
+        let crease = false;
+        for (let x = 0; x < ps.length && !crease; x++) for (let y = x + 1; y < ps.length; y++) {
+          const A = polys[ps[x]], B = polys[ps[y]];
+          if (A.s && A.s === B.s) continue;
+          if (dot3(A.n, B.n) < 0.99995) { crease = true; break; }
+        }
+        spans.push({ a: L.o.map((v, k) => v + L.u[k] * ts[i]), b: L.o.map((v, k) => v + L.u[k] * ts[i + 1]), ps, crease, t0: ts[i], t1: ts[i + 1], key: L });
+      }
+    }
+    return spans;
+  }
+  // like: the part's own solid, when this copy is just that solid placed (no mortises of its own yet)
+  function shapedSolid(adds, cuts, tenons, shp, like) {
+    const base = boxSolid(adds, cuts, tenons);
+    const S = { shaped: true, base, shp, tenons };
+    if (like && like.mesh && base.bbox) {
+      const flipIt = shp.inst.mirror === 'x' || shp.inst.mirror === 'y';
+      const polys = like.mesh.polys.map(P => { let v = P.v.map(q => toWorldPt(q, shp.inst)); if (flipIt) v.reverse(); const n = rotPt([shp.inst.mirror === 'x' ? -P.n[0] : P.n[0], shp.inst.mirror === 'y' ? -P.n[1] : P.n[1], P.n[2]], shp.inst.rot); return { v, n, w: dot3(n, v[0]), s: P.s }; });
+      S.mesh = { polys, lines: like.mesh.lines.map(l => Object.assign({}, l, { a: toWorldPt(l.a, shp.inst), b: toWorldPt(l.b, shp.inst) })) };
+    } else S.mesh = base.bbox ? shapedMesh(base, shp, tenons) : { polys: [], lines: [] };
+    S.bbox = bboxPolys(S.mesh.polys);
+    if (S.bbox) S.bbox = { min: S.bbox.min.map(v => Math.round(v * 1e6) / 1e6), max: S.bbox.max.map(v => Math.round(v * 1e6) / 1e6) };
+    S.blank = base.bbox;
+    let lat = null;
+    const L = () => lat || (lat = S.bbox ? shapedCells(S) : { xs: [], ys: [], zs: [], nx: 0, ny: 0, nz: 0, occ: () => 0, cells: [] });
+    for (const k of ['xs', 'ys', 'zs', 'nx', 'ny', 'nz', 'occ', 'cells']) Object.defineProperty(S, k, { get: () => L()[k], enumerable: false });
+    return S;
+  }
+  function solid(adds, cuts, tenons, shp, like) {
+    return shp && shp.list && shp.list.length ? shapedSolid(adds, cuts || [], tenons || [], shp, like) : boxSolid(adds, cuts, tenons);
+  }
+  // Surface for rendering. Box solids: quads {n: [axis, sign], v: [4 pts]}. Shaped solids: tris
+  // {n: [x, y, z] unit normal, v: [3 pts], s: surface id}. Both: crease edges [[p, q], ...].
+  function surface(S) {
+    if (!S.shaped) { const r = boxSurface(S); r.tris = []; return r; }
+    if (S._surf) return S._surf;
+    const tris = [];
+    for (const P of S.mesh.polys) for (let i = 1; i < P.v.length - 1; i++) tris.push({ n: P.n, v: [P.v[0], P.v[i], P.v[i + 1]], s: P.s });
+    const edges = mergeSpans(S.mesh.lines.filter(l => l.crease));
+    return (S._surf = { quads: [], tris, edges });
+  }
+  function mergeSpans(spans) {
+    const by = new Map(), out = [];
+    for (const s of spans) { const g = by.get(s.key) || []; g.push(s); by.set(s.key, g); }
+    for (const g of by.values()) {
+      g.sort((p, q) => p.t0 - q.t0);
+      let cur = null;
+      for (const s of g) { if (cur && Math.abs(s.t0 - cur.t1) < 1e-7) { cur.t1 = s.t1; cur.b = s.b; } else { if (cur) out.push([cur.a, cur.b]); cur = { t0: s.t0, t1: s.t1, a: s.a, b: s.b }; } }
+      if (cur) out.push([cur.a, cur.b]);
+    }
+    return out;
+  }
+  // What a shaped solid shows a viewer looking along -d (d points at the viewer): its faces that turn
+  // toward the viewer, grouped into flat faces and curved surfaces, each with its depth along d (larger
+  // is nearer) and the lines drawn on it: creases, and the outline where the surface turns away.
+  function faces(S, d) {
+    const M = S.mesh, groups = new Map(), gOf = [];
+    M.polys.forEach((P, i) => {
+      const f = dot3(P.n, d);
+      if (f <= 1e-6) { gOf[i] = null; return; }
+      const key = P.s ? 's' + P.s : 'p' + P.n.map(x => x.toFixed(3)).join(',') + '|' + P.w.toFixed(4);
+      let G = groups.get(key);
+      if (!G) groups.set(key, G = { polys: [], norms: [], edges: [], depth: 0, area: 0, n: P.n, flat: !P.s, w: P.w });
+      const c = P.v.reduce((s, v) => [s[0] + v[0], s[1] + v[1], s[2] + v[2]], [0, 0, 0]).map(x => x / P.v.length), ar = polyArea(P.v);
+      G.depth += dot3(c, d) * ar; G.area += ar; G.polys.push(P.v); G.norms.push(P.n); gOf[i] = G;
+    });
+    for (const G of groups.values()) G.depth /= G.area || 1;
+    for (const l of M.lines) {
+      const facing = l.ps.filter(i => gOf[i]);
+      if (!facing.length) continue;
+      if (!l.crease && facing.length === l.ps.length) continue;
+      // a line on a flat face seen edge-on adds nothing
+      const g = facing.map(i => gOf[i]).sort((a, b) => b.depth - a.depth)[0];
+      g.edges.push([l.a, l.b]);
+    }
+    return [...groups.values()];
+  }
+
   // ---------- model expansion ----------
   function num3(a) { return a ? a.map(parseLen) : [0, 0, 0]; }
   function normalize(plan) {
@@ -202,14 +856,18 @@
         if (s.box) { const a = toAABB(s.box.map(parseLen)); loc.adds.push(a); if (s.role === 'tenon') loc.tenons.push(Object.assign(a, { through: !!s.through })); }
         if (s.cut) loc.cuts.push(Object.assign(toAABB(s.cut.map(parseLen)), s.tool ? { tool: s.tool } : {}));
       }
-      const localSolid = solid(loc.adds, loc.cuts, loc.tenons);
+      // curves, angles and turnings (outline, cutout, lathe, roundover, chamfer), in part coordinates
+      loc.shapes = compileShapes(p, loc);
+      loc.shp = loc.shapes.length ? { list: loc.shapes, inst: { at: [0, 0, 0], rot: 0 } } : null;
+      const localSolid = solid(loc.adds, loc.cuts, loc.tenons, loc.shp);
       const instances = (p.instances && p.instances.length ? p.instances : [{ at: [0, 0, 0] }]).map((ins, ii) => {
         const inst = { at: num3(ins.at), rot: ins.rot || 0, mirror: ins.mirror, explode: num3(ins.explode), label: ins.label };
         const adds = loc.adds.map(a => xformAABB(a, inst));
         const cuts = loc.cuts.map(a => xformAABB(a, inst));
         const tenons = loc.tenons.map(a => Object.assign(xformAABB(a, inst), { through: a.through }));
-        const S = solid(adds, cuts, tenons);
-        return Object.assign(inst, { index: ii, adds, cuts, tenons, solid: S, bbox: S.bbox, key: p.id + '#' + ii });
+        const shp = loc.shp ? { list: loc.shapes, inst: { at: inst.at, rot: inst.rot, mirror: inst.mirror } } : null;
+        const S = solid(adds, cuts, tenons, shp, localSolid);
+        return Object.assign(inst, { index: ii, adds, cuts, tenons, shp, solid: S, bbox: S.bbox, key: p.id + '#' + ii });
       });
       return Object.assign({}, p, {
         index: pi,
@@ -221,14 +879,79 @@
     });
     const byId = {};
     for (const p of parts) byId[p.id] = p;
-    return { plan, parts, byId };
+    const mortises = cutMortises(plan, parts, byId);
+    return { plan, parts, byId, mortises };
+  }
+
+  // world box -> part coordinates of instance I (the inverse of xformAABB)
+  function toLocal(a, inst) {
+    const xs = [], ys = [];
+    for (const cx of [a.min[0], a.max[0]]) for (const cy of [a.min[1], a.max[1]]) {
+      const p = rotPt([cx - inst.at[0], cy - inst.at[1], 0], -(inst.rot || 0));
+      if (inst.mirror === 'x') p[0] = -p[0];
+      if (inst.mirror === 'y') p[1] = -p[1];
+      xs.push(p[0]); ys.push(p[1]);
+    }
+    const r = v => Math.round(v * 1e6) / 1e6;
+    return { min: [r(Math.min(...xs)), r(Math.min(...ys)), r(a.min[2] - inst.at[2])], max: [r(Math.max(...xs)), r(Math.max(...ys)), r(a.max[2] - inst.at[2])] };
+  }
+
+  // Mortises: a tenon entering a part it is declared joined to is cut out of that part, so every
+  // tenon has its mortise, sized to it, in the drawings, the 3D view and the sections. The plan only
+  // models the tenon (J.mortiseTenon). Each copy gets its own mortises (corner legs differ); the
+  // part's own drawing shows the first copy's. The check still looks at the wood before mortising
+  // (I.pre), so a tenon must sit in solid wood of a joined part, and one that enters a part with no
+  // joint declared stays an error.
+  function cutMortises(plan, parts, byId) {
+    const joined = new Set();
+    for (const j of plan.joints || []) {
+      const ids = (j.parts || []).map(String);
+      for (const a of ids) for (const b of ids) if (a !== b) joined.add(a + '~' + b);
+    }
+    const out = [];
+    const withTenons = parts.filter(p => p.local.tenons.length && p.shape && p.shape.length);
+    for (const p of parts) {
+      if (!p.shape || !p.shape.length || p.isHardware) { for (const I of p.instances) I.pre = I.solid; continue; }
+      const body = p.local.adds.filter(a => !p.local.tenons.includes(a));
+      for (const I of p.instances) {
+        I.pre = I.solid;
+        const bodyW = body.map(a => xformAABB(a, I)), mine = [];
+        for (const q of withTenons) {
+          if (q === p || !joined.has(q.id + '~' + p.id)) continue;
+          for (const Q of q.instances) for (const T of Q.tenons) {
+            if (!I.bbox || !inter(T, I.bbox)) continue;
+            for (const a of bodyW) {
+              const x = inter(T, a);
+              if (!x || I.cuts.some(c => !c.mortise && x.min.every((v, k) => v >= c.min[k] - EPS && x.max[k] <= c.max[k] + EPS))) continue;
+              const m = Object.assign(x, { mortise: true, tenon: q.id, through: !!T.through });
+              mine.push(m); out.push({ host: p.id, inst: I.index, guest: q.id, guestInst: Q.index, box: x, tenon: T });
+            }
+          }
+        }
+        if (!mine.length) continue;
+        I.cuts = I.cuts.concat(mine);
+        I.solid = solid(I.adds, I.cuts, I.tenons, I.shp);
+        I.bbox = I.solid.bbox;
+        if (I.index === 0) {
+          p.local.cuts = p.local.cuts.concat(mine.map(m => Object.assign(toLocal(m, I), { mortise: true, tenon: m.tenon, through: m.through })));
+          p.localSolid = solid(p.local.adds, p.local.cuts, p.local.tenons, p.local.shp);
+        }
+      }
+    }
+    return out;
   }
 
   // ---------- checks ----------
   function overlapVol(A, B, onlyTenonA) {
     if (!A.bbox || !B.bbox || !inter(A.bbox, B.bbox)) return 0;
     let v = 0;
-    for (const a of A.cells) { if (onlyTenonA && !a.tenon) continue; for (const b of B.cells) { const x = inter(a, b); if (x) v += vol(x); } }
+    for (const a of A.cells) { if (onlyTenonA && !a.tenon) continue; if (a.edge) continue; for (const b of B.cells) { if (b.edge) continue; const x = inter(a, b); if (x) v += vol(x); } }
+    return v;
+  }
+  function overlapTenons(A, B) {
+    if (!A.bbox || !B.bbox || !inter(A.bbox, B.bbox)) return 0;
+    let v = 0;
+    for (const a of A.cells) { if (!a.tenon || a.edge) continue; for (const b of B.cells) { if (!b.tenon || b.edge) continue; const x = inter(a, b); if (x) v += vol(x); } }
     return v;
   }
   function contactArea(A, B) {
@@ -236,6 +959,8 @@
     for (let i = 0; i < 3; i++) if (A.bbox.min[i] > B.bbox.max[i] + EPS || B.bbox.min[i] > A.bbox.max[i] + EPS) return 0;
     let area = 0;
     for (const a of A.cells) for (const b of B.cells) {
+      // a curve or angle passes through one of them: overlap there is the lattice, so it counts as contact
+      if (a.edge || b.edge) { const x = inter(a, b); if (x) { const e = [0, 1, 2].map(k => x.max[k] - x.min[k]); area += vol(x) / Math.max(Math.min(...e), 1e-6); continue; } }
       for (let ax = 0; ax < 3; ax++) {
         if (Math.abs(a.max[ax] - b.min[ax]) > EPS && Math.abs(b.max[ax] - a.min[ax]) > EPS) continue;
         const o1 = (ax + 1) % 3, o2 = (ax + 2) % 3;
@@ -278,7 +1003,8 @@
       if (!p.shape || !p.shape.length) { if (!p.isHardware) warn('no-geometry', name(p) + ' has no geometry, so nothing about its fit can be checked.', [p.id]); continue; }
       if (p.qty !== p.instances.length) err('qty', name(p) + ': cut list says ' + p.qty + ' but the model places ' + p.instances.length + '.', [p.id]);
       if (p.isHardware || p.t == null) continue;
-      const b = p.localSolid.bbox; if (!b) { err('empty', name(p) + ' cuts remove all material.', [p.id]); continue; }
+      if (!p.localSolid.bbox) { err('empty', name(p) + ' cuts remove all material.', [p.id]); continue; }
+      const b = p.localSolid.blank || p.localSolid.bbox;   // shaped parts list the blank they are cut from
       const got = [0, 1, 2].map(i => b.max[i] - b.min[i]).sort((a, c) => a - c);
       const want = [p.t, p.w, p.l].sort((a, c) => a - c);
       const bad = got.some((g, i) => Math.abs(g - want[i]) > cfg.tol);
@@ -292,7 +1018,7 @@
       if (p.isHardware) continue;
       const min = p.min_wall != null ? parseLen(p.min_wall) : cfg.min_wall;
       for (const a of p.local.adds) for (const c of p.local.cuts) {
-        if (!inter(a, c)) continue;
+        if (c.mortise || !inter(a, c)) continue;
         for (let ax = 0; ax < 3; ax++) {
           const lo = c.min[ax] - a.min[ax], hi = a.max[ax] - c.max[ax];
           for (const w of [lo, hi]) if (w > EPS && w < min - EPS) warn('thin-wall', name(p) + ': a cut leaves a ' + fmt(w) + ' wall along ' + AX[ax] + ' (minimum ' + fmt(min) + ').', [p.id]);
@@ -313,17 +1039,19 @@
     let interf = 0;
     for (let x = 0; x < inst.length; x++) for (let y = x + 1; y < inst.length; y++) {
       const A = inst[x], B = inst[y];
-      const SA = A.i.solid, SB = B.i.solid;
+      const SA = A.i.pre, SB = B.i.pre;
       if (!SA.bbox || !SB.bbox) continue;
       const ov = overlapVol(SA, SB);
       if (ov > 1e-5) {
         const tA = overlapVol(SA, SB, true), tB = overlapVol(SB, SA, true);
         const declared = A.p.id === B.p.id ? [] : jointFor(A.p.id, B.p.id);
         if ((tA + tB) > 1e-5 && !declared.length) err('tenon-undeclared', 'A tenon of ' + name(tA ? A.p : B.p) + ' enters ' + name(tA ? B.p : A.p) + ' but no joint between them is declared.', [A.p.id, B.p.id]);
+        const tt = overlapTenons(SA, SB);
+        if (tt > 1e-5) err('tenon-clash', 'Tenons of ' + name(A.p) + ' (' + (A.i.index + 1) + ') and ' + name(B.p) + ' (' + (B.i.index + 1) + ') run into each other inside the part they share (' + tt.toFixed(3) + ' cu in). Shorten them or move one so each has its own mortise.', [A.p.id, B.p.id]);
         const resid = ov - tA - tB;
         if (resid > 1e-4) {
           interf++;
-          const where = (() => { for (const a of SA.cells) for (const b of SB.cells) { const z = inter(a, b); if (z && !a.tenon && !b.tenon) return fmtBox(z); } return ''; })();
+          const where = (() => { for (const a of SA.cells) for (const b of SB.cells) { const z = inter(a, b); if (z && !a.tenon && !b.tenon && !a.edge && !b.edge) return fmtBox(z); } return ''; })();
           err('interference', name(A.p) + ' (' + (A.i.index + 1) + ') and ' + name(B.p) + ' (' + (B.i.index + 1) + ') occupy the same ' + resid.toFixed(3) + ' cu in near ' + where + '. Two pieces of wood cannot be in one place: add a notch, a cut, or move one.', [A.p.id, B.p.id]);
         }
         // record tenon volume seated in other parts
@@ -352,7 +1080,7 @@
 
     // tenons fully seated
     for (const p of M.parts) for (const I of p.instances) I.tenons.forEach((T, ti) => {
-      const S = I.solid;
+      const S = I.pre;
       let tv = 0; for (const c of S.cells) if (c.tenon && inside(c.min.map((m, k) => (m + c.max[k]) / 2), T)) tv += vol(c);
       const seated = tenonSeated.get(I.key + '/' + ti) || 0;
       if (!T.through && seated < tv - 1e-4) err('tenon-seat', name(p) + ' (' + (I.index + 1) + '): ' + (tv - seated).toFixed(3) + ' of ' + tv.toFixed(3) + ' cu in of a tenon is outside any mating part. Either the tenon is too long, the mortise is in the wrong place, or the part is not where it should be.', [p.id]);
@@ -421,14 +1149,48 @@
       }
       if (j.type === 'castle') {
         for (const id of j.parts) {
-          const p = M.byId[id]; if (!p || !p.local.cuts.length || p.local.cuts.length < 2) continue;
+          const p = M.byId[id]; const cuts = p ? p.local.cuts.filter(c => !c.mortise) : []; if (cuts.length < 2) continue;
           const b = p.localSolid.bbox, wmin = Math.min(b.max[0] - b.min[0], b.max[1] - b.min[1]);
-          for (const a of p.local.adds) for (const c of p.local.cuts) for (let ax = 0; ax < 2; ax++) {
+          for (const a of p.local.adds) for (const c of cuts) for (let ax = 0; ax < 2; ax++) {
             for (const w of [c.min[ax] - a.min[ax], a.max[ax] - c.max[ax]]) if (w > EPS && w < wmin / 4 - EPS) warn('castle-tower', name(p) + ': castle towers are ' + fmt(w) + ' on a ' + fmt(wmin) + ' post. Below a quarter of the post they snap off when a rail is dropped in.', [id]);
           }
         }
       }
     }
+
+    // 8b. every joint has its mating half: a tenon joint has a tenon in a mortise, a housed joint a
+    // cut in one part that another part of the joint fills, a dowel joint its bores
+    const TENON = /tenon/, HOUSED = /^(dado|groove|rabbet|housed|housing|bridle|castle|half-lap|lap|notch|slot)$/;
+    let paired = 0, pairedOf = 0;
+    for (const j of joints) {
+      const ps = j.parts.filter(id => M.byId[id] && M.byId[id].shape && M.byId[id].shape.length);
+      if (ps.length < 2) continue;
+      if (TENON.test(j.type)) {
+        pairedOf++;
+        if (M.mortises.some(m => ps.includes(m.host) && ps.includes(m.guest))) paired++;
+        else err('joint-no-mortise', 'Joint ' + j.id + ' (' + j.type + ') joins ' + ps.map(id => '#' + id).join(', ') + ', but no tenon of one enters another, so there is no mortise to cut and the parts only butt together. Model the tenons with J.mortiseTenon, or call the joint what it is.', ps);
+      } else if (HOUSED.test(j.type)) {
+        pairedOf++;
+        let found = false;
+        for (const a of ps) for (const b of ps) {
+          if (found || a === b) continue;
+          for (const IA of M.byId[a].instances) for (const IB of M.byId[b].instances) {
+            if (found) break;
+            for (const c of IA.cuts) {
+              if (c.mortise || !inter(c, IB.pre.bbox || c)) continue;
+              if (IB.pre.cells.some(cell => inter(cell, c))) { found = true; break; }
+            }
+          }
+        }
+        if (found) paired++;
+        else err('joint-no-housing', 'Joint ' + j.id + ' (' + j.type + ') joins ' + ps.map(id => '#' + id).join(', ') + ', but no part in it is cut to take another: the ' + j.type + ' is missing from the model. Cut it with the J helper (J.' + (j.type === 'half-lap' ? 'halfLap' : j.type) + ') or call the joint what it is.', ps);
+      } else if (/dowel/.test(j.type)) {
+        pairedOf++;
+        if ((plan.bores || []).some(b => b.joint === j.id)) paired++;
+        else warn('joint-no-bore', 'Joint ' + j.id + ' (' + j.type + ') has no bores in plan.bores, so the dowel holes in ' + ps.map(id => '#' + id).join(' and ') + ' are not drawn or checked to line up. Add a bore with joint: \'' + j.id + '\' through both parts.', ps);
+      }
+    }
+    if (pairedOf && paired === pairedOf) pass('joint-pairs', paired + ' of ' + pairedOf + ' tenon, housed and dowel joints have both halves modeled: ' + M.mortises.length + ' mortises cut to their tenons, slots and dados filled by their mating part.');
 
     // 9. cross-grain glue on wide solid parts
     for (const j of joints) {
@@ -525,7 +1287,7 @@
       if (!p.shape || !p.shape.length) continue;
       for (const I of p.instances) {
         if (!I.bbox || !(q[0] > I.bbox.min[0] - EPS && q[0] < I.bbox.max[0] + EPS && q[1] > I.bbox.min[1] - EPS && q[1] < I.bbox.max[1] + EPS && q[2] > I.bbox.min[2] - EPS && q[2] < I.bbox.max[2] + EPS)) continue;
-        if (I.adds.some(a => inside(q, a)) && !I.cuts.some(c => inside(q, c))) return { p, I };
+        if (I.adds.some(a => inside(q, a)) && !I.cuts.some(c => inside(q, c)) && !shapedAway(I.shp, q, I.tenons)) return { p, I };
       }
     }
     return null;
@@ -832,7 +1594,7 @@
     return { from, to, len: to - from, marks: merged.map(m => Object.assign(m, { d: m.at - from })) };
   }
 
-  const api = { cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
+  const api = { faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PlanCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

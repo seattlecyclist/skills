@@ -11,7 +11,7 @@
     plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note'],
     meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'check', 'tools', 'toolkit'],
     part: ['id', 'name', 'section', 'qty', 't', 'w', 'l', 'material', 'stock', 'mat', 'glueup', 'stock_t', 'blank', 'size', 'note', 'shape', 'instances', 'stage', 'callout', 'drawing', 'min_wall', 'pattern', 'grain'],
-    shape: ['box', 'cut', 'role', 'through', 'tool'],
+    shape: ['box', 'cut', 'role', 'through', 'tool', 'outline', 'cutout', 'lathe', 'roundover', 'chamfer', 'axis', 'span', 'center', 'edges'],
     instance: ['at', 'rot', 'mirror', 'explode', 'label'],
     joint: ['id', 'type', 'title', 'parts', 'glue', 'fasteners', 'gap', 'note', 'at', 'radius', 'explode'],
     bore: ['id', 'joint', 'kind', 'label', 'at', 'dir', 'd', 'depth', 'len', 'counterbore', 'washer', 'nut', 'bit', 'access', 'through', 'hardware', 'cross', 'copies', 'qty'],
@@ -36,6 +36,29 @@
     const obj = v => v && typeof v === 'object' && !Array.isArray(v);
     const keys = (o, kind, at) => { if (!obj(o)) return E(at, 'should be an object'); for (const k of Object.keys(o)) if (!KEYS[kind].includes(k)) W(at + '.' + k, 'unknown key "' + k + '" (typo? allowed: ' + KEYS[kind].join(', ') + ')'); };
     const len = (v, at, opt) => { if (v == null) { if (!opt) E(at, 'missing'); return null; } try { const n = C.parseLen(v); if (!(n >= 0) && !(n < 0)) throw 0; return n; } catch (e) { E(at, 'not a length: ' + JSON.stringify(v)); return null; } };
+    // curves, angles and turnings: a profile seen along an axis, or an edge treatment of the blank
+    const shapeEntry = (s, sa, p) => {
+      if (!(p.shape || []).some(x => x && x.box)) E(sa, 'a shape trims the part\'s blank: the part needs a box first');
+      if (s.roundover != null || s.chamfer != null) {
+        const r = len(s.roundover != null ? s.roundover : s.chamfer, sa + (s.roundover != null ? '.roundover' : '.chamfer'));
+        if (r != null && !(r > 0)) E(sa, 'the size should be more than 0');
+        for (const e of [].concat(s.edges == null ? [] : s.edges)) {
+          const ws = String(e).toLowerCase().split(/[\s,+&-]+/).filter(Boolean);
+          if (!(ws.length === 1 && ['all', 'long', 'top', 'bottom', 'front', 'back', 'left', 'right'].includes(ws[0])) && !(ws.length === 2 && ws.every(w => ['top', 'bottom', 'front', 'back', 'left', 'right'].includes(w))))
+            E(sa + '.edges', '"' + e + '" is not an edge: use top, bottom, front, back, left, right, a pair like "top-front", "long" or "all"');
+        }
+        return;
+      }
+      if (!['x', 'y', 'z'].includes(s.axis)) E(sa + '.axis', 'should be "x", "y" or "z": the axis the profile is seen along (the saw cuts through it along this axis)');
+      if (s.span != null) nums(s.span, 2, sa + '.span');
+      if (s.center != null) { if (!s.lathe) W(sa + '.center', 'only a lathe profile takes a center'); nums(s.center, 2, sa + '.center'); }
+      if (s.tool && !C.TOOLS[s.tool] && !['lathe', 'spokeshave', 'jigsaw', 'coping saw', 'plane', 'sander', 'scroll saw'].includes(s.tool)) W(sa + '.tool', 'tool "' + s.tool + '" is not one the tools list knows');
+      try {
+        const P = C.profile(s.outline || s.cutout || s.lathe, !!s.lathe);
+        if (P.pts.length < (s.lathe ? 2 : 3)) E(sa, 'the profile needs at least ' + (s.lathe ? 2 : 3) + ' points');
+        if (s.lathe && P.pts.some(q => q[0] < -1e-9)) E(sa + '.lathe', 'lathe points are [radius, position along the axis]; a radius cannot be negative');
+      } catch (e) { E(sa + '.' + (s.outline ? 'outline' : s.cutout ? 'cutout' : 'lathe'), e.message); }
+    };
     const nums = (a, n, at) => { if (!Array.isArray(a) || a.length !== n) return E(at, 'should be ' + n + ' numbers'); a.forEach((v, i) => len(v, at + '[' + i + ']')); };
     const arr = (v, at) => { if (v == null) return []; if (!Array.isArray(v)) { E(at, 'should be an array'); return []; } return v; };
 
@@ -63,7 +86,9 @@
       if (p.mat && plan.materials && !plan.materials[p.mat]) E(at + '.mat', 'material "' + p.mat + '" is not in plan.materials');
       arr(p.shape, at + '.shape').forEach((s, k) => {
         const sa = at + '.shape[' + k + ']'; keys(s, 'shape', sa); if (!obj(s)) return;
-        if (!s.box === !s.cut) E(sa, 'needs exactly one of box or cut');
+        const kinds = ['box', 'cut', 'outline', 'cutout', 'lathe', 'roundover', 'chamfer'].filter(x => s[x] != null);
+        if (kinds.length !== 1) return E(sa, 'needs exactly one of box, cut, outline, cutout, lathe, roundover or chamfer' + (kinds.length ? ' (has ' + kinds.join(' and ') + ')' : ''));
+        if (C.isShape(s)) return shapeEntry(s, sa, p);
         nums(s.box || s.cut, 6, sa + (s.box ? '.box' : '.cut'));
         if (s.role && s.role !== 'tenon') E(sa + '.role', 'only "tenon" is supported');
         if (s.tool && !C.TOOLS[s.tool] && !(meta.tools && meta.tools[s.tool] != null)) W(sa + '.tool', 'tool "' + s.tool + '" has no depth limit; add it to meta.tools');
