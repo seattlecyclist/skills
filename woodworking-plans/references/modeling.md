@@ -82,6 +82,7 @@ part): along `y` you draw in (x, z), along `x` in (y, z), along `z` in (x, y). P
 | `{ arc: [u, v], through: [u, v] }` | arc through a point |
 | `{ arc: [u, v], center: [u, v] }` | arc about a centre, the short way (`long: true` or `ccw` to choose) |
 | `{ curve: [[u, v], ...] }` | a smooth curve through the points (cabriole, ogee, freeform brackets) |
+| `{ bezier: [[cu, cv], [cu, cv], [u, v]] }` | a cubic Bézier to [u, v] with two control points, as a drawing program draws it (one control point for a quadratic); for an S-curve or a sweep whose tangents you want to set |
 | `{ circle: [cu, cv, r] }`, `{ ellipse: [cu, cv, ru, rv] }` | the whole profile |
 
 The shape entries:
@@ -122,8 +123,11 @@ The shape entries:
   angles and radii where the parts meet (a mitre's 45°). A bevel or profile seen only from the end gets an End view. The cut list repeats
   them ("Shaped: Angle 45°, Arc R 21-21/32" (rise 1-1/4" over 14-1/2")"). Write shapes so those
   numbers are ones a builder can set and lay out: give angles by points that make a round angle
-  (a 45° mitre, a 2° taper), arcs by `rise` or `center` in shop fractions, and use `curve` only
-  for a truly free shape (cabriole, ogee), with `pattern: true` so it prints at full size. Say
+  (a 45° mitre, a 2° taper), arcs by `rise` or `center` in shop fractions, and use `curve` or
+  `bezier` only for a truly free shape (cabriole, ogee, a sweep), with `pattern: true` so it
+  prints at full size. Anything that is a radius in the shop (a trammel, a compass, a router
+  circle jig) stays an `arc`, so the plan can give its R; a Bézier is laid out through five
+  points marked along it. Say
   the angle or radius again in the step that cuts it ("set the bevel to 15°", "bend a batten
   through the 1-1/4" rise").
 - Turned parts, round tops and curved parts get a Layout drawing with their points dimensioned,

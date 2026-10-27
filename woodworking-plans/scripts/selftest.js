@@ -196,6 +196,11 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   out(!ms([]).angles.length && !ms([{ axis: 'y', outline: [[0, 0], [20, 0], [20, 4], [0, 4]] }]).angles.length, 'measures: square parts have no angles to give');
   const tm = C.measures(tl);
   out(tm.turned.length === 1 && tm.turned[0].beads.length === 1 && !tm.turned[0].beads[0].cove && Math.abs(tm.turned[0].beads[0].r - (1 + 0.0625) / 0.5) < 1e-6 && tm.notes.includes('Bead R 2-1/8"'), 'measures: a bead on a turning gives its radius', JSON.stringify(tm.notes));
+  // a Bézier entry: a smooth sweep set by control points, laid out through five points along it
+  const bz = C.normalize({ parts: [{ id: '1', name: 'Bracket', t: 0.75, w: 8, l: 10, stock: 'solid', shape: [{ box: [0, 0, 0, 10, 0.75, 8] }, { axis: 'y', outline: [[0, 0], [10, 0], [10, 1.5], { bezier: [[6, 1.5], [1.5, 4], [1.5, 8]] }, [0, 8]] }] }] }).parts[0], bzm = C.measures(bz);
+  out(bz.localSolid.shaped && C.shapedAway(bz.local.shp, [8, 0.3, 4]) && !C.shapedAway(bz.local.shp, [1, 0.3, 4]) && !C.shapedAway(bz.local.shp, [9.9, 0.3, 1.4]) && bzm.curves[0].pts.length === 5 && Math.abs(bzm.curves[0].pts[2][0] - 4.25) < 1e-9 && Math.abs(bzm.curves[0].pts[2][1] - 3.25) < 1e-9,
+    'bezier: the cubic sweeps from its start to its end inside the control polygon, and is laid out through five points (the middle at t = 1/2)', JSON.stringify(bzm.curves));
+  out(C.profile([[0, 0], { bezier: [[1, 2], [2, 0]] }, [1, -1]]).pts.length > 10 && (() => { try { C.profile([[0, 0], { bezier: [[1, 2]] }]); return false; } catch (e) { return /bezier/.test(e.message); } })(), 'bezier: a quadratic takes one control point; a bezier with no end is an error');
   const vb = JSON.parse(JSON.stringify(rt));
   vb.parts[0].shape[1].axis = 'w'; vb.parts[0].shape[3].edges = 'sideways'; vb.parts[1].shape[1].outline = [{ arc: [1, 1], rise: 1 }];
   const ve = validate(vb).filter(e => e.level === 'error').map(e => e.at);
