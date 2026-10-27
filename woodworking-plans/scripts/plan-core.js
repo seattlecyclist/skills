@@ -1953,6 +1953,7 @@
         const cl = [B.min[0] - lo[0], hi[0] - B.max[0]], below = B.min[2] - lo[2], above = hi[2] - B.max[2], rear = hi[1] - B.max[1];
         Object.assign(row, { box: { w: bw, h: bh, d: bd, side: ts, inside: ts != null ? bw - 2 * ts : null, recess, at: B.min }, clear: { left: cl[0], right: cl[1], below, above, rear, front: B.min[1] - lo[1] } });
         const tol = 1 / 128, eq = (a, b, t) => Math.abs(a - b) <= (t || 1 / 64);
+        const fm = v => fmt(v) + ' (' + String(Math.round(v * 25.4 * 2) / 2) + ' mm)';   // undermount makers work in mm
         if (s.kind === 'side') {
           const bad = cl.filter(c => c < s.clear[0] - tol || c > s.clear[1] + tol);
           if (bad.length) err('drawer-clearance', tag + ': the ' + s.name + ' needs ' + fmt(s.clear[0]) + '–' + fmt(s.clear[1]) + ' between the box and the opening on each side, but the model leaves ' + cl.map(v => fmt(v)).join(' and ') + '. Box width should be ' + fmt(W - s.clear[0] - s.clear[1]) + ' (opening ' + fmt(W) + ' − 2 × ' + fmt((s.clear[0] + s.clear[1]) / 2) + '), not ' + fmt(bw) + '.', boxIds);
@@ -1960,11 +1961,11 @@
           if (s.minH && bh < s.minH - tol) err('drawer-height', tag + ': a ' + fmt(bh) + ' box is shorter than the ' + fmt(s.minH) + ' this slide needs.', boxIds);
         } else if (s.kind === 'under') {
           const want = W - s.k;
-          if (ts != null && !eq(bw - 2 * ts, want, 1 / 32)) err('drawer-inside-width', tag + ': the ' + s.name + ' needs an inside width of opening − ' + fmt(s.k) + ' = ' + fmt(want) + ', but the box is ' + fmt(bw - 2 * ts) + ' inside (' + fmt(bw) + ' outside with ' + fmt(ts) + ' sides). Box width should be ' + fmt(want + 2 * ts) + '.', boxIds);
-          if (ts != null && (ts > s.side[1] + tol || ts < s.side[0] - tol)) err('drawer-side-thickness', tag + ': ' + fmt(ts) + ' box sides; the ' + s.name + ' takes ' + fmt(s.side[0]) + ' to ' + fmt(s.side[1]) + '.', boxIds);
-          if (bh > H - s.h + tol) err('drawer-height', tag + ': a ' + fmt(bh) + ' box is too tall for a ' + fmt(H) + ' opening on this slide (at most opening − ' + fmt(s.h) + ' = ' + fmt(H - s.h) + ').', boxIds);
-          if (below < s.below - tol) err('drawer-under', tag + ': the box sits ' + fmt(below) + ' above the opening floor; the runner needs ' + fmt(s.below) + ' under it.', boxIds);
-          if (recess != null && s.recess && recess < s.recess - tol) err('drawer-recess', tag + ': the bottom is ' + fmt(recess) + ' up from the bottom of the sides; this slide needs it at least ' + fmt(s.recess) + ' up so the runner fits underneath.', boxIds);
+          if (ts != null && !eq(bw - 2 * ts, want, 1 / 32)) err('drawer-inside-width', tag + ': the ' + s.name + ' needs an inside width of opening − ' + fm(s.k) + ' = ' + fmt(want) + ', but the box is ' + fmt(bw - 2 * ts) + ' inside (' + fmt(bw) + ' outside with ' + fmt(ts) + ' sides). Box width should be ' + fmt(want + 2 * ts) + '.', boxIds);
+          if (ts != null && (ts > s.side[1] + tol || ts < s.side[0] - tol)) err('drawer-side-thickness', tag + ': ' + fmt(ts) + ' box sides; the ' + s.name + ' takes ' + fm(s.side[0]) + ' to ' + fm(s.side[1]) + '.', boxIds);
+          if (bh > H - s.h + tol) err('drawer-height', tag + ': a ' + fmt(bh) + ' box is too tall for a ' + fmt(H) + ' opening on this slide (at most opening − ' + fm(s.h) + ' = ' + fmt(H - s.h) + ').', boxIds);
+          if (below < s.below - tol) err('drawer-under', tag + ': the box sits ' + fmt(below) + ' above the opening floor; the runner needs ' + fm(s.below) + ' under it.', boxIds);
+          if (recess != null && s.recess && recess < s.recess - tol) err('drawer-recess', tag + ': the bottom is ' + fm(recess) + ' up from the bottom of the sides; this slide needs it at least ' + fm(s.recess) + ' up so the runner fits underneath.', boxIds);
           if (L != null && !eq(bd, s.len(L), 1 / 16)) err('drawer-length', tag + ': a ' + fmt(L) + ' ' + s.name + ' needs a box ' + fmt(s.len(L)) + ' long; the model\'s is ' + fmt(bd) + '.', boxIds);
           if (L != null && s.depth && D < s.depth(L) - tol) err('drawer-depth', tag + ': a ' + fmt(L) + ' runner needs at least ' + fmt(s.depth(L)) + ' inside the cabinet; the opening is ' + fmt(D) + ' deep. Use a shorter runner.', boxIds);
           if (s.minIn && ts != null && bw - 2 * ts < s.minIn) warn('drawer-narrow', tag + ': ' + fmt(bw - 2 * ts) + ' inside is narrower than the ' + fmt(s.minIn) + ' the locking devices need.', boxIds);
