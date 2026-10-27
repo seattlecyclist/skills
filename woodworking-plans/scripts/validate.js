@@ -8,7 +8,7 @@
   const C = require('./plan-core.js');
 
   const KEYS = {
-    plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note'],
+    plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note', 'drawers'],
     meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'basis', 'changed', 'check', 'tools', 'toolkit'],
     basis: ['what', 'from', 'note'],
     changed: ['what', 'why'],
@@ -23,6 +23,10 @@
     jig: ['title', 'sub', 'purpose', 'use', 'for', 'parts', 'items', 'w', 'h', 'font', 'wide'],
     stick: ['title', 'axis', 'parts', 'from', 'to', 'marks', 'note', 'width'],
     finish: ['title', 'note', 'steps'],
+    drawer: ['name', 'slide', 'length', 'opening', 'box', 'slides', 'front', 'pull', 'mount', 'note', 'waive'],
+    opening: ['at', 'w', 'h', 'd'],
+    dfront: ['part', 'style'],
+    pull: ['item', 'cc', 'screw', 'qty', 'through_box', 'at', 'note'],
     revision: ['rev', 'date', 'summary', 'changes'],
     change: ['id', 'summary', 'parts', 'reason'],
     review: ['rev', 'change', 'verdict', 'mates', 'checks'],
@@ -233,6 +237,25 @@
       const at = 'story_sticks[' + i + ']'; keys(st, 'stick', at); if (!obj(st)) return;
       if (st.axis != null && !['x', 'y', 'z'].includes(st.axis)) E(at + '.axis', 'should be "x", "y" or "z"');
       arr(st.parts, at + '.parts').forEach(id => { if (!has(id)) E(at + '.parts', 'part ' + id + ' does not exist'); });
+    });
+    arr(plan.drawers, 'drawers').forEach((d, i) => {
+      const at = 'drawers[' + i + ']'; keys(d, 'drawer', at); if (!obj(d)) return;
+      if (!d.name) W(at + '.name', 'missing: name the drawer as the builder would ("Top drawers")');
+      if (typeof d.slide === 'string') { if (!C.SLIDES[d.slide]) E(at + '.slide', '"' + d.slide + '" is not in the slide catalogue: ' + Object.keys(C.SLIDES).join(', ') + ' (or give the maker\'s numbers as an object, see drawers.md)'); }
+      else if (!obj(d.slide)) E(at + '.slide', 'missing: a catalogue key like "accuride-3832", or an object with the maker\'s numbers');
+      else if (!['side', 'under', 'center', 'wood'].includes(d.slide.kind || (C.SLIDES[d.slide.like] || {}).kind)) E(at + '.slide.kind', 'should be side, under, center or wood (or set like: a catalogue key)');
+      len(d.length, at + '.length', true);
+      keys(d.opening, 'opening', at + '.opening');
+      if (obj(d.opening)) {
+        ['w', 'h', 'd'].forEach(k => len(d.opening[k], at + '.opening.' + k));
+        const list = Array.isArray(d.opening.at && d.opening.at[0]) ? d.opening.at : [d.opening.at];
+        list.forEach((q, k) => { if (!Array.isArray(q) || q.length !== 3) E(at + '.opening.at' + (list.length > 1 ? '[' + k + ']' : ''), 'should be [x, y, z]: the front, left, bottom corner of the opening (or a list of them)'); });
+      }
+      const ids = v => [].concat(v == null ? [] : v);
+      if (!ids(d.box).length) E(at + '.box', 'missing: the box part numbers (sides, front and back, bottom)');
+      ids(d.box).concat(ids(d.slides)).forEach(id => { if (!has(id)) E(at, 'part ' + id + ' does not exist'); });
+      if (d.front != null) { keys(d.front, 'dfront', at + '.front'); if (obj(d.front)) { ids(d.front.part).forEach(id => { if (!has(id)) E(at + '.front.part', 'part ' + id + ' does not exist'); }); if (d.front.style != null && !['inset', 'overlay', 'full-overlay', 'false-front'].includes(d.front.style)) E(at + '.front.style', 'should be inset, overlay, full-overlay or false-front'); } }
+      if (d.pull != null) keys(d.pull, 'pull', at + '.pull');
     });
     if (plan.finish != null) { keys(plan.finish, 'finish', 'finish'); arr(plan.finish.steps, 'finish.steps'); }
     arr(plan.steps, 'steps').forEach((s, i) => { if (s && s.wrong != null && typeof s.wrong !== 'string' && !(obj(s.wrong) && s.wrong.text)) E('steps[' + i + '].wrong', 'should be a sentence, or { text, items } with a drawing'); });

@@ -1491,6 +1491,9 @@
     // 11. bores and fasteners (plan.bores)
     boreChecks(M, plan, cfg, err, warn, pass);
 
+    // 11b. drawers (plan.drawers): box, slide and front against the slide maker's numbers
+    out.stats.drawers = drawerChecks(M, plan, err, warn, pass);
+
     // 12. overall size
     const world = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     for (const { i } of inst) if (i.bbox) for (let a = 0; a < 3; a++) { world.min[a] = Math.min(world.min[a], i.bbox.min[a]); world.max[a] = Math.max(world.max[a], i.bbox.max[a]); }
@@ -1863,7 +1866,167 @@
     return { from, to, len: to - from, marks: merged.map(m => Object.assign(m, { d: m.at - from })) };
   }
 
-  const api = { measures, at3, plAxes, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
+  // ---------- drawers: slide catalogue, sizing and checks (references/drawers.md) ----------
+  // Inches. side: clearance per side [min, max]; under: k = opening − inside width, side thickness
+  // range, h = opening − max box height, below/above = room under and over the box, recess = bottom
+  // underside above the side's bottom edge, len(NL) = box length, depth(NL) = min inside depth.
+  const MM = 1 / 25.4, EVEN = (a, b) => { const o = []; for (let v = a; v <= b; v += 2) o.push(v); return o; };
+  const SLIDES = {
+    'accuride-3832': { kind: 'side', name: 'Accuride 3832 full-extension ball-bearing slide', clear: [0.5, 0.531], height: 1.8, minH: 1.875, lengths: EVEN(10, 28), load: '100 lb', maxW: L => L, setback: 0.125, screws: '#8 pan-head or 6 mm Euro', source: 'Accuride 3832EC technical sheet' },
+    'kv-8400': { kind: 'side', name: 'Knape & Vogt 8400 full-extension ball-bearing slide', clear: [0.5, 0.53], height: 1.79, minH: 2, lengths: EVEN(8, 28), load: '100 lb', maxW: () => 24, setback: 0.125, screws: '#7 × 1/2" pan-head', source: 'Knape & Vogt 8400 spec sheet' },
+    'accuride-3640': { kind: 'side', name: 'Accuride 3640 over-travel ball-bearing slide', clear: [0.89, 0.92], height: 2.09, minH: 2.75, lengths: EVEN(12, 28), load: '200 lb', setback: 0.125, screws: '#10 flat-head or 6 mm Euro', source: 'Accuride 3640-A quick reference' },
+    'accuride-9301': { kind: 'side', name: 'Accuride 9301 heavy-duty slide', clear: [0.75, 0.781], height: 3, minH: 3.5, lengths: EVEN(10, 36).concat([40, 42, 44, 48, 60]), load: 'to 500 lb', setback: 0.125, screws: '1/4" or #10', source: 'Accuride 9301 data sheet' },
+    'fulterer-fr5400': { kind: 'side', name: 'Fulterer FR5400 heavy-duty slide', clear: [0.77, 0.79], height: 3, minH: 4, lengths: EVEN(12, 60), load: '450 lb', setback: 0.125, screws: 'every cabinet-member hole', source: 'Fulterer FR5400 specifications' },
+    'generic-half': { kind: 'side', name: '1/2" ball-bearing slide (Accuride 3832 class)', clear: [0.5, 0.531], height: 1.8, minH: 1.875, lengths: EVEN(10, 28), load: '75–100 lb', setback: 0.125, screws: '#8 pan-head', source: 'typical; check your slide\'s sheet' },
+    'blum-tandem-563h': { kind: 'under', name: 'Blum Tandem plus Blumotion 563H', k: 42 * MM, side: [12 * MM, 16 * MM], h: 21 * MM, below: 14 * MM, above: 7 * MM, recess: 13 * MM, notch: [35 * MM, 13 * MM], lengths: [9, 12, 15, 18, 21], len: L => L, depth: L => L + 0.9375, minIn: 170 * MM, load: '100 lb', setback: 0.125, source: 'Blum 563H specifications' },
+    'blum-tandem-563f': { kind: 'under', name: 'Blum Tandem 563F (3/4" sides)', k: 49 * MM, side: [0.5, 0.75], h: 20 * MM, below: 14 * MM, above: 6 * MM, recess: 13 * MM, notch: [35 * MM, 13 * MM], lengths: [9, 12, 15, 18, 21], len: L => L, depth: L => L + 0.9375, minIn: 170 * MM, load: '100 lb', setback: 0.125, source: 'Blum Tandem 563F, Woodworker Express' },
+    'blum-movento-760h': { kind: 'under', name: 'Blum Movento 760H', k: 42 * MM, side: [0.5, 0.625], h: 21 * MM, below: 14 * MM, above: 7 * MM, recess: 12 * MM, notch: [35 * MM, 13 * MM], lengths: null, len: L => L - 10 * MM, depth: null, minIn: 170 * MM, setback: 0.125, source: 'Blum, Building a Movento drawer' },
+    'kv-muv-plus': { kind: 'under', name: 'Knape & Vogt MuV+ undermount', k: 42 * MM, side: [0.5, 0.625], h: 0.8125, below: 0.5625, above: 0.25, recess: 0.5, notch: [1.375, 0.5], lengths: [9, 10, 12, 14, 15, 16, 18, 20, 21, 22], len: L => L, depth: L => L + 2, load: '75 lb', maxW: (L, H) => Math.min(L + 10, H > 10 ? 21 : H > 8 ? 24 : H > 6 ? 28 : Infinity), setback: 0.125, source: 'Knape & Vogt MuV+ spec sheet' },
+    'kv-muv-plus-34': { kind: 'under', name: 'Knape & Vogt MuV+34 undermount (3/4" sides)', k: 50 * MM, side: [0.625, 0.75], h: 0.8125, below: 0.5625, above: 0.25, recess: 0.5, notch: [1.375, 0.5], lengths: [9, 10, 12, 14, 15, 16, 18, 20, 21, 22], len: L => L, depth: L => L + 2, load: '75 lb', maxW: (L, H) => Math.min(L + 10, H > 10 ? 21 : H > 8 ? 24 : H > 6 ? 28 : Infinity), setback: 0.125, source: 'Knape & Vogt MuV+ spec sheet' },
+    'hettich-quadro-iw21': { kind: 'under', name: 'Hettich Quadro, installation width 21', k: 42 * MM, side: [0.5, 0.63], h: 20 * MM, below: 14 * MM, above: 6 * MM, recess: 0.5, notch: [35 * MM, 13 * MM], lengths: [9, 12, 15, 18, 21], len: L => L, depth: L => ({ 15: 16.75, 18: 19.75, 21: 22.75 })[L] || L + 1.75, minIn: 165 * MM, setback: 0.125, source: 'Hettich Quadro FAQ' },
+    'hettich-quadro-iw25': { kind: 'under', name: 'Hettich Quadro, installation width 25', k: 50 * MM, side: [0.7, 0.75], h: 20 * MM, below: 14 * MM, above: 6 * MM, recess: 0.5, notch: [35 * MM, 13 * MM], lengths: [9, 12, 15, 18, 21], len: L => L, depth: L => ({ 15: 16.75, 18: 19.75, 21: 22.75 })[L] || L + 1.75, minIn: 165 * MM, setback: 0.125, source: 'Hettich Quadro FAQ' },
+    'accuride-1029': { kind: 'center', name: 'Accuride 1029 centre-mount slide, 3/4 extension', play: [0.0625, 0.25], below: 0.25, lengths: EVEN(13, 27).concat([14, 16, 18, 20, 22, 24, 26]).sort((a, b) => a - b), load: '35 lb', setback: 0.125, source: 'Accuride 1029 data sheet' },
+    'wood-runners': { kind: 'wood', name: 'Wood runners and kickers (fitted drawer)', play: [1 / 64, 1 / 16], source: 'Fine Woodworking, fitted drawers' }
+  };
+  // a drawer's slide: a catalogue key, or an object (optionally { like: key, ...overrides })
+  function slideSpec(s) {
+    if (typeof s === 'string') return SLIDES[s] ? Object.assign({ key: s }, SLIDES[s]) : null;
+    if (s && typeof s === 'object') {
+      const base = s.like && SLIDES[s.like] ? SLIDES[s.like] : {};
+      const o = Object.assign({ key: s.like || 'custom' }, base, s);
+      for (const k of ['clear', 'side', 'play', 'notch']) if (Array.isArray(o[k])) o[k] = o[k].map(parseLen);
+      for (const k of ['k', 'h', 'below', 'above', 'recess', 'height', 'minH', 'setback']) if (o[k] != null) o[k] = parseLen(o[k]);
+      if (typeof o.len !== 'function') { const d = o.len != null ? parseLen(o.len) : 0; o.len = L => L - d; }
+      if (o.depth != null && typeof o.depth !== 'function') { const d = parseLen(o.depth); o.depth = L => L + d; }
+      return o;
+    }
+    return null;
+  }
+  // the size a box should be for an opening and slide: what the designer aims for
+  function drawerSize(open, s, o) {
+    o = o || {};
+    const W = parseLen(open.w), H = parseLen(open.h), D = parseLen(open.d), ts = o.side != null ? parseLen(o.side) : 0.5;
+    const r64 = v => Math.round(v * 64) / 64, f16 = v => Math.floor(v * 16 + 1e-6) / 16;
+    const inset = o.inset != null ? parseLen(o.inset) : 0, set = s.setback != null ? s.setback : 0.125;
+    const room = D - set - inset;
+    const L = o.length != null ? parseLen(o.length) : (s.lengths || []).filter(l => (s.kind === 'under' ? (s.depth ? s.depth(l) <= D - inset : s.len(l) <= room) : l <= room - 0.25)).pop();
+    if (s.kind === 'side') { const c = (s.clear[0] + s.clear[1]) / 2; return { w: r64(W - 2 * c), h: f16(H - 0.25 - 0.25), d: L, length: L, clear: c }; }
+    if (s.kind === 'under') { const wi = W - s.k; return { w: r64(wi + 2 * ts), inside: r64(wi), h: f16(H - s.h), d: L != null ? r64(s.len(L)) : null, length: L }; }
+    if (s.kind === 'center') return { w: r64(W - 0.125), h: f16(H - 0.5), d: L, length: L };
+    return { w: r64(W - 1 / 32), h: f16(H - 0.125), d: f16(D - 0.375), length: null };
+  }
+  const ctr = b => [0, 1, 2].map(a => (b.min[a] + b.max[a]) / 2);
+  const within = (q, lo, hi, pad) => q.every((v, a) => v >= lo[a] - pad[a] && v <= hi[a] + pad[a]);
+  const union = list => list.reduce((u, b) => u ? { min: u.min.map((v, k) => Math.min(v, b.min[k])), max: u.max.map((v, k) => Math.max(v, b.max[k])) } : { min: b.min.slice(), max: b.max.slice() }, null);
+  // measure every declared drawer opening from the model; one row per opening, checks along the way
+  function drawerChecks(M, plan, err, warn, pass) {
+    const rows = [];
+    const ids = v => [].concat(v == null ? [] : v).map(String);
+    const insts = (list, lo, hi, pad) => {
+      const out = [];
+      for (const id of list) { const p = M.byId[id]; if (!p) continue; for (const I of p.instances) if (I.bbox && within(ctr(I.bbox), lo, hi, pad)) out.push({ p, I, b: I.bbox }); }
+      return out;
+    };
+    (plan.drawers || []).forEach((d, di) => {
+      const nm = d.name || 'Drawer ' + (di + 1), s = slideSpec(d.slide);
+      if (!s) { err('drawer-slide', nm + ': slide "' + (typeof d.slide === 'string' ? d.slide : '?') + '" is not in the catalogue (' + Object.keys(SLIDES).join(', ') + '). Name one, or give the maker\'s numbers as an object.'); return; }
+      const op = d.opening || {}, W = parseLen(op.w), H = parseLen(op.h), D = parseLen(op.d);
+      const ats = Array.isArray(op.at && op.at[0]) ? op.at : [op.at || [0, 0, 0]];
+      const L = d.length != null ? parseLen(d.length) : null;
+      const boxIds = ids(d.box), slideIds = ids(d.slides), front = d.front || {}, frontIds = ids(front.part);
+      const style = front.style || 'overlay';
+      // a drawer may accept a maker's recommendation it departs from, with the reason (never an error)
+      const waived = new Set(), warn0 = warn;
+      warn = (code, msg, parts) => { const why = d.waive && d.waive[code]; if (!why) return warn0(code, msg, parts); if (!waived.has(code)) { waived.add(code); pass(code, msg.replace(/^[^:]*\(\d+ of \d+\): /, nm + ': ') + ' Accepted: ' + why); } };
+      ats.forEach((at0, k) => {
+        const at = at0.map(parseLen), lo = at, hi = [at[0] + W, at[1] + D, at[2] + H];
+        const tag = nm + (ats.length > 1 ? ' (' + (k + 1) + ' of ' + ats.length + ')' : '');
+        const box = insts(boxIds, lo, hi, [0, 1.5, 0]);
+        const row = { name: nm, index: k, count: ats.length, slide: s, length: L, style, opening: { at, w: W, h: H, d: D }, parts: boxIds };
+        rows.push(row);
+        if (!box.length) { err('drawer-no-box', tag + ': no box part (' + boxIds.map(i => '#' + i).join(', ') + ') sits in the opening at ' + at.map(v => fmt(v)).join(', ') + '.', boxIds); return; }
+        const B = union(box.map(x => x.b)), bw = B.max[0] - B.min[0], bh = B.max[2] - B.min[2], bd = B.max[1] - B.min[1];
+        const sides = box.filter(x => (x.b.max[0] - x.b.min[0]) < 1.25 && (x.b.max[1] - x.b.min[1]) > bd * 0.6 && (x.b.max[2] - x.b.min[2]) > 0.75);
+        const ts = sides.length ? Math.min(...sides.map(x => x.b.max[0] - x.b.min[0])) : null;
+        const flat = box.filter(x => (x.b.max[2] - x.b.min[2]) < 0.8 && (x.b.max[0] - x.b.min[0]) > bw * 0.6).sort((a, c) => a.b.min[2] - c.b.min[2])[0];
+        const recess = flat ? flat.b.min[2] - B.min[2] : null;
+        const cl = [B.min[0] - lo[0], hi[0] - B.max[0]], below = B.min[2] - lo[2], above = hi[2] - B.max[2], rear = hi[1] - B.max[1];
+        Object.assign(row, { box: { w: bw, h: bh, d: bd, side: ts, inside: ts != null ? bw - 2 * ts : null, recess, at: B.min }, clear: { left: cl[0], right: cl[1], below, above, rear, front: B.min[1] - lo[1] } });
+        const tol = 1 / 128, eq = (a, b, t) => Math.abs(a - b) <= (t || 1 / 64);
+        if (s.kind === 'side') {
+          const bad = cl.filter(c => c < s.clear[0] - tol || c > s.clear[1] + tol);
+          if (bad.length) err('drawer-clearance', tag + ': the ' + s.name + ' needs ' + fmt(s.clear[0]) + '–' + fmt(s.clear[1]) + ' between the box and the opening on each side, but the model leaves ' + cl.map(v => fmt(v)).join(' and ') + '. Box width should be ' + fmt(W - s.clear[0] - s.clear[1]) + ' (opening ' + fmt(W) + ' − 2 × ' + fmt((s.clear[0] + s.clear[1]) / 2) + '), not ' + fmt(bw) + '.', boxIds);
+          else if (!eq(cl[0], cl[1], 1 / 32)) warn('drawer-centred', tag + ': the box is off centre in its opening (' + fmt(cl[0]) + ' left, ' + fmt(cl[1]) + ' right); both slides need the same gap.', boxIds);
+          if (s.minH && bh < s.minH - tol) err('drawer-height', tag + ': a ' + fmt(bh) + ' box is shorter than the ' + fmt(s.minH) + ' this slide needs.', boxIds);
+        } else if (s.kind === 'under') {
+          const want = W - s.k;
+          if (ts != null && !eq(bw - 2 * ts, want, 1 / 32)) err('drawer-inside-width', tag + ': the ' + s.name + ' needs an inside width of opening − ' + fmt(s.k) + ' = ' + fmt(want) + ', but the box is ' + fmt(bw - 2 * ts) + ' inside (' + fmt(bw) + ' outside with ' + fmt(ts) + ' sides). Box width should be ' + fmt(want + 2 * ts) + '.', boxIds);
+          if (ts != null && (ts > s.side[1] + tol || ts < s.side[0] - tol)) err('drawer-side-thickness', tag + ': ' + fmt(ts) + ' box sides; the ' + s.name + ' takes ' + fmt(s.side[0]) + ' to ' + fmt(s.side[1]) + '.', boxIds);
+          if (bh > H - s.h + tol) err('drawer-height', tag + ': a ' + fmt(bh) + ' box is too tall for a ' + fmt(H) + ' opening on this slide (at most opening − ' + fmt(s.h) + ' = ' + fmt(H - s.h) + ').', boxIds);
+          if (below < s.below - tol) err('drawer-under', tag + ': the box sits ' + fmt(below) + ' above the opening floor; the runner needs ' + fmt(s.below) + ' under it.', boxIds);
+          if (recess != null && s.recess && recess < s.recess - tol) err('drawer-recess', tag + ': the bottom is ' + fmt(recess) + ' up from the bottom of the sides; this slide needs it at least ' + fmt(s.recess) + ' up so the runner fits underneath.', boxIds);
+          if (L != null && !eq(bd, s.len(L), 1 / 16)) err('drawer-length', tag + ': a ' + fmt(L) + ' ' + s.name + ' needs a box ' + fmt(s.len(L)) + ' long; the model\'s is ' + fmt(bd) + '.', boxIds);
+          if (L != null && s.depth && D < s.depth(L) - tol) err('drawer-depth', tag + ': a ' + fmt(L) + ' runner needs at least ' + fmt(s.depth(L)) + ' inside the cabinet; the opening is ' + fmt(D) + ' deep. Use a shorter runner.', boxIds);
+          if (s.minIn && ts != null && bw - 2 * ts < s.minIn) warn('drawer-narrow', tag + ': ' + fmt(bw - 2 * ts) + ' inside is narrower than the ' + fmt(s.minIn) + ' the locking devices need.', boxIds);
+          if (s.notch) row.notch = s.notch;
+        } else if (s.kind === 'center' || s.kind === 'wood') {
+          const play = W - bw;
+          if (play < s.play[0] - tol || play > s.play[1] + tol) warn('drawer-play', tag + ': ' + fmt(play) + ' of side play in total; a ' + (s.kind === 'wood' ? 'fitted drawer on wood runners' : 'centre-mount drawer') + ' wants ' + fmt(s.play[0]) + '–' + fmt(s.play[1]) + '.', boxIds);
+        }
+        if (s.kind !== 'under') {
+          if (below < -tol || above < -tol) err('drawer-height', tag + ': the box runs outside its opening (' + fmt(below) + ' below, ' + fmt(above) + ' above).', boxIds);
+          else if (s.kind !== 'wood' && (below < 0.125 - tol || above < 0.125 - tol)) warn('drawer-gap', tag + ': the box is ' + fmt(below) + ' over the surface below and ' + fmt(above) + ' under the one above; leave at least 1/8" (1/4" is usual) so it runs free.', boxIds);
+        }
+        // slides: the right number, the right length, inside the case
+        if (s.kind !== 'wood') {
+          const sl = insts(slideIds, lo, hi, [1, 1, 0.5]);
+          const need = s.kind === 'center' ? 1 : 2;
+          if (!slideIds.length) warn('drawer-no-slides', tag + ': no slide part is named, so the slides are not on the material list or in the model.', boxIds);
+          else if (sl.length !== need) err('drawer-slides', tag + ': the model has ' + sl.length + ' slide' + (sl.length === 1 ? '' : 's') + ' in this opening; it needs ' + need + '.', slideIds);
+          const sb = sl.length ? union(sl.map(x => x.b)) : null, slen = sb ? sb.max[1] - sb.min[1] : null;
+          if (L != null && sb && !eq(slen, L, 1 / 8)) warn('drawer-slide-length', tag + ': the slide is modeled ' + fmt(slen) + ' long but the drawer names a ' + fmt(L) + ' slide.', slideIds);
+          if (L != null && s.lengths && !s.lengths.some(l => eq(l, L))) warn('drawer-slide-length', tag + ': ' + s.name + ' does not come in ' + fmt(L) + '; it comes in ' + s.lengths.map(l => fmt(l, { unit: false })).join(', ') + '.', slideIds);
+          if (s.kind === 'side' && L != null) {
+            if (bd < L - 1 / 16) err('drawer-length', tag + ': the box is ' + fmt(bd) + ' long, shorter than its ' + fmt(L) + ' slide; the drawer member needs the full length of the box side.', boxIds);
+            if (sb && sb.max[1] > hi[1] + tol) err('drawer-depth', tag + ': the slide runs ' + fmt(sb.max[1] - hi[1]) + ' past the back of the opening. Use a shorter slide.', slideIds);
+            else if (!sb && (s.setback || 0) + L > D + tol) err('drawer-depth', tag + ': a ' + fmt(L) + ' slide set back ' + fmt(s.setback || 0) + ' does not fit a ' + fmt(D) + ' deep opening.', boxIds);
+          }
+          if (L != null && s.maxW && bw > s.maxW(L, bh) + tol) warn('drawer-wide', tag + ': a ' + fmt(bw) + ' wide box is wider than this slide is rated for (' + fmt(s.maxW(L, bh)) + ' with ' + fmt(L) + ' slides). Use a heavier slide or a narrower drawer.', boxIds);
+          if (sb) row.slideAt = { centre: (sb.min[2] + sb.max[2]) / 2 - lo[2], setback: sb.min[1] - lo[1], bottom: sb.min[2] - lo[2] };
+        }
+        // the front: inset reveals or overlay
+        if (frontIds.length) {
+          const fr = insts(frontIds, lo, hi, [3, 3, 3]).filter(x => x.b.max[1] <= B.min[1] + 1.25).sort((a, c) => Math.hypot(ctr(a.b)[0] - (lo[0] + hi[0]) / 2, ctr(a.b)[2] - (lo[2] + hi[2]) / 2) - Math.hypot(ctr(c.b)[0] - (lo[0] + hi[0]) / 2, ctr(c.b)[2] - (lo[2] + hi[2]) / 2))[0];
+          if (!fr) warn('drawer-front', tag + ': no front (' + frontIds.map(i => '#' + i).join(', ') + ') in front of this opening.', frontIds);
+          else {
+            const F = fr.b, fw = F.max[0] - F.min[0], fh = F.max[2] - F.min[2], ft = F.max[1] - F.min[1];
+            const ed = { left: lo[0] - F.min[0], right: F.max[0] - hi[0], bottom: lo[2] - F.min[2], top: F.max[2] - hi[2] };   // + overlay, − reveal
+            row.front = { id: fr.p.id, w: fw, h: fh, t: ft, edges: ed };
+            if (style === 'inset') {
+              const g = Object.values(ed).map(v => -v);
+              if (g.some(v => v < 1 / 64 - tol)) err('drawer-front-fit', tag + ': the inset front is ' + fmt(fw) + ' × ' + fmt(fh) + ' in a ' + fmt(W) + ' × ' + fmt(H) + ' opening; it needs a gap all round (1/16"–1/8").', frontIds);
+              else if (g.some(v => v > 0.1875 + tol)) warn('drawer-front-fit', tag + ': the inset front leaves ' + g.map(v => fmt(v)).join(', ') + ' gaps; more than 3/16" reads as a mistake.', frontIds);
+              if (s.kind === 'side' && row.slideAt && row.slideAt.setback < ft - tol) err('drawer-setback', tag + ': with an inset front the slide must be set back the front\'s thickness plus 1/8" (' + fmt(ft + 0.125) + '); it is ' + fmt(row.slideAt.setback) + '.', slideIds);
+            } else if (B.min[0] < F.min[0] - tol || B.max[0] > F.max[0] + tol || B.min[2] < F.min[2] - 0.5) warn('drawer-front-cover', tag + ': the box shows past its ' + style + ' front.', frontIds);
+          }
+        }
+        // the pull screw: through everything it holds, plus about 1/4"
+        const pl = d.pull;
+        if (pl && pl.screw && row.front) {
+          const m = String(pl.screw).match(/x\s*([0-9\-\/. ]+)"?\s*$/i) || String(pl.screw).match(/×\s*([0-9\-\/. ]+)"?\s*$/);
+          const len = m ? (() => { try { return parseLen(m[1].trim()); } catch (e) { return null; } })() : null;
+          const stack = row.front.t + (pl.through_box ? (box.filter(x => x.b.max[1] - x.b.min[1] < 1.25 && x.b.min[1] <= B.min[1] + 1e-3).map(x => x.b.max[1] - x.b.min[1])[0] || 0) : 0);
+          row.pullStack = stack;
+          if (len != null && (len < stack + 0.125 - tol || len > stack + 0.5 + tol)) warn('drawer-pull-screw', tag + ': a ' + fmt(len) + ' pull screw through ' + fmt(stack) + ' of wood; use about ' + fmt(stack + 0.25) + '.', frontIds);
+        }
+      });
+      warn = warn0;
+    });
+    if (rows.some(r => r.box)) pass('drawers', rows.length + ' drawer opening' + (rows.length === 1 ? '' : 's') + ' measured against the slide maker\'s clearances.');
+    return rows;
+  }
+
+  const api = { SLIDES, slideSpec, drawerSize, drawerChecks, measures, at3, plAxes, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PlanCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
