@@ -874,7 +874,7 @@
   // centre, and each free curve with the points it passes through. Turnings give their diameters,
   // edge treatments their sizes.
   //   -> { angles: [{ axis, at, deg, r1, r2, bend, ext (which ray carries an edge on past a bend), reach }], arcs: [{ axis, r, rv, circle, c, mid, a, b, rise, chord, sweep, fillet }],
-  //        curves: [{ axis, pts }], turned: [{ axis, d }], eased: [{ kind, size, edges }], notes: [text] }
+  //        curves: [{ axis, pts }], turned: [{ axis, d, center, beads: [{ r, mid, rise, chord, cove }] }], eased: [{ kind, size, edges }], notes: [text] }
   // (2D points are in the shape's own [u, v], the plan axes other than `axis`; at3() lifts one.)
   function measures(p) {
     const out = { angles: [], arcs: [], curves: [], turned: [], eased: [], notes: [] };
@@ -896,7 +896,9 @@
       const P = sh.prof, ax = sh.axis;
       if (sh.kind === 'lathe') {
         const ds = [...new Set(P.nodes.map(q => +(2 * q[0]).toFixed(4)))].sort((x, y) => y - x);
-        out.turned.push({ axis: ax, d: ds });
+        // beads, coves and rounded ends: arcs in the [radius, along] profile
+        const beads = P.arcs.filter(A => A.sweep != null).map(A => ({ r: A.r, mid: A.mid, rise: A.r * (1 - Math.cos(A.sweep / 2)), chord: 2 * A.r * Math.sin(Math.min(A.sweep, Math.PI) / 2), cove: A.mid[0] < (A.a[0] + A.b[0]) / 2 - 1e-6 }));
+        out.turned.push({ axis: ax, d: ds, center: sh.center, beads });
         continue;
       }
       const unit = d => { const l = len2(d) || 1; return [d[0] / l, d[1] / l]; };
@@ -956,7 +958,11 @@
     if (degs.length) out.notes.push((degs.length > 1 ? 'Angles ' : 'Angle ') + degs.join(', '));
     if (tapers.length) out.notes.push((tapers.length > 1 ? 'Tapers ' : 'Taper ') + tapers.join(', '));
     if (out.curves.length) out.notes.push(out.curves.length === 1 ? 'Fair curve through ' + out.curves[0].pts.length + ' marked points' : out.curves.length + ' fair curves through marked points');
-    for (const t of out.turned) out.notes.push('Turned, ⌀' + t.d.map(F).join(' / '));
+    for (const t of out.turned) {
+      out.notes.push('Turned, ⌀' + t.d.map(F).join(' / '));
+      const bs = [...new Set(t.beads.map(b => (b.cove ? 'cove' : 'bead') + ' R ' + F(b.r)))];
+      if (bs.length) out.notes.push(bs.join(', ').replace(/^./, c => c.toUpperCase()));
+    }
     for (const e of out.eased) out.notes.push(F(e.size) + (e.kind === 'roundover' ? ' (R ' + F(e.size) + ') round-over' : ' × 45° chamfer') + ', ' + e.edges.join(' and ') + ' edges');
     out.notes = [...new Set(out.notes)];
     return out;
@@ -1709,7 +1715,7 @@
     return { from, to, len: to - from, marks: merged.map(m => Object.assign(m, { d: m.at - from })) };
   }
 
-  const api = { measures, at3, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
+  const api = { measures, at3, plAxes, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PlanCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

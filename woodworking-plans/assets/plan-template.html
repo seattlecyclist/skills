@@ -727,6 +727,16 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       t.textContent = (Math.round(G.deg * 10) / 10) + '°';
       pts3.push(v3);
     }
+    for (const T of MS.turned) {
+      if (T.axis === drop) continue;
+      // a turning from the side: each bead and cove labelled at its middle, on the near side
+      const o = [U, V].find(x => x !== T.axis), c0 = T.center[o === C.plAxes(T.axis)[0] ? 0 : 1];
+      for (const B of T.beads) {
+        const p3 = [0, 0, 0]; p3[T.axis] = B.mid[1]; p3[o] = c0 + B.mid[0];
+        const [x, y] = sx(p3), right = o === U, t = svgEl('text', { class: 'dtx', x: x + (right ? fs * 0.5 : 0), y: y + (right ? fs * 0.3 : -fs * 0.5), 'font-size': fs * 0.75, 'text-anchor': right ? 'start' : 'middle' }, marks);
+        t.textContent = 'R ' + FT(B.r);
+      }
+    }
     for (const cv of MS.curves) {
       if (cv.axis !== drop) continue;
       // a free curve is laid out through its points: each one marked and dimensioned
@@ -1211,6 +1221,34 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       const seenB = new Set();
       for (const b of bores) { if (seenB.has(b.id)) continue; seenB.add(b.id); spec.push({ k: b.kind ? b.kind[0].toUpperCase() + b.kind.slice(1) : 'Bore', part: null, text: (b.label ? esc(b.label) + ', ' : '') + F(C.parseLen(b.d)) + ' hole, ' + F(C.parseLen(b.depth != null ? b.depth : b.len || 0)) + ' deep' }); }
 
+      // the angles and radii of shaped parts where they come to the joint: a mitre's 45°, a curved
+      // rail's radius at its shoulder; each is listed and called out on the drawing
+      const shapeMarks = [];
+      for (const u of used) {
+        if (!u.p.local.shapes.length || !u.I.shp) continue;
+        const MS = C.measures(u.p), lb = u.p.localSolid.bbox, inW = grow(W, 0.05);
+        const place = (axis, q) => {
+          // the line through the part along the profile's axis, as far as it lies in the window
+          const ends = [lb.min[axis], lb.max[axis]].map(w => C.toWorldPt(C.at3(axis, q, 0).map((v, k) => k === axis ? w : v), u.I.shp.inst));
+          const k = C.inter(box(ends[0].map((v, i) => Math.min(v, ends[1][i]) - E), ends[0].map((v, i) => Math.max(v, ends[1][i]) + E)), inW);
+          return k ? mid(k) : null;
+        };
+        const seen = new Set();
+        for (const G of MS.angles) {
+          const p3 = place(G.axis, G.at), txt = (Math.round(G.deg * 10) / 10) + '°' + (G.bend ? ' taper' : '');
+          if (!p3 || seen.has(txt)) continue;
+          seen.add(txt); shapeMarks.push({ u, p3, txt });
+          spec.push({ k: 'Angle', part: u.p.id, text: txt });
+        }
+        for (const A of MS.arcs) {
+          const p3 = place(A.axis, A.mid);
+          const txt = A.circle ? '⌀' + FT(2 * A.r) : 'R ' + FT(A.r) + (A.rise != null && A.r > 12 ? ', rise ' + FT(A.rise) + ' over ' + FT(A.chord) : '');
+          if (!p3 || seen.has(txt)) continue;
+          seen.add(txt); shapeMarks.push({ u, p3, txt });
+          spec.push({ k: A.circle ? 'Hole' : 'Radius', part: u.p.id, text: esc(txt) });
+        }
+      }
+
       // ---- draw ----
       const order = used.slice().sort((a, b) => dot(mid(shift(a.I.bbox, a.off)), cv) - dot(mid(shift(b.I.bbox, b.off)), cv));
       const allPts = [];
@@ -1339,6 +1377,7 @@ figcaption .zb button.one{width:auto;padding:0 4px}
             callout(f.u, faceCtr(f.b, f.dep, s[f.dep] > 0 ? -1 : 1), f.name);
           }
         }
+        for (const m of shapeMarks) callout(m.u, m.p3, m.txt);
         const lb = boreFeats.find(bf => bf.entry);
         if (lb) callout(lb.u, lb.p0, lb.b.label || lb.b.kind || 'Bore');
         // part numbers in balloons, as on the other drawings; a click picks the part
