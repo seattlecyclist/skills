@@ -50,6 +50,9 @@ For each part the change touches, and each part joined to or touching those part
   and hardware item has its hole or mounting on each mating part. A missing half is a fail.
 - Does each joint still engage fully, with sane proportions
   (see references/joinery.md), and can it be cut and assembled in the order of the steps?
+- For a curved, tapered, splayed, mitred or turned part: is it modeled with shape entries (never
+  stacked boxes or steps), does the grain follow the curve, and can the builder read every angle
+  and radius off the plan?
 - Follow the load from the top surface to the floor through this part.
 - Check wood movement, fastener lengths, hardware fit, and clearances to anything that moves
   (drawers, doors, a mattress, a person's legs).
@@ -89,6 +92,15 @@ the drawings, the cut list notes and the steps. Missing halves are a `fail`, nev
 - Glue surface is long grain to long grain where glue is the only thing holding it.
 - Can be cut with the tools in the intro, and assembled in the step order (nothing has to go in sideways after its neighbour is glued). Check tool limits: a dado stack cuts about 2-1/2" deep at most, a table saw blade about 3", a 1/2" router bit about 1-1/4" per pass.
 - Every fastener can be installed: its hole can be bored and its nut, washer and head can be reached once the neighbouring parts are in place. Locate each one against every part around it, not just the part it is in. (The castle bed's head-end barrel nuts first landed inside the corner post.)
+
+**Shapes: curves and angles**, for each part the builder sees as curved, tapered, splayed, mitred, bevelled or turned
+- It is modeled with shape entries (`outline`, `cutout`, `lathe`, `splay`, `roundover`, `chamfer`). Stacked boxes or stepped cuts standing in for a curve or an angle are a `fail`.
+- The blank in the cut list holds the shape, and a taper or cutout leaves the joinery in full-size wood.
+- The grain runs along the sweep of a curve. Short grain across a tight curve or a thin point is a `fail`.
+- The radius suits the tool the steps name, and mitres meet on the line.
+- Every angle and radius is specified: the layout drawing and the cut list's "Shaped:" note give each corner in degrees, each taper's angle, each arc's radius with its rise over chord or centre, and each free curve's points. A shaped part with no layout drawing at all is a `fail`.
+- An angle or radius the builder can't read off the plan, a value no one can set (91.37° where 91.5° was meant, R 21-21/32" where the rise is what matters), or a step that cuts a shape without saying its angle or radius is a `flag`.
+- A leg splayed both ways that is modeled as two outlines instead of `splay`, or a curved edge whose round-over the steps call for but the model leaves sharp (no `ease`), is a `flag`.
 
 **Connections and load path**
 - Every load ends in bearing on wood or the floor, not in a screw in end grain or a thin feature.
