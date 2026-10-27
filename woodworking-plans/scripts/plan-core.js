@@ -252,7 +252,8 @@
   }
 
   // A profile: points [u, v] (or [u, v, r] to round that corner), { arc: [u, v], through | center |
-  // rise }, { curve: [[u, v], ...] }, or a whole { circle: [cu, cv, r] } / { ellipse: [cu, cv, ru, rv] }.
+  // rise }, { curve: [[u, v], ...] }, { bezier: [[cu, cv], ([cu, cv],) [u, v]] }, or a whole
+  // { circle: [cu, cv, r] } / { ellipse: [cu, cv, ru, rv] }.
   // -> { pts (counter-clockwise, closed), sid (surface id of the edge from pts[i] to pts[i+1]),
   //      nodes (the points as written, for dimensions), arcs ({ c, r, mid } for radius labels) }
   function profile(spec, open) {
@@ -270,7 +271,7 @@
     const add = (p, id) => { if (pts.length) sid[pts.length - 1] = id; pts.push(p); sid.push(null); };
     // which way is out: a positive rise bulges away from the inside of the profile (a lathe profile's
     // inside is toward its axis)
-    const ends = spec.map(e => Array.isArray(e) ? P2(e) : e.arc ? P2(e.arc) : e.curve ? P2(e.curve[e.curve.length - 1]) : null).filter(Boolean);
+    const ends = spec.map(e => Array.isArray(e) ? P2(e) : e.arc ? P2(e.arc) : e.curve ? P2(e.curve[e.curve.length - 1]) : e.bezier ? P2(e.bezier[e.bezier.length - 1]) : null).filter(Boolean);
     if (open && ends.length) ends.push([0, ends[ends.length - 1][1]], [0, ends[0][1]]);
     const outward = area2(ends) >= 0 ? -1 : 1;   // counter-clockwise: the inside is on the left
     for (const e of spec) {
@@ -308,6 +309,16 @@
         for (const q of curveTo(p0, list)) add(q, id);
         nodes.push(list[list.length - 1]);
         curves.push([p0].concat(list));
+      } else if (e.bezier) {
+        // a Bézier segment: [control, end] (quadratic) or [control, control, end] (cubic), as a
+        // drawing program draws it; laid out in the shop through points marked along it
+        const cs = e.bezier.map(P2);
+        if (cs.length < 2 || cs.length > 3) throw new Error('A bezier is [control, end] or [control, control, end].');
+        const ctl = [p0].concat(cs), at = t => { let q = ctl; while (q.length > 1) q = q.slice(1).map((b, k) => [q[k][0] + (b[0] - q[k][0]) * t, q[k][1] + (b[1] - q[k][1]) * t]); return q[0]; };
+        const reach = ctl.slice(1).reduce((s2, q, k) => s2 + len2(sub2(q, ctl[k])), 0), n = Math.max(8, Math.min(96, Math.ceil(reach / 0.15)));
+        for (let k = 1; k <= n; k++) add(k === n ? cs[cs.length - 1].slice() : at(k / n), id);
+        nodes.push(cs[cs.length - 1]);
+        curves.push([0, 0.25, 0.5, 0.75, 1].map(at));
       } else throw new Error('Unknown profile entry: ' + JSON.stringify(e));
     }
     // a closing entry that lands on the start point
