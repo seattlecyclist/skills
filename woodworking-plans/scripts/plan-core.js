@@ -205,7 +205,7 @@
   const AXN = { x: 0, y: 1, z: 2 };
   // the drawing axes (u, v) of a profile seen along axis a
   const plAxes = a => a === 0 ? [1, 2] : a === 1 ? [0, 2] : [0, 1];
-  const isShape = s => !!(s && (s.outline || s.cutout || s.lathe || s.roundover != null || s.chamfer != null));
+  const isShape = s => !!(s && (s.outline || s.cutout || s.lathe || s.splay || s.roundover != null || s.chamfer != null));
   let SID = 0;   // surface ids: the facets of one curve share one, so no crease is drawn between them
   const JIT = [1.17e-7, 2.31e-7, 3.07e-7];
 
@@ -507,6 +507,59 @@
     return out;
   }
 
+  // a profile offset into its own inside by d (outward when d < 0): each corner moves along its
+  // bisector, as a router bearing's path does on a convex edge
+  function offsetPts(pts, d) {
+    if (!d) return pts.map(q => q.slice());
+    const n = pts.length;
+    return pts.map((p, i) => {
+      const a = pts[(i - 1 + n) % n], b = pts[(i + 1) % n];
+      const t1 = sub2(p, a), t2 = sub2(b, p), l1 = len2(t1) || 1, l2 = len2(t2) || 1;
+      const n1 = [-t1[1] / l1, t1[0] / l1], n2 = [-t2[1] / l2, t2[0] / l2];   // left normals: inside, counter-clockwise
+      const k = Math.max(0.25, 1 + n1[0] * n2[0] + n1[1] * n2[1]);
+      return [p[0] + d * (n1[0] + n2[0]) / k, p[1] + d * (n1[1] + n2[1]) / k];
+    });
+  }
+  // a solid lofted through rings of one profile: [{ s, d }] from one end to the other, each ring the
+  // profile offset by d at s along axis a; edge i's band keeps one surface id per run of rings
+  function loftPolys(P, a, rings, ids) {
+    const [ua, va] = plAxes(a), out = [], n = P.pts.length;
+    const at = (q, s2) => { const p = [0, 0, 0]; p[ua] = q[0]; p[va] = q[1]; p[a] = s2; return p; };
+    const R = rings.map(r => offsetPts(P.pts, r.d));
+    const orient = (v, want, sid) => { let Q = poly(v, sid); if (!Q) return; if (dot3(Q.n, want) < 0) Q = flip(Q); out.push(Q); };
+    for (let j = 0; j + 1 < rings.length; j++) {
+      if (Math.abs(rings[j + 1].s - rings[j].s) < 1e-9) continue;
+      for (let i = 0; i < n; i++) {
+        const p = P.pts[i], q = P.pts[(i + 1) % n], d = sub2(q, p), w = [0, 0, 0];
+        w[ua] = d[1]; w[va] = -d[0];
+        orient([at(R[j][i], rings[j].s), at(R[j][(i + 1) % n], rings[j].s), at(R[j + 1][(i + 1) % n], rings[j + 1].s), at(R[j + 1][i], rings[j + 1].s)], w, ids(i, j));
+      }
+    }
+    const lo = rings[0].s < rings[rings.length - 1].s ? -1 : 1;
+    for (const [k, sg] of [[0, lo], [rings.length - 1, -lo]]) for (const t of triangulate(R[k])) { const w = [0, 0, 0]; w[a] = sg; orient(t.map(m => at(R[k][m], rings[k].s)), w, null); }
+    return out;
+  }
+  // a straight stick of section w x d along unit u from T, frame e1, e2: its eight corners as a solid
+  function stickPolys(T, u, e1, e2, w, d, t0, t1) {
+    const c = (sa, sb, t) => [0, 1, 2].map(k => T[k] + e1[k] * sa * w / 2 + e2[k] * sb * d / 2 + u[k] * t);
+    const out = [], mid = c(0, 0, (t0 + t1) / 2);
+    const face = v => { let Q = poly(v, null); if (!Q) return; const f = [0, 1, 2].map(k => v.reduce((s2, p) => s2 + p[k], 0) / v.length - mid[k]); if (dot3(Q.n, f) < 0) Q = flip(Q); out.push(Q); };
+    for (const sa of [-1, 1]) face([c(sa, -1, t0), c(sa, 1, t0), c(sa, 1, t1), c(sa, -1, t1)]);
+    for (const sb of [-1, 1]) face([c(-1, sb, t0), c(1, sb, t0), c(1, sb, t1), c(-1, sb, t1)]);
+    for (const t of [t0, t1]) face([c(-1, -1, t), c(1, -1, t), c(1, 1, t), c(-1, 1, t)]);
+    return out;
+  }
+  // distance from a point to the nearest edge of a closed polygon
+  function edgeDist(q, pts) {
+    let best = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i], b = pts[(i + 1) % pts.length], ab = sub2(b, a), L = ab[0] * ab[0] + ab[1] * ab[1] || 1e-18;
+      const t = Math.max(0, Math.min(1, ((q[0] - a[0]) * ab[0] + (q[1] - a[1]) * ab[1]) / L));
+      best = Math.min(best, Math.hypot(q[0] - a[0] - ab[0] * t, q[1] - a[1] - ab[1] * t));
+    }
+    return best;
+  }
+
   // ---- compiling a part's shapes (part coordinates) ----
   const grow3 = (b, d) => ({ min: b.min.map(v => v - d), max: b.max.map(v => v + d) });
   function unionBox(list) { let u = null; for (const a of list) u = u ? { min: u.min.map((v, k) => Math.min(v, a.min[k])), max: u.max.map((v, k) => Math.max(v, a.max[k])) } : { min: a.min.slice(), max: a.max.slice() }; return u; }
@@ -558,16 +611,81 @@
         if (a == null) throw new Error('Part ' + p.id + ': a shape axis is x, y or z.');
         const P = ccw(fillet(profile(s.outline || s.cutout)));
         const sp = s.span ? s.span.map(parseLen).sort((x, y) => x - y) : [big.min[a], big.max[a]];
-        const region = boundaryBox(P, a, sp[0], sp[1], blank);
         const [ua, va] = plAxes(a);
-        out.push({
-          kind: keep ? 'outline' : 'cutout', keep, axis: a, span: sp, prof: P, tool, region, vary: [ua, va], src: s,
-          removes: q => q[a] > sp[0] && q[a] < sp[1] && inPoly([q[ua], q[va]], P.pts) !== keep,
-          cutter() {
-            if (!keep) return prismPolys(P, a, sp[0], sp[1]);
-            const slab = { min: big.min.slice(), max: big.max.slice() }; slab.min[a] = Math.max(sp[0], big.min[a]); slab.max[a] = Math.min(sp[1], big.max[a]);
-            return csgSubtract(boxPolys(slab), prismPolys(P, a, slab.min[a] - 0.5, slab.max[a] + 0.5));
+        // ease: { roundover | chamfer: r, faces }: the profile's edges eased where they meet the faces
+        // across the axis (both by default), following every curve and corner the profile has
+        const E = s.ease ? { r: parseLen(s.ease.roundover != null ? s.ease.roundover : s.ease.chamfer), round: s.ease.roundover != null } : null;
+        if (E) {
+          const names = [].concat(s.ease.faces || 'both'), sides = new Set();
+          for (const nm of names) {
+            if (nm === 'both') { sides.add(-1); sides.add(1); continue; }
+            const f = FACES[nm];
+            if (!f || f[0] !== a) throw new Error('Part ' + p.id + ': ease faces for a profile seen along ' + 'xyz'[a] + ' are ' + Object.keys(FACES).filter(k => FACES[k][0] === a).join(' and ') + ', or both.');
+            sides.add(f[1]);
           }
+          E.planes = [...sides].map(sg => ({ sg, at: sg < 0 ? Math.max(sp[0], blank.min[a]) : Math.min(sp[1], blank.max[a]) }));
+          E.inset = h => h >= E.r ? 0 : E.round ? E.r - Math.sqrt(Math.max(0, E.r * E.r - (E.r - h) * (E.r - h))) : E.r - h;
+        }
+        const eased = q => {
+          if (!E) return false;
+          for (const pl of E.planes) {
+            const h = (q[a] - pl.at) * -pl.sg;   // depth in from that face
+            if (h < 0 || h >= E.r) continue;
+            if (edgeDist([q[ua], q[va]], P.pts) < E.inset(h)) return true;
+          }
+          return false;
+        };
+        let region = boundaryBox(P, a, sp[0], sp[1], blank);
+        if (E && region) for (const k of [ua, va]) { region.min[k] = Math.max(blank.min[k], region.min[k] - E.r); region.max[k] = Math.min(blank.max[k], region.max[k] + E.r); }
+        out.push({
+          kind: keep ? 'outline' : 'cutout', keep, axis: a, span: sp, prof: P, tool, region, vary: E ? [0, 1, 2] : [ua, va], src: s, ease: E,
+          removes: q => {
+            const inSpan = q[a] > sp[0] && q[a] < sp[1], inside = inPoly([q[ua], q[va]], P.pts);
+            if (inSpan && inside !== keep) return true;
+            return eased(q);
+          },
+          cutter() {
+            if (!E) {
+              if (!keep) return prismPolys(P, a, sp[0], sp[1]);
+              const slab = { min: big.min.slice(), max: big.max.slice() }; slab.min[a] = Math.max(sp[0], big.min[a]); slab.max[a] = Math.min(sp[1], big.max[a]);
+              return csgSubtract(boxPolys(slab), prismPolys(P, a, slab.min[a] - 0.5, slab.max[a] + 0.5));
+            }
+            // rings from one end to the other: square ends run past the part, eased ends step in
+            // (out, for a cutout) along the round-over's quarter circle or the chamfer's line
+            const sgn = keep ? 1 : -1, steps = E.round ? 8 : 1;
+            const end = (sg) => {
+              const pl = E.planes.find(x => x.sg === sg), base = sg < 0 ? Math.max(sp[0], big.min[a]) : Math.min(sp[1], big.max[a]);
+              if (!pl) return [{ s: base + sg * 0.5, d: 0 }];
+              const rs = [];
+              if (!keep) rs.push({ s: pl.at + sg * 0.5, d: -E.r });
+              for (let k = 0; k <= steps; k++) { const h = E.r * k / steps; rs.push({ s: pl.at - sg * h, d: sgn * E.inset(h) }); }
+              return rs;
+            };
+            const rings = end(-1).concat(end(1).reverse());
+            const ids = {}, sid = (i, j) => { const key = P.sid[i] + '|' + (j < rings.length / 2 ? 0 : 1) + '|' + (Math.abs(rings[j].d) + Math.abs(rings[j + 1].d) > 0 ? 1 : 0); return ids[key] || (ids[key] = ++SID); };
+            const body = loftPolys(P, a, rings, sid);
+            if (!keep) return body;
+            const slab = { min: big.min.slice(), max: big.max.slice() }; slab.min[a] = Math.max(sp[0], big.min[a]); slab.max[a] = Math.min(sp[1], big.max[a]);
+            return csgSubtract(boxPolys(slab), body);
+          }
+        });
+      } else if (s.splay) {
+        // a leg splayed in two directions: a straight stick of section [w, d] hanging from `top`
+        // ([x, y] on the blank's top face), its foot moved out by the two sight-line angles (as a
+        // bevel gauge reads them in the front and side views), top and foot cut level
+        const ang = [].concat(s.splay).map(Number), tx = Math.tan((ang[0] || 0) * Math.PI / 180), ty = Math.tan((ang[1] || 0) * Math.PI / 180);
+        const sec = (s.section || [blank.max[0] - blank.min[0], blank.max[1] - blank.min[1]]).map(parseLen);
+        const ul = Math.hypot(tx, ty, 1), u = [tx / ul, ty / ul, -1 / ul];
+        const X = [1, 0, 0], ux = dot3(X, u), e1n = [1 - ux * u[0], -ux * u[1], -ux * u[2]], e1l = Math.hypot(...e1n), e1 = e1n.map(v => v / e1l);
+        const e2 = [e1[1] * u[2] - e1[2] * u[1], e1[2] * u[0] - e1[0] * u[2], e1[0] * u[1] - e1[1] * u[0]];
+        const hx = Math.abs(e1[0]) * sec[0] / 2 + Math.abs(e2[0]) * sec[1] / 2, hy = Math.abs(e1[1]) * sec[0] / 2 + Math.abs(e2[1]) * sec[1] / 2;
+        const T = s.top ? [parseLen(s.top[0]), parseLen(s.top[1]), blank.max[2]] : [tx >= 0 ? blank.min[0] + hx : blank.max[0] - hx, ty >= 0 ? blank.min[1] + hy : blank.max[1] - hy, blank.max[2]];
+        const H = blank.max[2] - blank.min[2], len = H / -u[2];
+        out.push({
+          kind: 'splay', keep: true, axis: 2, span: [blank.min[2], blank.max[2]], angles: [ang[0] || 0, ang[1] || 0], section: sec, top: T, dir: u, e1, e2, length: len,
+          stock: len + (Math.abs(e1[2]) * sec[0] + Math.abs(e2[2]) * sec[1]) / -u[2], tool: tool || 'tablesaw', region: { min: blank.min.slice(), max: blank.max.slice() }, vary: [0, 1, 2], src: s,
+          removes: q => { const r = sub3(q, T); return Math.abs(dot3(r, e1)) > sec[0] / 2 || Math.abs(dot3(r, e2)) > sec[1] / 2; },
+          cutter: () => csgSubtract(boxPolys(big), stickPolys(T, u, e1, e2, sec[0], sec[1], -2 / -u[2], len + 2 / -u[2]))
         });
       } else if (s.lathe) {
         const a = AXN[s.axis || 'z'];
@@ -888,7 +1006,7 @@
   //        curves: [{ axis, pts }], turned: [{ axis, d, center, beads: [{ r, mid, rise, chord, cove }] }], eased: [{ kind, size, edges }], notes: [text] }
   // (2D points are in the shape's own [u, v], the plan axes other than `axis`; at3() lifts one.)
   function measures(p) {
-    const out = { angles: [], arcs: [], curves: [], turned: [], eased: [], notes: [] };
+    const out = { angles: [], arcs: [], curves: [], turned: [], eased: [], splay: [], notes: [] };
     const loc = p.local || {}, shapes = loc.shapes || [];
     if (!shapes.length) return out;
     const body = loc.adds.filter(a => !loc.tenons.includes(a)), blank = unionBox(body.length ? body : loc.adds);
@@ -904,7 +1022,16 @@
         out.eased.push({ kind: sh.kind, size: sh.size, edges: [].concat(sh.src.edges || 'all') });
         continue;
       }
+      if (sh.kind === 'splay') {
+        // the sight-line angles, drawn where the stick leaves the top in the front and side views
+        const [ax2, ay2] = sh.angles, H = sh.span[1] - sh.span[0];
+        if (ax2) addAngle({ axis: 1, at: [sh.top[0], sh.top[2]], deg: Math.abs(ax2), r1: [0, -1], r2: [Math.tan(ax2 * Math.PI / 180), -1].map((v, k, q) => v / Math.hypot(...q)), bend: true, ext: 1, reach: H * 0.5, splay: true });
+        if (ay2) addAngle({ axis: 0, at: [sh.top[1], sh.top[2]], deg: Math.abs(ay2), r1: [0, -1], r2: [Math.tan(ay2 * Math.PI / 180), -1].map((v, k, q) => v / Math.hypot(...q)), bend: true, ext: 1, reach: H * 0.5, splay: true });
+        out.splay.push({ angles: sh.angles, section: sh.section, stock: sh.stock });
+        continue;
+      }
       const P = sh.prof, ax = sh.axis;
+      if (sh.ease) out.eased.push({ kind: sh.ease.round ? 'roundover' : 'chamfer', size: sh.ease.r, edges: [sh.src.ease.faces ? [].concat(sh.src.ease.faces).join(' and ') + ' profile' : 'profile'] });
       if (sh.kind === 'lathe') {
         const ds = [...new Set(P.nodes.map(q => +(2 * q[0]).toFixed(4)))].sort((x, y) => y - x);
         // beads, coves and rounded ends: arcs in the [radius, along] profile
@@ -965,7 +1092,8 @@
     if (fil.length) out.notes.push('Rounded corners ' + fil.join(', '));
     const holes = [...new Set(out.arcs.filter(a => a.circle).map(a => a.rv && Math.abs(a.rv - a.r) > 1e-6 ? F(2 * a.r) + ' × ' + F(2 * a.rv) + ' oval' : '⌀' + F(2 * a.r)))];
     if (holes.length) out.notes.push('Round ' + holes.join(', '));
-    const degs = [...new Set(out.angles.filter(a => !a.bend).map(a => D(a.deg)))], tapers = [...new Set(out.angles.filter(a => a.bend).map(a => D(a.deg)))];
+    for (const sp of out.splay) out.notes.push('Splayed ' + sp.angles.map((d, k) => D(Math.abs(d)) + ' ' + ['front view', 'side view'][k]).filter((_, k) => sp.angles[k]).join(', ') + '; cut from ' + F(sp.section[0]) + ' × ' + F(sp.section[1]) + ' stock ' + F(Math.ceil(sp.stock * 16) / 16) + ' long, ends cut level');
+    const degs = [...new Set(out.angles.filter(a => !a.bend).map(a => D(a.deg)))], tapers = [...new Set(out.angles.filter(a => a.bend && !a.splay).map(a => D(a.deg)))];
     if (degs.length) out.notes.push((degs.length > 1 ? 'Angles ' : 'Angle ') + degs.join(', '));
     if (tapers.length) out.notes.push((tapers.length > 1 ? 'Tapers ' : 'Taper ') + tapers.join(', '));
     if (out.curves.length) out.notes.push(out.curves.length === 1 ? 'Fair curve through ' + out.curves[0].pts.length + ' marked points' : out.curves.length + ' fair curves through marked points');
@@ -1136,6 +1264,15 @@
       if (p.qty !== p.instances.length) err('qty', name(p) + ': cut list says ' + p.qty + ' but the model places ' + p.instances.length + '.', [p.id]);
       if (p.isHardware || p.t == null) continue;
       if (!p.localSolid.bbox) { err('empty', name(p) + ' cuts remove all material.', [p.id]); continue; }
+      const sp = p.local.shapes.find(sh => sh.kind === 'splay');
+      if (sp) {
+        // a splayed leg is cut from its own stick: the section, and at least the length it runs
+        const sec = sp.section.slice().sort((a, c) => a - c), tw = [p.t, p.w].sort((a, c) => a - c);
+        if (sec.some((v, i) => Math.abs(v - tw[i]) > cfg.tol) || !(p.l >= sp.stock - cfg.tol))
+          err('dims', name(p) + ': cut list says ' + [p.t, p.w, p.l].map(v => fmt(v)).join(' x ') + ' but the splayed leg is cut from ' + fmt(sp.section[0]) + ' x ' + fmt(sp.section[1]) + ' stock at least ' + fmt(Math.ceil(sp.stock * 16) / 16) + ' long.', [p.id]);
+        else dimsOK++;
+        continue;
+      }
       const b = p.localSolid.blank || p.localSolid.bbox;   // shaped parts list the blank they are cut from
       const got = [0, 1, 2].map(i => b.max[i] - b.min[i]).sort((a, c) => a - c);
       const want = [p.t, p.w, p.l].sort((a, c) => a - c);

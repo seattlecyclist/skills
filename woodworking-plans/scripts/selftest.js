@@ -201,6 +201,21 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   out(bz.localSolid.shaped && C.shapedAway(bz.local.shp, [8, 0.3, 4]) && !C.shapedAway(bz.local.shp, [1, 0.3, 4]) && !C.shapedAway(bz.local.shp, [9.9, 0.3, 1.4]) && bzm.curves[0].pts.length === 5 && Math.abs(bzm.curves[0].pts[2][0] - 4.25) < 1e-9 && Math.abs(bzm.curves[0].pts[2][1] - 3.25) < 1e-9,
     'bezier: the cubic sweeps from its start to its end inside the control polygon, and is laid out through five points (the middle at t = 1/2)', JSON.stringify(bzm.curves));
   out(C.profile([[0, 0], { bezier: [[1, 2], [2, 0]] }, [1, -1]]).pts.length > 10 && (() => { try { C.profile([[0, 0], { bezier: [[1, 2]] }]); return false; } catch (e) { return /bezier/.test(e.message); } })(), 'bezier: a quadratic takes one control point; a bezier with no end is an error');
+  // a leg splayed both ways: a true straight stick, its section square to its own length, ends level
+  const spl = C.normalize({ parts: [{ id: '1', name: 'Leg', t: 1.5, w: 1.5, l: 19, stock: 'solid', shape: [{ box: [0, 0, 0, 4.5, 4.5, 18] }, { splay: [8, 6], section: [1.5, 1.5], top: [0.8, 0.8] }] }] }).parts[0];
+  const tilt = Math.atan(Math.hypot(Math.tan(8 * Math.PI / 180), Math.tan(6 * Math.PI / 180))), sv = spl.localSolid.cells.reduce((a, c) => a + C.vol(c), 0), sw = 1.5 * 1.5 * 18 / Math.cos(tilt);
+  const foot = [0.8 + 18 * Math.tan(8 * Math.PI / 180), 0.8 + 18 * Math.tan(6 * Math.PI / 180)];
+  out(spl.localSolid.shaped && Math.abs(sv - sw) / sw < 0.01 && !C.shapedAway(spl.local.shp, [0.8, 0.8, 17.9]) && !C.shapedAway(spl.local.shp, [foot[0], foot[1], 0.1]) && C.shapedAway(spl.local.shp, [0.8, 0.8, 0.1]) && C.measures(spl).notes[0].startsWith('Splayed 8° front view, 6° side view'),
+    'splay: the leg is a straight stick from its top to a foot moved out by both sight-line angles, its volume within 1%', sv.toFixed(2) + ' vs ' + sw.toFixed(2));
+  const splR = C.check({ meta: { title: 't' }, parts: [{ id: '1', name: 'Leg', qty: 1, t: 1.5, w: 1.5, l: 17, stock: 'solid', shape: [{ box: [0, 0, 0, 4.5, 4.5, 18] }, { splay: [8, 6], section: [1.5, 1.5] }] }] });
+  out(has(splR, 'dims'), 'splay: the cut list must give the stick, long enough for the splayed length');
+  // a round-over that follows a curved profile: the arch's arris is eased on the faces asked for
+  const er = C.normalize({ parts: [{ id: '1', name: 'Rail', t: 1.5, w: 11, l: 56, stock: 'solid', shape: [{ box: [0, 0, 0, 56, 1.5, 11] }, { outline: [[-1, -1], [57, -1], [57, 8], { arc: [-1, 8], rise: 3.1 }], axis: 'y', ease: { roundover: 0.375, faces: 'front' } }] }] }).parts[0];
+  const ep = er.local.shapes[0].prof.pts.find(q => Math.abs(q[0] - 6) < 2 && q[1] > 8.5), ez = ep[1] - 0.05;
+  out(C.shapedAway(er.local.shp, [ep[0], 0.02, ez]) && !C.shapedAway(er.local.shp, [ep[0], 0.75, ez]) && !C.shapedAway(er.local.shp, [ep[0], 1.48, ez]) && !C.shapedAway(er.local.shp, [ep[0], 0.02, 5]) && C.surface(er.localSolid).tris.length > 200,
+    'ease: a round-over follows the arched edge on the front face only, and leaves the rest of the face alone');
+  const ve2 = validate({ meta: { title: 't' }, parts: [{ id: '1', name: 'X', t: 1, w: 1, l: 1, shape: [{ box: [0, 0, 0, 1, 1, 1] }, { outline: [[0, 0], [1, 0], [1, 1]], axis: 'y', ease: { roundover: 0.1, faces: 'top' } }, { splay: [50, 2] }] }] }).filter(e => e.level === 'error').map(e => e.at);
+  out(ve2.includes('parts[0] (#1).shape[1].ease.faces') && ve2.includes('parts[0] (#1).shape[2].splay'), 'validation: ease faces must be across the profile, splay angles under 45°', JSON.stringify(ve2));
   const vb = JSON.parse(JSON.stringify(rt));
   vb.parts[0].shape[1].axis = 'w'; vb.parts[0].shape[3].edges = 'sideways'; vb.parts[1].shape[1].outline = [{ arc: [1, 1], rise: 1 }];
   const ve = validate(vb).filter(e => e.level === 'error').map(e => e.at);

@@ -110,11 +110,19 @@ The shape entries:
 
 - `outline` keeps what is inside the profile; `cutout` removes it. `span: [from, to]` limits either
   to part of the blank along the axis (a taper that stops partway through the thickness).
-- `roundover` and `chamfer` ease the blank's straight edges only. On a curved edge (a round top,
-  an arched rail) use a `lathe` profile or say the round-over in the steps.
-- Splayed legs: draw the leg's side view as a parallelogram `outline` in a blank sized to its
-  bounding box (`blank.l_extra` for the longer stock); splay in two directions with two outlines,
-  one per axis. Mitres and bevels are `cutout` triangles; both parts of a mitre meet on the line.
+- `roundover` and `chamfer` ease the blank's straight edges. To ease a shaped edge (a round seat,
+  an arched rail, a curved bracket), give the `outline` or `cutout` an `ease`: the round-over or
+  chamfer follows every curve and corner of the profile, on the faces across its axis
+  (`faces: 'both'` by default, or e.g. `'front'`, `'top'`). Only the profile's own edges are eased,
+  so to ease just the arch, run the profile's other sides past the blank:
+  `{ outline: [[-1, -1], [57, -1], [57, 8], { arc: [-1, 8], rise: 3 }], axis: 'y', ease: { roundover: 0.375, faces: 'front' } }`
+- Splayed legs: `{ splay: [front, side], section: [w, d], top: [x, y] }` makes the leg a straight
+  stick of that section hanging from `top` (its centre on the blank's top face), its foot moved
+  out by the two sight-line angles, as a bevel gauge reads them in the front and side views
+  (negative moves it the other way), top and foot cut level. The box is the leg's bounding box;
+  `t`, `w` are the section and `l` at least the stick's length (the check and the cut list say
+  how long). One angle splays one way; both give a true compound splay. Mitres and bevels are
+  `cutout` triangles; both parts of a mitre meet on the line.
 - Every angle and radius is measured for the builder, from the model itself: the Layout drawing
   (and the full-size pattern) gives each corner that isn't square in degrees, each taper as its
   angle off straight, each arc its radius with its centre marked or, when the centre is off the

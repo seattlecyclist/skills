@@ -50,10 +50,11 @@ Copy `examples/skeleton/plan.js`. Every driving number goes in `PARAMS`; derive 
 - Each part is one plain `box` per piece, placed by `instances` where it sits in the assembly.
   Mirror copies that face the other way (`mirror: 'x'`).
 - Shape anything that is not square with a shape entry on the part, never with stacked boxes or
-  stair-step cuts: `outline` for arched or curved edges, round and oval tops, tapers and splayed
-  legs, `cutout` for mitres, bevels, coves and curved cutouts, `lathe` for turned legs and round
-  tops with an edge profile, `roundover` and `chamfer` for eased edges. The box is the blank; the
-  shape is what you saw, rout or turn from it. See `modeling.md` (Curves and angles). A builder who
+  stair-step cuts: `outline` for arched or curved edges, round and oval tops and tapers,
+  `cutout` for mitres, bevels, coves and curved cutouts, `lathe` for turned legs and round tops
+  with an edge profile, `splay` for legs splayed one or both ways, `roundover` and `chamfer` for
+  eased edges (`ease` on an outline for a round-over that follows a curve). The box is the blank;
+  the shape is what you saw, rout or turn from it. See `modeling.md` (Curves and angles). A builder who
   says the curve looks like steps is right: there is no resolution to raise; use a shape. The
   drawings and cut list give every angle in degrees and every radius (with its rise or centre)
   from the model; pick round, settable numbers and repeat them in the step that cuts them.

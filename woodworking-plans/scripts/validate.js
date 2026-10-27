@@ -11,7 +11,7 @@
     plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note'],
     meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'check', 'tools', 'toolkit'],
     part: ['id', 'name', 'section', 'qty', 't', 'w', 'l', 'material', 'stock', 'mat', 'glueup', 'stock_t', 'blank', 'size', 'note', 'shape', 'instances', 'stage', 'callout', 'drawing', 'min_wall', 'pattern', 'grain'],
-    shape: ['box', 'cut', 'role', 'through', 'tool', 'outline', 'cutout', 'lathe', 'roundover', 'chamfer', 'axis', 'span', 'center', 'edges'],
+    shape: ['box', 'cut', 'role', 'through', 'tool', 'outline', 'cutout', 'lathe', 'splay', 'roundover', 'chamfer', 'axis', 'span', 'center', 'edges', 'ease', 'section', 'top'],
     instance: ['at', 'rot', 'mirror', 'explode', 'label'],
     joint: ['id', 'type', 'title', 'parts', 'glue', 'fasteners', 'gap', 'note', 'at', 'radius', 'explode'],
     bore: ['id', 'joint', 'kind', 'label', 'at', 'dir', 'd', 'depth', 'len', 'counterbore', 'washer', 'nut', 'bit', 'access', 'through', 'hardware', 'cross', 'copies', 'qty'],
@@ -48,6 +48,20 @@
             E(sa + '.edges', '"' + e + '" is not an edge: use top, bottom, front, back, left, right, a pair like "top-front", "long" or "all"');
         }
         return;
+      }
+      if (s.splay != null) {
+        // a leg splayed in two directions: [front-view degrees, side-view degrees], its section and top
+        if (!Array.isArray(s.splay) || s.splay.length !== 2 || s.splay.some(d => typeof d !== 'number' || Math.abs(d) >= 45)) E(sa + '.splay', 'should be [front-view degrees, side-view degrees], each under 45');
+        if (s.section != null) nums(s.section, 2, sa + '.section');
+        if (s.top != null) nums(s.top, 2, sa + '.top');
+        return;
+      }
+      if (s.ease != null) {
+        if (!obj(s.ease) || (s.ease.roundover == null) === (s.ease.chamfer == null)) E(sa + '.ease', 'should be { roundover: r } or { chamfer: r }, with faces if not both');
+        else { const r = len(s.ease.roundover != null ? s.ease.roundover : s.ease.chamfer, sa + '.ease'); if (r != null && !(r > 0)) E(sa + '.ease', 'the size should be more than 0'); }
+        if (s.lathe) E(sa + '.ease', 'a turning takes its round-overs in its lathe profile');
+        const want = { x: ['left', 'right'], y: ['front', 'back'], z: ['bottom', 'top'] }[s.axis] || [];
+        for (const f of [].concat(s.ease && s.ease.faces != null ? s.ease.faces : [])) if (f !== 'both' && !want.includes(f)) E(sa + '.ease.faces', '"' + f + '" is not a face across a profile seen along ' + s.axis + ': use ' + want.concat('both').join(', '));
       }
       if (!['x', 'y', 'z'].includes(s.axis)) E(sa + '.axis', 'should be "x", "y" or "z": the axis the profile is seen along (the saw cuts through it along this axis)');
       if (s.span != null) nums(s.span, 2, sa + '.span');
@@ -86,8 +100,8 @@
       if (p.mat && plan.materials && !plan.materials[p.mat]) E(at + '.mat', 'material "' + p.mat + '" is not in plan.materials');
       arr(p.shape, at + '.shape').forEach((s, k) => {
         const sa = at + '.shape[' + k + ']'; keys(s, 'shape', sa); if (!obj(s)) return;
-        const kinds = ['box', 'cut', 'outline', 'cutout', 'lathe', 'roundover', 'chamfer'].filter(x => s[x] != null);
-        if (kinds.length !== 1) return E(sa, 'needs exactly one of box, cut, outline, cutout, lathe, roundover or chamfer' + (kinds.length ? ' (has ' + kinds.join(' and ') + ')' : ''));
+        const kinds = ['box', 'cut', 'outline', 'cutout', 'lathe', 'splay', 'roundover', 'chamfer'].filter(x => s[x] != null);
+        if (kinds.length !== 1) return E(sa, 'needs exactly one of box, cut, outline, cutout, lathe, splay, roundover or chamfer' + (kinds.length ? ' (has ' + kinds.join(' and ') + ')' : ''));
         if (C.isShape(s)) return shapeEntry(s, sa, p);
         nums(s.box || s.cut, 6, sa + (s.box ? '.box' : '.cut'));
         if (s.role && s.role !== 'tenon') E(sa + '.role', 'only "tenon" is supported');

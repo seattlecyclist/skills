@@ -135,6 +135,8 @@ A problem shared by many copies of one bore is reported once, with the count.
     { outline: [[u, v], { arc: [u, v], rise }, ...], axis: 'y', span: [from, to], tool: 'bandsaw' },  // keep inside
     { cutout: [[u, v], ...], axis: 'z' },           // remove inside: mitres, bevels, coves, cutouts
     { lathe: [[r, along], ...], axis: 'z', center: [u, v] },   // turned: keep inside the revolved profile
+    { outline: [...], axis: 'z', ease: { roundover: 0.375, faces: 'top' } },   // round-over that follows the profile
+    { splay: [front°, side°], section: [w, d], top: [x, y] },  // a leg splayed one or both ways, ends level
     { roundover: 0.25, edges: 'top' }, { chamfer: 0.125, edges: ['bottom'] }   // ease the blank's edges
   ],
   instances: [{ at: [x, y, z], rot: 0, mirror: 'x', explode: [dx, dy, dz], label: 'A' }],
