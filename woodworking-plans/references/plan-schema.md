@@ -15,6 +15,11 @@ here and warns on unknown keys.
     wood: 'White oak & poplar', skill: 'Intermediate', time: '3 weekends',
     intro: ['paragraph', 'paragraph'],               // {#id} renders a part chip
     needs: ['tool or supply', ...],                  // lumber lines are added automatically
+    basis: [{ what: 'Seat height 18"', from: 'photo',  // where each governing size came from: 'you' (the
+              note: 'Scaled from the 30" table beside it' }],  //   builder said it), 'reference' (their plan, PDF
+                                                     //   or drawing), 'photo' (estimated from a photo; say what
+                                                     //   it was scaled from in note) or 'choice' (yours)
+    changed: [{ what: 'Mortise and tenon for pocket screws', why: 'Stronger, and you named it' }],  // departures from their reference
     check: { min_wall: 0.25, tol: 1/64, bore_wall: 1/8 },  // optional check settings
     tools: { dado: 2.5 },                            // optional: how deep each tool cuts (overrides)
     toolkit: ['Spokeshave']                          // extra tools for the list; false hides the derived list

@@ -72,6 +72,14 @@ html.printing .sheet{box-shadow:none}
 .need dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1px 10px;margin:0 0 6px}
 .need dt{font-weight:700}.need dd{margin:0}
 .need ul{margin:0;padding-left:1.05em}
+.basis{break-inside:avoid;margin:2px 0 12px;border:2px solid var(--ink);padding:10px 14px 12px;font:400 .95rem/1.35 var(--f-sans)}
+.basis h3{font:700 1.15rem/1 var(--f-sans);text-transform:uppercase;padding-bottom:6px;border-bottom:2px solid var(--ink);margin-bottom:6px}
+.basis h4{font:700 .8rem/1 var(--f-sans);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px}
+.basis ul{margin:0;padding:0;list-style:none}
+.basis li{margin:0 0 4px}
+.basis .src{display:inline-block;font:700 .68rem/1.5 var(--f-sans);text-transform:uppercase;letter-spacing:.04em;border:1px solid currentColor;border-radius:3px;padding:0 4px;margin-right:6px;vertical-align:1px;white-space:nowrap}
+.basis .src.photo{color:var(--red)}
+.basis .note{color:var(--ink-2)}
 
 /* 3D viewer: the hero illustration */
 .viewer{position:relative;background:var(--paper);min-width:0;margin:22px -8px 0}
@@ -310,6 +318,13 @@ figcaption .zb button.one{width:auto;padding:0 4px}
   const mark = '<div class="mark" aria-hidden="true"><span>' + esc(words[0]) + '</span>' + (words.length > 1 ? '<span>' + esc(words.slice(1).join(' ')) + '</span>' : '') + '<small>' + (meta.plan_no ? 'Plan No. ' + esc(meta.plan_no) : '') + (meta.rev ? (meta.plan_no ? ' · ' : '') + 'Rev ' + esc(meta.rev) : '') + '</small></div>';
   const glance = [['Overall', ov.w ? F(C.parseLen(ov.w)) + ' W x ' + F(C.parseLen(ov.d)) + ' D x ' + F(C.parseLen(ov.h)) + ' H' : ''], ['Wood', esc(meta.wood || '')], ['Skill', esc(meta.skill || '')], ['Shop time', esc(meta.time || '')]].filter(r => r[1]);
   const need = '<div class="need"><h3>What You’ll Need</h3><dl>' + glance.map(r => '<dt>' + r[0] + '</dt><dd>' + r[1] + '</dd>').join('') + '</dl><ul>' + BUY.map(buyLine).concat((meta.needs || []).map(rich)).map(n => '<li>' + n + '</li>').join('') + '</ul>' + (TOOLS.length ? '<p style="margin-top:6px;text-indent:0"><b>Tools:</b> ' + TOOLS.map(esc).join('; ') + '.</p>' : '') + '</div>';
+  // where the governing sizes came from (meta.basis) and what changed from the builder's reference (meta.changed)
+  const FROM = { you: 'Your words', reference: 'Your reference', photo: 'Estimated from photo', choice: 'Our choice' };
+  const basisLine = b => '<li><span class="src ' + esc(b.from) + '">' + (FROM[b.from] || esc(b.from)) + '</span>' + rich(b.what) + (b.note ? ' <span class="note">' + rich(b.note) + '</span>' : '') + '</li>';
+  const changedLine = c => '<li>' + rich(c.what) + (c.why ? ' <span class="note">' + rich(c.why) + '</span>' : '') + '</li>';
+  const basis = (meta.basis || []).length || (meta.changed || []).length ? '<div class="basis"><h3>Where the Sizes Come From</h3>' +
+    ((meta.basis || []).length ? '<ul>' + meta.basis.map(basisLine).join('') + '</ul>' : '') +
+    ((meta.changed || []).length ? '<h4>Changed From Your Reference</h4><ul>' + meta.changed.map(changedLine).join('') + '</ul>' : '') + '</div>' : '';
   const intro = (meta.intro || []).map((p, i) => i === 0 ? '<p class="lead"><span class="dc">' + esc(p.charAt(0)) + '</span>' + rich(p.slice(1)) + '</p>' : '<p>' + rich(p) + '</p>');
   const mast = T('<section class="sheet mast" aria-label="Overview">' +
     '<div class="top">' + mark + '<div class="tt"><h1>' + esc(meta.title || 'Project Plan') + '</h1>' + (meta.date ? '<div class="issue">' + esc(meta.date) + '</div>' : '') + (meta.subtitle ? '<div class="sub">' + esc(meta.subtitle) + '</div>' : '') + '<a href="#" class="pdfl" id="pdf">Printable PDF of these plans</a><span class="units" role="group" aria-label="Units"><button type="button" data-u="in" aria-pressed="' + (units !== 'mm') + '">in</button><button type="button" data-u="mm" aria-pressed="' + (units === 'mm') + '">mm</button></span><span class="pdfs" id="pdfs" role="status"></span></div></div>' +
@@ -320,7 +335,7 @@ figcaption .zb button.one{width:auto;padding:0 4px}
         '<div class="grp"><button class="b" id="lbl" type="button" aria-pressed="true">Callouts</button><button class="b" id="iso" type="button" aria-pressed="false">Isolate</button><button class="b" id="asm" type="button" aria-pressed="false">Assembly steps</button></div>' +
         '<span class="hint" style="position:static">Drag to orbit · right-drag to pan · ctrl+scroll or pinch to zoom</span>' +
       '</div><div class="stepbox" id="stepbox"></div>' +
-    '<div class="cols" style="margin-top:22px">' + intro.slice(0, 1).join('') + need + intro.slice(1).join('') + '</div>' +
+    '<div class="cols" style="margin-top:22px">' + intro.slice(0, 1).join('') + need + basis + intro.slice(1).join('') + '</div>' +
     foot() + '</section>');
   sheets.push(mast); app.appendChild(mast);
 
@@ -1605,7 +1620,7 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       for (let i = 0; i < sheets.length; i++) {
         out.textContent = 'Making the PDF… page ' + (i + 1) + ' of ' + sheets.length;
         const top = sheets[i].getBoundingClientRect().top;
-        const cuts = [...sheets[i].querySelectorAll('figure, .ml, .hwbox, .callbox, .rev, tr, .steps p, .cols p, .need, h2, .foot, .checks li')]
+        const cuts = [...sheets[i].querySelectorAll('figure, .ml, .hwbox, .callbox, .rev, tr, .steps p, .cols p, .need, .basis, h2, .foot, .checks li')]
           .flatMap(el => { const r = el.getBoundingClientRect(); return [(r.top - top) * 2 - 8, (r.bottom - top) * 2 + 4]; });
         const cv = await window.html2canvas(sheets[i], { scale: 2, backgroundColor: '#ffffff', useCORS: true, logging: false });
         const k = CW / cv.width, h = cv.height * k;

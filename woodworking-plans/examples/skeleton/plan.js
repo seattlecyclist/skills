@@ -34,7 +34,8 @@ module.exports = function build(P = PARAMS, J = require('../../scripts/joints.js
   return {
     meta: { series: 'Shop Plan', plan_no: '001', rev: P.rev, date: 'Oct 2026', title: 'Side Table', subtitle: 'Mortise and tenon base, buttoned top',
       overall: { w: P.w, d: P.d, h: P.h }, wood: 'Cherry', skill: 'Beginner', time: '1 weekend',
-      intro: ['Four legs, four aprons and a top: the first table every woodworker should build.'], needs: ['Router or mortiser for the mortises'] },
+      intro: ['Four legs, four aprons and a top: the first table every woodworker should build.'], needs: ['Router or mortiser for the mortises'],
+      basis: [{ what: 'Height 24"', from: 'you' }, { what: 'Top 20" × 16"', from: 'choice', note: 'A 1" overhang all round the base.' }] },
     materials: { wood: { color: '#efcf78' } },
     sections: [{ id: 'table', title: 'Table' }],
     parts: [leg, front, side, top],
