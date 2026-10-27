@@ -117,8 +117,9 @@ The shape entries:
 - Every angle and radius is measured for the builder, from the model itself: the Layout drawing
   (and the full-size pattern) gives each corner that isn't square in degrees, each taper as its
   angle off straight, each arc its radius with its centre marked or, when the centre is off the
-  drawing, its rise over the chord, each turning its diameters, and each free `curve` its points,
-  dimensioned. A bevel or profile seen only from the end gets an End view. The cut list repeats
+  drawing, its rise over the chord, each turning its diameters and each bead or cove its radius,
+  and each free `curve` its points, dimensioned. The Joint Details sheet lists and calls out the
+  angles and radii where the parts meet (a mitre's 45°). A bevel or profile seen only from the end gets an End view. The cut list repeats
   them ("Shaped: Angle 45°, Arc R 21-21/32" (rise 1-1/4" over 14-1/2")"). Write shapes so those
   numbers are ones a builder can set and lay out: give angles by points that make a round angle
   (a 45° mitre, a 2° taper), arcs by `rise` or `center` in shop fractions, and use `curve` only

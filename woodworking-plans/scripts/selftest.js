@@ -194,6 +194,8 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   const fc = ms([{ axis: 'y', outline: [[0, 0], [20, 0, 0.5], [20, 3], { curve: [[14, 3.5], [8, 2.5], [0, 3]] }] }, { axis: 'y', cutout: { circle: [5, 2, 0.5] } }]);
   out(fc.curves.length === 1 && fc.curves[0].pts.length === 4 && fc.arcs.some(a => a.fillet && Math.abs(a.r - 0.5) < 1e-6) && fc.notes.includes('Round ⌀1"'), 'measures: a free curve keeps its points, a rounded corner and a hole their radius and diameter', JSON.stringify(fc.notes));
   out(!ms([]).angles.length && !ms([{ axis: 'y', outline: [[0, 0], [20, 0], [20, 4], [0, 4]] }]).angles.length, 'measures: square parts have no angles to give');
+  const tm = C.measures(tl);
+  out(tm.turned.length === 1 && tm.turned[0].beads.length === 1 && !tm.turned[0].beads[0].cove && Math.abs(tm.turned[0].beads[0].r - (1 + 0.0625) / 0.5) < 1e-6 && tm.notes.includes('Bead R 2-1/8"'), 'measures: a bead on a turning gives its radius', JSON.stringify(tm.notes));
   const vb = JSON.parse(JSON.stringify(rt));
   vb.parts[0].shape[1].axis = 'w'; vb.parts[0].shape[3].edges = 'sideways'; vb.parts[1].shape[1].outline = [{ arc: [1, 1], rise: 1 }];
   const ve = validate(vb).filter(e => e.level === 'error').map(e => e.at);
