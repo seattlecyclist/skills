@@ -128,7 +128,7 @@ function review() {
     P.push('Touches: ' + r.touch.map(nm).join(', '));
     // curves and angles on these parts, for the grain, tool and blank checks
     const shaped = r.touch.map(id => M.byId[id]).filter(p => p && p.local.shapes.length);
-    if (shaped.length) P.push('Shaped: ' + shaped.map(p => nm(p.id) + ' (' + [...new Set(p.local.shapes.map(sh => sh.kind + (sh.kind === 'roundover' || sh.kind === 'chamfer' ? ' ' + F(sh.size) : '') + (sh.prof.arcs.length ? ', R ' + sh.prof.arcs.map(a => F(a.r)).join('/') : '')))].join('; ') + ')').join(', ') + '. Check the blank, grain along each curve, and the tool for each radius.');
+    if (shaped.length) P.push('Shaped: ' + shaped.map(p => nm(p.id) + ' (' + [...new Set(p.local.shapes.map(sh => sh.kind))].join(', ') + ': ' + (core.measures(p).notes.join('; ') || 'no angle or radius') + ')').join(', ') + '. Check the blank, grain along each curve, the tool for each radius, and that every angle and radius here is one the builder can set or lay out (the layout drawings dimension each).');
     P.push('Mates: ' + (r.mates.length ? r.mates.map(m => nm(m.id) + ' (' + m.via.join(', ') + ')').join(', ') : 'none'));
     P.push('Joints in scope: ' + (r.joints.join(', ') || 'none') + (r.bores.length ? '. Bores: ' + r.bores.join(', ') : ''));
     if (r.halves.length) { P.push('Joints and fittings, both halves (verify each against the drawings, steps and hardware list):'); for (const h of r.halves) P.push('  - ' + h); }

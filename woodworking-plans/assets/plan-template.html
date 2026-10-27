@@ -678,24 +678,87 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     figs.push(figure(svg, 'Section ' + sv.sc.id + '–' + sv.sc.id, sv.sc.title || ({ 'x-': 'from the right', 'x+': 'from the left', 'y+': 'from the front', 'y-': 'from the back', 'z-': 'looking down', 'z+': 'looking up' }[sv.sc.cut + sv.keep] + ', cut ' + FT(sv.secAt) + ' from the ' + ['left', 'front', 'floor'][sv.axis]), wideFig));
   }
 
+  // every radius, angle and free curve a shaped part shows face on in this view, from the engine's
+  // measures: R and rise over chord or a centre mark on each arc, each angle drawn and given in
+  // degrees, each free curve's points marked. Points worth a dimension go into pts3.
+  function measureMarks(svg, MS, view, b, fs, pts3) {
+    const drop = view.drop, U = view.u, V = view.v, ext = [0, 1, 2].map(a => b.max[a] - b.min[a]);
+    const onPart = (q, axes) => axes.every(a => q[a] >= b.min[a] - 1e-6 && q[a] <= b.max[a] + 1e-6);
+    const sx = q => [X(q[U]), Y(q[V])], lift = (axis, q) => C.at3(axis, q, 0);
+    const marks = svgEl('g', { class: 'meas' }, svg);
+    for (const A of MS.arcs) {
+      if (A.axis !== drop) continue;
+      const m = lift(A.axis, A.mid);
+      if (!A.circle && !onPart(m, [U, V]) && !(A.a && onPart(lift(A.axis, A.a), [U, V]))) continue;
+      let txt = A.circle ? (A.rv && Math.abs(A.rv - A.r) > 1e-6 ? FT(2 * A.r) + ' × ' + FT(2 * A.rv) + ' oval' : '⌀' + FT(2 * A.r)) : 'R ' + FT(A.r);
+      const c3 = lift(A.axis, A.c), near = [U, V].every(a => c3[a] >= b.min[a] - ext[a] * 0.1 && c3[a] <= b.max[a] + ext[a] * 0.1);
+      if (!A.circle && !A.fillet) {
+        // the centre, when it lies on the drawing, is marked and located; a long, flat arc is laid
+        // out by its rise over the chord instead (a batten bent through three points)
+        if (near) {
+          const [cx, cy] = sx(c3), h = fs * 0.6;
+          svgEl('path', { class: 'thin', d: 'M' + (cx - h) + ' ' + cy + 'H' + (cx + h) + 'M' + cx + ' ' + (cy - h) + 'V' + (cy + h) }, marks);
+          if (onPart(c3, [U, V])) pts3.push(c3);
+        } else if (A.rise != null) txt += ', rise ' + FT(A.rise) + ' over ' + FT(A.chord);
+      }
+      // the label sits just off the curve, on the side away from the part
+      const [mx, my] = sx(m), [ccx, ccy] = sx(c3), ol = Math.hypot(mx - ccx, my - ccy) || 1, [pcx, pcy] = sx([0, 1, 2].map(a => (b.min[a] + b.max[a]) / 2));
+      const sg = A.circle || (mx - ccx) * (mx - pcx) + (my - ccy) * (my - pcy) >= 0 ? 1 : -1, ox = sg * (mx - ccx) / ol, oy = sg * (my - ccy) / ol;
+      const t = svgEl('text', { class: 'dtx', x: mx + ox * fs * 0.9, y: my + oy * fs * 0.9 + fs * 0.3 + (oy > 0.3 ? fs * 0.5 : 0), 'font-size': fs * 0.85, 'text-anchor': A.circle ? 'middle' : Math.abs(ox) < 0.5 ? 'middle' : ox > 0 ? 'start' : 'end' }, marks);
+      t.textContent = txt;
+      if (A.a && A.b && !A.fillet) for (const q of [A.a, A.b]) { const r3 = lift(A.axis, q); if (onPart(r3, [U, V])) pts3.push(r3); }
+    }
+    for (const G of MS.angles) {
+      if (G.axis !== drop) continue;
+      const v3 = lift(G.axis, G.at);
+      const [vx, vy] = sx(v3), dir = r => { const q = sx(lift(G.axis, [G.at[0] + r[0], G.at[1] + r[1]])); const l = Math.hypot(q[0] - vx, q[1] - vy) || 1; return [(q[0] - vx) / l, (q[1] - vy) / l]; };
+      const d1 = dir(G.r1), d2 = dir(G.r2), rr = Math.max(fs * 1.2, Math.min(fs * (G.deg < 20 ? 5 : 2.4), G.reach * K * (G.bend ? 0.8 : 0.45)));
+      const a1 = Math.atan2(d1[1], d1[0]); let sw = Math.atan2(d2[1], d2[0]) - a1;
+      while (sw > Math.PI) sw -= 2 * Math.PI; while (sw < -Math.PI) sw += 2 * Math.PI;
+      // the edge carried on past a bend, so the small angle has two lines to sit between
+      if (G.bend) for (const d of [d1, d2]) svgEl('line', { class: 'thin', x1: vx, y1: vy, x2: vx + d[0] * rr * 1.25, y2: vy + d[1] * rr * 1.25, style: 'stroke-dasharray:3 2' }, marks);
+      const e = [vx + Math.cos(a1 + sw) * rr, vy + Math.sin(a1 + sw) * rr];
+      svgEl('path', { class: 'thin', d: 'M' + (vx + d1[0] * rr) + ' ' + (vy + d1[1] * rr) + 'A' + rr + ' ' + rr + ' 0 0 ' + (sw > 0 ? 1 : 0) + ' ' + e[0] + ' ' + e[1] }, marks);
+      const bi = a1 + sw / 2, tr = rr + fs * (G.deg < 20 ? 1.4 : 1.1);
+      // past a bend the wedge is a sliver: the figure goes beside it, off the carried-on edge
+      let tx = vx + Math.cos(bi) * tr, ty = vy + Math.sin(bi) * tr, cb = Math.cos(bi);
+      if (G.bend) { const de = G.ext === 1 ? d1 : d2, dc = G.ext === 1 ? d2 : d1, w = [de[0] - dc[0], de[1] - dc[1]], wl = Math.hypot(w[0], w[1]) || 1; tx += w[0] / wl * fs * 0.7; ty += w[1] / wl * fs * 0.7; cb = w[0] / wl; }
+      const t = svgEl('text', { class: 'dtx', x: tx, y: ty + fs * 0.3, 'font-size': fs * 0.8, 'text-anchor': cb > 0.4 ? 'start' : cb < -0.4 ? 'end' : 'middle' }, marks);
+      t.textContent = (Math.round(G.deg * 10) / 10) + '°';
+      pts3.push(v3);
+    }
+    for (const cv of MS.curves) {
+      if (cv.axis !== drop) continue;
+      // a free curve is laid out through its points: each one marked and dimensioned
+      for (const q of cv.pts) {
+        const r3 = lift(cv.axis, q); if (!onPart(r3, [U, V])) continue;
+        const [x, y] = sx(r3); svgEl('circle', { cx: x, cy: y, r: fs * 0.22, style: 'fill:var(--ink)' }, marks);
+        if (cv.pts.length <= 12) pts3.push(r3);
+      }
+    }
+  }
+
   // ---- part layouts: every part with cuts or tenons gets a dimensioned shop drawing ----
   const partFigs = [];
   for (const p of M.parts) {
     if (p.isHardware || !p.shape || p.drawing === false) continue;
     if (!p.local.cuts.length && !p.local.tenons.length && !p.local.shapes.length && !p.drawing) continue;
     const S = p.localSolid, b = S.bbox; if (!b) continue;
+    const MS = C.measures(p);
     const ext = [0, 1, 2].map(a => b.max[a] - b.min[a]);
     const lA = ext.indexOf(Math.max(...ext));
     const rest = [0, 1, 2].filter(a => a !== lA).sort((a, c) => ext[c] - ext[a]);
     const wA = rest[0], tA = rest[1];
     const vertical = p.drawing && p.drawing.vertical != null ? p.drawing.vertical : (p.instances[0] && C.parseLen && (() => { const I = p.instances[0]; const wb = I.bbox; return (wb.max[2] - wb.min[2]) >= Math.max(wb.max[0] - wb.min[0], wb.max[1] - wb.min[1]) - 1e-6; })());
     const longPart = !vertical && ext[lA] / ext[wA] > 4;
+    // a bevel or profile running the part's length only shows true from the end
+    const endView = MS.angles.concat(MS.arcs, MS.curves).some(m => m.axis === lA);
     const guess = vertical ? fsFor((ext[wA] + ext[tA]) * K * 1.7, ext[lA] * K * 1.25, false)
       : fsFor(ext[lA] * K * 1.15, (ext[wA] + ext[tA]) * K * 1.6 + 120, longPart);
     const s = settle(fsP => {
-    const mk = (drop, other, label) => {
+    const mk = (drop, other, label, end) => {
       const svg = newSVG();
-      const view = vertical ? { drop, sign: 1, u: other, v: lA } : { drop, sign: 1, u: lA, v: other };
+      const view = end ? { drop, sign: 1, u: wA, v: tA } : vertical ? { drop, sign: 1, u: other, v: lA } : { drop, sign: 1, u: lA, v: other };
       project(svg, [{ part: p.id, solid: S, wood: true }], view);
       const U = view.u, V = view.v;
       const big = Math.max(ext[U], ext[V]), fs = fsP, off = fs * 2 / K;
@@ -726,15 +789,9 @@ figcaption .zb button.one{width:auto;padding:0 4px}
           continue;
         }
         if (sh.axis !== drop) continue;
-        if (sh.prof.nodes.length <= 10) for (const q of sh.prof.nodes) { const r3 = at3(sh, q); if (onPart(r3, [U, V])) pts3.push(r3); }
-        for (const A of sh.prof.arcs) {
-          if (A.r > 240) continue;
-          const m = at3(sh, A.mid);
-          if (m[U] < b.min[U] - 0.05 || m[U] > b.max[U] + 0.05 || m[V] < b.min[V] - 0.05 || m[V] > b.max[V] + 0.05) continue;
-          const t = svgEl('text', { class: 'dtx', x: X(m[U]), y: Y(m[V]) + fs * 1.2, 'font-size': fs * 0.85, 'text-anchor': 'middle' }, svg);
-          t.textContent = A.circle ? (A.rv && Math.abs(A.rv - A.r) > 1e-6 ? FT(2 * A.r) + ' × ' + FT(2 * A.rv) + ' oval' : '⌀' + FT(2 * A.r)) : 'R ' + FT(A.r);
-        }
+        if (sh.prof.nodes.length <= 16) for (const q of sh.prof.nodes) { const r3 = at3(sh, q); if (onPart(r3, [U, V])) pts3.push(r3); }
       }
+      measureMarks(svg, MS, { drop, u: U, v: V }, b, fs, pts3);
       const chain = (axis) => {
         const cs = [b.min[axis], b.max[axis]];
         for (const f of feats) for (const c of [f.min[axis], f.max[axis]]) if (c > b.min[axis] + 1e-6 && c < b.max[axis] - 1e-6) cs.push(c);
@@ -753,20 +810,26 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       return { svg, label, cx: X((u0 + u1) / 2), cy: Y((v0 + v1) / 2), fs, pw: (u1 - u0) * K, ph: (v1 - v0) * K };
     };
     const a = mk(tA, wA, 'Face'), c = mk(wA, tA, 'Edge');
+    // a bevel or profile running the part's length only shows true from the end
+    const e = endView ? mk(lA, null, 'End', true) : null;
     // place face and edge views side by side in one figure
     const s = newSVG();
     const host = document.createElement('div'); host.style.cssText = 'position:absolute;left:-9999px;visibility:hidden'; document.body.appendChild(host);
-    host.appendChild(a.svg); host.appendChild(c.svg);
-    const ba = a.svg.getBBox(), bc = c.svg.getBBox(); host.remove();
+    host.appendChild(a.svg); host.appendChild(c.svg); if (e) host.appendChild(e.svg);
+    const ba = a.svg.getBBox(), bc = c.svg.getBBox(), be = e && e.svg.getBBox(); host.remove();
     const gap = vertical ? Math.max(ba.width * 0.25, fsP * 4) : fsP * 4;
     const ga = svgEl('g', { transform: 'translate(' + (-ba.x) + ',' + (-ba.y) + ')' }, s);
     while (a.svg.childNodes.length > 1) ga.appendChild(a.svg.childNodes[1]);
     const gc = svgEl('g', { transform: vertical ? 'translate(' + (ba.width + gap - bc.x) + ',' + (-bc.y) + ')' : 'translate(' + (-bc.x) + ',' + (ba.height + gap - bc.y) + ')' }, s);
     while (c.svg.childNodes.length > 1) gc.appendChild(c.svg.childNodes[1]);
+    // the end view: beside the edge view on an upright part, beside the face view on a lying one
+    const ex = e && (vertical ? ba.width + gap + bc.width + gap : ba.width + gap), ey = 0;
+    if (e) { const ge = svgEl('g', { transform: 'translate(' + (ex - be.x) + ',' + (ey - be.y) + ')' }, s); while (e.svg.childNodes.length > 1) ge.appendChild(e.svg.childNodes[1]); }
     const lfs = fsP * 1.15;
     const lab = (txt, x, y) => { const t = svgEl('text', { class: 'lbl', x, y, 'font-size': lfs, 'text-anchor': 'start' }, s); t.textContent = txt; };
     lab('(Face)', 0, -lfs * 0.6);
     if (vertical) lab('(Edge)', ba.width + gap, -lfs * 0.6); else lab('(Edge)', 0, ba.height + gap - lfs * 0.6);
+    if (e) lab('(End)', ex, ey - lfs * 0.6);
     // the part's number in a balloon on the face, and in red how many to make, as the magazine marks "All 4 Uprights"
     const br = Math.min(a.fs * 1.05, a.pw * 0.3, a.ph * 0.3), side = a.pw > a.ph * 2.5;
     const bx = a.cx - (side ? br * 1.6 : 0), by = a.cy - (side || p.qty < 2 ? 0 : br * 0.9);
@@ -777,8 +840,8 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     return s;
     }, guess, longPart);
     // edge treatments are said, not dimensioned: "1/4" round-over, top edges"
-    const eased = [...new Set(p.local.shapes.filter(sh => sh.kind === 'roundover' || sh.kind === 'chamfer').map(sh => FT(sh.size) + ' ' + (sh.kind === 'roundover' ? 'round-over' : 'chamfer') + ', ' + [].concat(sh.src.edges || 'all').join(' and ') + ' edges'))];
-    partFigs.push(figure(s, p.name + ' Layout', [(p.drawing && p.drawing.sub) || 'Face and Edge Views'].concat(eased).join(' · '), longPart));
+    const eased = [...new Set(MS.eased.map(x => FT(x.size) + (x.kind === 'roundover' ? ' (R ' + FT(x.size) + ') round-over' : ' × 45° chamfer') + ', ' + x.edges.join(' and ') + ' edges'))];
+    partFigs.push(figure(s, p.name + ' Layout', [(p.drawing && p.drawing.sub) || (endView ? 'Face, Edge and End Views' : 'Face and Edge Views')].concat(eased).join(' · '), longPart));
   }
 
   // ---- authored detail drawings (also used by patterns, shop aids and "don't" panels) ----
@@ -835,7 +898,8 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     project(svg, [{ part: p.id, solid: p.localSolid, wood: true }], view);
     const u0 = b.min[lA], u1 = b.max[lA], v0 = b.min[wA], v1 = b.max[wA], off = fs * 2 / K;
     const feats = p.local.cuts.concat(p.local.tenons).filter(f => f.max[tA] >= b.max[tA] - 1e-6);
-    const chain = ax => [...new Set([b.min[ax], b.max[ax]].concat(feats.flatMap(f => [f.min[ax], f.max[ax]]).filter(c => c > b.min[ax] + 1e-6 && c < b.max[ax] - 1e-6)).map(c => +c.toFixed(5)))].sort((x, y) => x - y);
+    const pts3 = []; measureMarks(svg, C.measures(p), view, b, fs, pts3);
+    const chain = ax => [...new Set([b.min[ax], b.max[ax]].concat(feats.flatMap(f => [f.min[ax], f.max[ax]]).concat(pts3.map(q => q[ax])).filter(c => c > b.min[ax] + 1e-6 && c < b.max[ax] - 1e-6)).map(c => +c.toFixed(5)))].sort((x, y) => x - y);
     const cu = chain(lA), cv = chain(wA);
     if (cu.length > 2) for (let i = 0; i < cu.length - 1; i++) dim(svg, [cu[i], v1], [cu[i + 1], v1], off, null, fs * .85);
     dim(svg, [u0, v1], [u1, v1], cu.length > 2 ? off * 3.2 : off, null, fs);
@@ -1329,7 +1393,8 @@ figcaption .zb button.one{width:auto;padding:0 4px}
       const k = r.stock + '|' + r.t + '|' + (r.p.material || '');
       if (k !== last) { last = k; body += '<tr class="grp"><th colspan="7">' + (r.stock === 'sheet' ? F(r.t) + ' ' + esc(r.p.material || 'sheet') + ' (sheet)' : esc(C.nominal(r.t)) + ' ' + esc(r.p.material || '') + ' · mill to ' + F(r.t)) + '</th></tr>'; }
       const id = esc(r.p.id), q = r.p.qty * r.layers;
-      const notes = [r.layers > 1 ? 'Glue up from ' + r.layers + ' layers' : '', r.stock === 'sheet' && r.grain ? 'Face grain along the length' : '', r.p.note ? rich(r.p.note) : ''].filter(Boolean).join(' · ');
+      const shaped = r.p.local ? C.measures(r.p).notes.map(esc).join(', ') : '';
+      const notes = [r.layers > 1 ? 'Glue up from ' + r.layers + ' layers' : '', r.stock === 'sheet' && r.grain ? 'Face grain along the length' : '', shaped ? 'Shaped: ' + shaped + ' (see its layout)' : '', r.p.note ? rich(r.p.note) : ''].filter(Boolean).join(' · ');
       body += '<tr data-part="' + id + '"><td><input type="checkbox" class="ck" data-ck="' + id + ':r" aria-label="Rough cut #' + id + '"></td><td><input type="checkbox" class="ck" data-ck="' + id + ':f" aria-label="Final size #' + id + '"></td><td class="nm"><span class="n">' + id + '</span>' + esc(r.p.name) + (notes ? '<div class="note">' + notes + '</div>' : '') + '</td><td>' + q + '</td>' +
         '<td class="d rough">' + (r.stock === 'sheet' ? '—' : F(r.rough.t) + ' x ' + F(r.rough.w) + ' x ' + F(r.rough.l)) + '</td><td class="d">' + F(r.t) + ' x ' + F(r.p.w) + ' x ' + F(r.p.l) + '</td></tr>';
     }

@@ -257,14 +257,14 @@
   //      nodes (the points as written, for dimensions), arcs ({ c, r, mid } for radius labels) }
   function profile(spec, open) {
     const L = parseLen, P2 = q => [L(q[0]), L(q[1])];
-    const pts = [], sid = [], nodes = [], arcs = [], fil = [];
+    const pts = [], sid = [], nodes = [], arcs = [], fil = [], curves = [];
     if (spec && !Array.isArray(spec) && (spec.circle || spec.ellipse)) {
       const e = (spec.circle || spec.ellipse).map(L), ru = e[2], rv = spec.circle ? e[2] : e[3];
       const n = 4 * Math.ceil(arcSteps(Math.max(ru, rv), 2 * Math.PI) / 4), id = ++SID;
       for (let i = 0; i < n; i++) { const t = 2 * Math.PI * i / n; pts.push([e[0] + ru * Math.cos(t), e[1] + rv * Math.sin(t)]); sid.push(id); }
       for (const t of [0, 1, 2, 3]) nodes.push([e[0] + ru * Math.cos(t * Math.PI / 2), e[1] + rv * Math.sin(t * Math.PI / 2)]);
       arcs.push({ c: [e[0], e[1]], r: ru, rv, mid: [e[0] + ru * Math.SQRT1_2, e[1] + rv * Math.SQRT1_2], circle: true });
-      return { pts, sid, nodes, arcs, fil };
+      return { pts, sid, nodes, arcs, fil, curves };
     }
     if (!Array.isArray(spec) || !spec.length) throw new Error('A profile needs a list of points, or a circle or ellipse.');
     const add = (p, id) => { if (pts.length) sid[pts.length - 1] = id; pts.push(p); sid.push(null); };
@@ -302,17 +302,18 @@
         for (const q of A.pts) add(q, id);
         nodes.push(p1);
         const ma = Math.atan2(p0[1] - A.c[1], p0[0] - A.c[0]) + A.sweep / 2;
-        arcs.push({ c: A.c, r: A.r, mid: [A.c[0] + A.r * Math.cos(ma), A.c[1] + A.r * Math.sin(ma)] });
+        arcs.push({ c: A.c, r: A.r, mid: [A.c[0] + A.r * Math.cos(ma), A.c[1] + A.r * Math.sin(ma)], a: p0, b: p1, sweep: Math.abs(A.sweep) });
       } else if (e.curve) {
         const list = e.curve.map(P2);
         for (const q of curveTo(p0, list)) add(q, id);
         nodes.push(list[list.length - 1]);
+        curves.push([p0].concat(list));
       } else throw new Error('Unknown profile entry: ' + JSON.stringify(e));
     }
     // a closing entry that lands on the start point
     if (pts.length > 2 && len2(sub2(pts[0], pts[pts.length - 1])) < 1e-6) { const id = sid[pts.length - 2]; pts.pop(); sid.pop(); sid[pts.length - 1] = id; }
     if (!open) sid[pts.length - 1] = sid[pts.length - 1] || ++SID;
-    return { pts, sid, nodes, arcs, fil };
+    return { pts, sid, nodes, arcs, fil, curves };
   }
   // round the corners that asked for it ([u, v, r]): only straight edges meet there
   function fillet(P) {
@@ -333,7 +334,7 @@
       const A = arcTo(s, e, c, cross2(u1, u2) < 0 ? 1 : -1), id = ++SID;
       pts.push(s); sid.push(id);
       A.pts.forEach((q, k) => { pts.push(q); sid.push(k === A.pts.length - 1 ? P.sid[i] : id); });
-      P.arcs.push({ c, r: rr, mid: [c[0] - bis[0] / bl * rr, c[1] - bis[1] / bl * rr] });
+      P.arcs.push({ c, r: rr, mid: [c[0] - bis[0] / bl * rr, c[1] - bis[1] / bl * rr], a: s, b: e, sweep: Math.PI - th, fillet: true });
     }
     return Object.assign({}, P, { pts, sid });
   }
@@ -568,7 +569,7 @@
         const dir = last[1] >= first[1] ? 1 : -1;
         const pts = [[0, first[1] - dir * 0.05], [first[0], first[1] - dir * 0.05]].concat(raw.pts, [[last[0], last[1] + dir * 0.05], [0, last[1] + dir * 0.05]]);
         const sid = [++SID, raw.sid[0] || ++SID].concat(raw.sid.slice(0, -1).map(x => x || ++SID), [++SID, ++SID, ++SID]);
-        const P = ccw({ pts, sid, nodes: raw.nodes, arcs: raw.arcs, fil: [] });
+        const P = ccw({ pts, sid, nodes: raw.nodes, arcs: raw.arcs, fil: [], curves: raw.curves });
         const region = { min: blank.min.slice(), max: blank.max.slice() }; region.min[a] = Math.max(lo, blank.min[a]); region.max[a] = Math.min(hi, blank.max[a]);
         out.push({
           kind: 'lathe', keep: true, axis: a, span: [lo, hi], prof: P, center: c, tool: tool || 'lathe', region, vary: [0, 1, 2], src: s,
@@ -848,6 +849,120 @@
 
   // ---------- model expansion ----------
   function num3(a) { return a ? a.map(parseLen) : [0, 0, 0]; }
+  // Sutherland-Hodgman: a polygon of { p, s } (s = the edge arriving at p) clipped to a rectangle;
+  // edges along the rectangle get s = 'R'
+  function clipRect(poly, lo, hi) {
+    let out = poly;
+    for (const [k, v, sg] of [[0, lo[0], 1], [0, hi[0], -1], [1, lo[1], 1], [1, hi[1], -1]]) {
+      const inp = out; out = [];
+      if (!inp.length) break;
+      const ins = q => (q[k] - v) * sg >= -1e-9;
+      for (let i = 0; i < inp.length; i++) {
+        const c = inp[(i - 1 + inp.length) % inp.length], d = inp[i];
+        const cut = () => { const t = (v - c.p[k]) / (d.p[k] - c.p[k]); return [c.p[0] + (d.p[0] - c.p[0]) * t, c.p[1] + (d.p[1] - c.p[1]) * t]; };
+        if (ins(d.p)) { if (!ins(c.p)) out.push({ p: cut(), s: 'R' }); out.push(d); }
+        else if (ins(c.p)) out.push({ p: cut(), s: d.s });
+      }
+    }
+    return out.filter((q, i) => len2(sub2(q.p, out[(i - 1 + out.length) % out.length].p)) > 1e-7);
+  }
+
+  // Every angle and radius a shaped part needs written on its drawings and in its cut list, in part
+  // coordinates. For each outline or cutout: the corners where two straight edges meet at anything
+  // but a right angle, the angles its straight edges make where they leave the blank's edges (the
+  // material's own angle, as the saw or plane sets it), each arc with its radius, rise over chord and
+  // centre, and each free curve with the points it passes through. Turnings give their diameters,
+  // edge treatments their sizes.
+  //   -> { angles: [{ axis, at, deg, r1, r2, bend, ext (which ray carries an edge on past a bend), reach }], arcs: [{ axis, r, rv, circle, c, mid, a, b, rise, chord, sweep, fillet }],
+  //        curves: [{ axis, pts }], turned: [{ axis, d }], eased: [{ kind, size, edges }], notes: [text] }
+  // (2D points are in the shape's own [u, v], the plan axes other than `axis`; at3() lifts one.)
+  function measures(p) {
+    const out = { angles: [], arcs: [], curves: [], turned: [], eased: [], notes: [] };
+    const loc = p.local || {}, shapes = loc.shapes || [];
+    if (!shapes.length) return out;
+    const body = loc.adds.filter(a => !loc.tenons.includes(a)), blank = unionBox(body.length ? body : loc.adds);
+    const DEG = 180 / Math.PI, square = d => Math.abs(d - 90) < 0.05 || d < 0.05;
+    const seen = [];
+    const addAngle = (A) => {
+      if (square(A.deg)) return;
+      if (seen.some(q => q.axis === A.axis && len2(sub2(q.at, A.at)) < 1e-3 && Math.abs(q.deg - A.deg) < 0.05)) return;
+      seen.push(A); out.angles.push(A);
+    };
+    for (const sh of shapes) {
+      if (sh.kind === 'roundover' || sh.kind === 'chamfer') {
+        out.eased.push({ kind: sh.kind, size: sh.size, edges: [].concat(sh.src.edges || 'all') });
+        continue;
+      }
+      const P = sh.prof, ax = sh.axis;
+      if (sh.kind === 'lathe') {
+        const ds = [...new Set(P.nodes.map(q => +(2 * q[0]).toFixed(4)))].sort((x, y) => y - x);
+        out.turned.push({ axis: ax, d: ds });
+        continue;
+      }
+      const unit = d => { const l = len2(d) || 1; return [d[0] / l, d[1] / l]; };
+      const [ua, va] = plAxes(ax), lo = [blank.min[ua], blank.min[va]], hi = [blank.max[ua], blank.max[va]];
+      const inRect = q => q[0] >= lo[0] - 1e-4 && q[0] <= hi[0] + 1e-4 && q[1] >= lo[1] - 1e-4 && q[1] <= hi[1] + 1e-4;
+      const keep = sh.kind === 'outline', n = P.pts.length;
+      const count = {}; for (let i = 0; i < n; i++) count[P.sid[i]] = (count[P.sid[i]] || 0) + 1;
+      const straight = id => id === 'R' || (id != null && count[id] === 1);   // the blank's own edges, or a profile's lines
+      // the corners of the part as it is cut, each angle measured in the material. The corners are
+      // where the profile, clipped to the blank, turns; the material around each is found by
+      // stepping a hair along every direction between the edges that meet there. A corner within
+      // 15° of straight (where a taper starts) is given as its bend from straight, a notch as the
+      // notch's own angle.
+      const solidAt = q => q[0] > lo[0] && q[0] < hi[0] && q[1] > lo[1] && q[1] < hi[1] && inPoly(q, P.pts) === keep;
+      const Q = clipRect(P.pts.map((q, i) => ({ p: q, s: P.sid[(i - 1 + n) % n] })), lo, hi), m = Q.length;
+      for (let i = 0; i < m; i++) {
+        const A = Q[(i - 1 + m) % m], V = Q[i], B = Q[(i + 1) % m];
+        const rays = [{ d: unit(sub2(A.p, V.p)), ok: straight(V.s), l: len2(sub2(A.p, V.p)) }, { d: unit(sub2(B.p, V.p)), ok: straight(B.s), l: len2(sub2(B.p, V.p)) }];
+        for (let k = 0; k < 2; k++) if (Math.abs(V.p[k] - lo[k]) < 1e-4 || Math.abs(V.p[k] - hi[k]) < 1e-4) for (const sg of [1, -1]) { const d = [0, 0], o = 1 - k; d[o] = sg; rays.push({ d, ok: true, side: true, l: sg > 0 ? hi[o] - V.p[o] : V.p[o] - lo[o] }); }
+        for (const r of rays) r.t = Math.atan2(r.d[1], r.d[0]);
+        rays.sort((x, y) => x.t - y.t);
+        const R = rays.filter((r, k) => !k || r.t - rays[k - 1].t > 1e-6);
+        if (R.length > 1 && R[0].t + 2 * Math.PI - R[R.length - 1].t < 1e-6) R.pop();
+        // sectors between neighbouring rays, solid or not, merged where the solid runs on
+        const sec = R.map((r, k) => { const nx = R[(k + 1) % R.length], t1 = nx.t + (k === R.length - 1 ? 2 * Math.PI : 0), tm = (r.t + t1) / 2; return { a: r, b: nx, sw: t1 - r.t, solid: solidAt([V.p[0] + 1e-3 * Math.cos(tm), V.p[1] + 1e-3 * Math.sin(tm)]) }; });
+        if (!sec.some(x => x.solid) || sec.every(x => x.solid)) continue;
+        const k0 = sec.findIndex((x, k) => x.solid && !sec[(k - 1 + sec.length) % sec.length].solid);
+        for (let j = 0; j < sec.length; j++) {
+          const k = (k0 + j) % sec.length; if (!sec[k].solid || (j && sec[(k - 1 + sec.length) % sec.length].solid)) continue;
+          let sw = 0, e = k; while (sec[e % sec.length].solid && sw < 2 * Math.PI - 1e-9) { sw += sec[e % sec.length].sw; e++; }
+          const ra = sec[k].a, rb = sec[(e - 1) % sec.length].b;
+          if (!ra.ok || !rb.ok) continue;
+          const mat = sw * DEG;
+          let deg = mat > 180 ? 360 - mat : mat, r1 = ra.d, r2 = rb.d;
+          const bend = deg > 165;
+          let ext = 0;
+          if (bend) { deg = 180 - deg; if (ra.side || (!rb.side && ra.l >= rb.l)) { r1 = [-ra.d[0], -ra.d[1]]; ext = 1; } else { r2 = [-rb.d[0], -rb.d[1]]; ext = 2; } }
+          addAngle({ axis: ax, at: V.p, deg, r1, r2, bend, ext, reach: Math.min(ra.l, rb.l) });
+        }
+      }
+      for (const A of P.arcs) {
+        const e = { axis: ax, r: A.r, rv: A.rv, circle: !!A.circle, c: A.c, mid: A.mid, a: A.a, b: A.b, sweep: A.sweep, fillet: !!A.fillet };
+        if (!A.circle && A.sweep != null) { e.chord = 2 * A.r * Math.sin(Math.min(A.sweep, Math.PI) / 2); e.rise = A.r * (1 - Math.cos(A.sweep / 2)); }
+        if (A.circle || inRect(A.mid) || (A.a && inRect(A.a)) || (A.b && inRect(A.b))) out.arcs.push(e);
+      }
+      for (const c of P.curves || []) out.curves.push({ axis: ax, pts: c });
+    }
+    // what the cut list says about the shape, in shop words
+    const F = x => fmt(x), D = d => (Math.round(d * 10) / 10) + '°';
+    const radii = [...new Set(out.arcs.filter(a => !a.circle && !a.fillet).map(a => 'R ' + F(a.r) + (a.rise != null && a.r > 12 ? ' (rise ' + F(a.rise) + ' over ' + F(a.chord) + ')' : '')))];
+    if (radii.length) out.notes.push((radii.length > 1 ? 'Arcs ' : 'Arc ') + radii.join(', '));
+    const fil = [...new Set(out.arcs.filter(a => a.fillet).map(a => 'R ' + F(a.r)))];
+    if (fil.length) out.notes.push('Rounded corners ' + fil.join(', '));
+    const holes = [...new Set(out.arcs.filter(a => a.circle).map(a => a.rv && Math.abs(a.rv - a.r) > 1e-6 ? F(2 * a.r) + ' × ' + F(2 * a.rv) + ' oval' : '⌀' + F(2 * a.r)))];
+    if (holes.length) out.notes.push('Round ' + holes.join(', '));
+    const degs = [...new Set(out.angles.filter(a => !a.bend).map(a => D(a.deg)))], tapers = [...new Set(out.angles.filter(a => a.bend).map(a => D(a.deg)))];
+    if (degs.length) out.notes.push((degs.length > 1 ? 'Angles ' : 'Angle ') + degs.join(', '));
+    if (tapers.length) out.notes.push((tapers.length > 1 ? 'Tapers ' : 'Taper ') + tapers.join(', '));
+    if (out.curves.length) out.notes.push(out.curves.length === 1 ? 'Fair curve through ' + out.curves[0].pts.length + ' marked points' : out.curves.length + ' fair curves through marked points');
+    for (const t of out.turned) out.notes.push('Turned, ⌀' + t.d.map(F).join(' / '));
+    for (const e of out.eased) out.notes.push(F(e.size) + (e.kind === 'roundover' ? ' (R ' + F(e.size) + ') round-over' : ' × 45° chamfer') + ', ' + e.edges.join(' and ') + ' edges');
+    out.notes = [...new Set(out.notes)];
+    return out;
+  }
+  const at3 = (axis, q, w) => { const r = [w || 0, w || 0, w || 0], [ua, va] = plAxes(axis); r[ua] = q[0]; r[va] = q[1]; return r; };
+
   function normalize(plan) {
     const parts = (plan.parts || []).map((p, pi) => {
       const shape = p.shape || [];
@@ -1594,7 +1709,7 @@
     return { from, to, len: to - from, marks: merged.map(m => Object.assign(m, { d: m.at - from })) };
   }
 
-  const api = { faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
+  const api = { measures, at3, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PlanCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -178,6 +178,22 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   const tl = C.normalize({ parts: [{ id: '1', name: 'Leg', t: 2, w: 2, l: 28, stock: 'solid', shape: [{ box: [0, 0, 0, 2, 2, 28] }, { lathe: [[0.6, 0], [0.75, 2], { arc: [0.75, 4], rise: 0.25 }, [0.9, 20], [1, 22]], axis: 'z' }] }] }).parts[0];
   const sq = tl.localSolid;
   out(!C.shapedAway(tl.local.shp, [0.05, 0.05, 25]) && C.shapedAway(tl.local.shp, [0.05, 0.05, 10]) && !C.shapedAway(tl.local.shp, [1, 1.95, 3]) && Math.abs(sq.bbox.max[2] - 28) < 1e-6, 'turned leg: round inside the profile, square pommel above it, a bead that bulges out');
+  // every angle and radius is measured for the drawings and cut list, on the material's side
+  const ms = shape => C.measures(C.normalize({ parts: [{ id: '1', name: 'X', t: 0.75, w: 4, l: 20, shape: [{ box: [0, 0, 0, 20, 0.75, 4] }].concat(shape) }] }).parts[0]);
+  const near = (A, at, deg) => A.some(a => Math.abs(a.at[0] - at[0]) < 1e-3 && Math.abs(a.at[1] - at[1]) < 1e-3 && Math.abs(a.deg - deg) < 0.05);
+  const mi = ms([{ axis: 'y', cutout: [[16, 0], [21, 0], [21, 5], [20, 4]] }]);
+  out(mi.angles.length === 2 && near(mi.angles, [16, 0], 135) && near(mi.angles, [20, 4], 45), 'measures: a mitre off the end gives 135° at the heel and 45° at the toe', JSON.stringify(mi.angles.map(a => [a.at, a.deg])));
+  const bv = ms([{ axis: 'x', outline: [[0, 0], [0.75, 0], [0.75, 3.5], [0, 3.5 - 0.75 * Math.tan(Math.PI / 6)]] }]);
+  out(near(bv.angles, [0.75, 3.5], 60) && near(bv.angles, [0, 3.5 - 0.75 * Math.tan(Math.PI / 6)], 120) && bv.notes.includes('Angles 60°, 120°'), 'measures: a 30° bevel along the length (seen from the end) gives 60° and 120°', JSON.stringify(bv.notes));
+  const vn = ms([{ axis: 'y', cutout: [[9, 4.5], [10, 3], [11, 4.5]] }]);
+  out(near(vn.angles, [10, 3], 67.4) && vn.angles.filter(a => Math.abs(a.deg - 123.7) < 0.05).length === 2, 'measures: a V notch gives its own angle at the root and the material angle where it leaves the edge');
+  const legM = C.measures(M.byId['1']);
+  out(legM.angles.some(a => a.bend && Math.abs(a.deg - 2.26) < 0.05) && legM.notes.includes('Taper 2.3°') && legM.notes.some(n => /chamfer/.test(n) && /45°/.test(n)), 'measures: the round table leg taper reads as 2.3° off straight, the chamfer as 45°', JSON.stringify(legM.notes));
+  const apM = C.measures(M.byId['2']);
+  out(apM.arcs.length === 1 && Math.abs(apM.arcs[0].rise - 1.25) < 1e-6 && Math.abs(apM.arcs[0].chord - 14.5) < 1e-6 && /rise 1-1\/4" over 14-1\/2"/.test(apM.notes[0]), 'measures: an arched apron gives its radius with the rise over the chord', JSON.stringify(apM.notes));
+  const fc = ms([{ axis: 'y', outline: [[0, 0], [20, 0, 0.5], [20, 3], { curve: [[14, 3.5], [8, 2.5], [0, 3]] }] }, { axis: 'y', cutout: { circle: [5, 2, 0.5] } }]);
+  out(fc.curves.length === 1 && fc.curves[0].pts.length === 4 && fc.arcs.some(a => a.fillet && Math.abs(a.r - 0.5) < 1e-6) && fc.notes.includes('Round ⌀1"'), 'measures: a free curve keeps its points, a rounded corner and a hole their radius and diameter', JSON.stringify(fc.notes));
+  out(!ms([]).angles.length && !ms([{ axis: 'y', outline: [[0, 0], [20, 0], [20, 4], [0, 4]] }]).angles.length, 'measures: square parts have no angles to give');
   const vb = JSON.parse(JSON.stringify(rt));
   vb.parts[0].shape[1].axis = 'w'; vb.parts[0].shape[3].edges = 'sideways'; vb.parts[1].shape[1].outline = [{ arc: [1, 1], rise: 1 }];
   const ve = validate(vb).filter(e => e.level === 'error').map(e => e.at);
