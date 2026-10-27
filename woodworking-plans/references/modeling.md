@@ -114,6 +114,17 @@ The shape entries:
 - Splayed legs: draw the leg's side view as a parallelogram `outline` in a blank sized to its
   bounding box (`blank.l_extra` for the longer stock); splay in two directions with two outlines,
   one per axis. Mitres and bevels are `cutout` triangles; both parts of a mitre meet on the line.
+- Every angle and radius is measured for the builder, from the model itself: the Layout drawing
+  (and the full-size pattern) gives each corner that isn't square in degrees, each taper as its
+  angle off straight, each arc its radius with its centre marked or, when the centre is off the
+  drawing, its rise over the chord, each turning its diameters, and each free `curve` its points,
+  dimensioned. A bevel or profile seen only from the end gets an End view. The cut list repeats
+  them ("Shaped: Angle 45°, Arc R 21-21/32" (rise 1-1/4" over 14-1/2")"). Write shapes so those
+  numbers are ones a builder can set and lay out: give angles by points that make a round angle
+  (a 45° mitre, a 2° taper), arcs by `rise` or `center` in shop fractions, and use `curve` only
+  for a truly free shape (cabriole, ogee), with `pattern: true` so it prints at full size. Say
+  the angle or radius again in the step that cuts it ("set the bevel to 15°", "bend a batten
+  through the 1-1/4" rise").
 - Turned parts, round tops and curved parts get a Layout drawing with their points dimensioned,
   radii and diameters labelled; set `pattern: true` so the curve also prints at full size.
 - The check measures shapes on a 1/16" lattice (coarser on long curves), so it proves fit to about

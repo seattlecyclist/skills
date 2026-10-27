@@ -54,7 +54,9 @@ Copy `examples/skeleton/plan.js`. Every driving number goes in `PARAMS`; derive 
   legs, `cutout` for mitres, bevels, coves and curved cutouts, `lathe` for turned legs and round
   tops with an edge profile, `roundover` and `chamfer` for eased edges. The box is the blank; the
   shape is what you saw, rout or turn from it. See `modeling.md` (Curves and angles). A builder who
-  says the curve looks like steps is right: there is no resolution to raise; use a shape.
+  says the curve looks like steps is right: there is no resolution to raise; use a shape. The
+  drawings and cut list give every angle in degrees and every radius (with its rise or centre)
+  from the model; pick round, settable numbers and repeat them in the step that cuts them.
 - Make every connection with a helper (`J.castle`, `J.mortiseTenon`, `J.halfLap`, `J.bridle`,
   `J.dado`, `J.groove`, `J.rabbet`, or `J.joint(type, parts)` for screws, brackets, resting parts).
   It cuts the joinery, sets the tenoned part's length and returns the joint record. Every joint
