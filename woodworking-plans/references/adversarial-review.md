@@ -45,7 +45,10 @@ Previous revision's PARAMS: <paste, or "first design">
 
 For each part the change touches, and each part joined to or touching those parts:
 - Re-derive its dimensions by hand from PARAMS and compare with the cut list.
-- Walk each joint it is in: does it still engage fully, with sane proportions
+- Walk each joint and fitting it is in and check both halves exist: every tenon has a matching
+  mortise, every dado, groove, rabbet or lap has the part that fills it, every dowel, screw, bolt
+  and hardware item has its hole or mounting on each mating part. A missing half is a fail.
+- Does each joint still engage fully, with sane proportions
   (see references/joinery.md), and can it be cut and assembled in the order of the steps?
 - Follow the load from the top surface to the floor through this part.
 - Check wood movement, fastener lengths, hardware fit, and clearances to anything that moves
@@ -65,6 +68,20 @@ Work through every heading for every touched or mating part. Skip a line only wh
 - Cut list T × W × L matches the derived numbers (the check confirms it matches the model; you confirm the model matches the intent).
 - Overall size and any governing constraint (mattress, opening, appliance) still hold, with stated clearance.
 - Stock: each thickness exists as rough lumber (finished + about 1/4"), and long or wide parts fit available boards or are marked as glue-ups.
+
+**Joints and fittings: both halves of every one.** List every joint in `plan.joints` and every
+bore and hardware line, and check each one has its counterpart on the mating part, in the model,
+the drawings, the cut list notes and the steps. Missing halves are a `fail`, never a flag:
+- Each tenon has a mortise in the mating part whose width, length and depth match it (tenon length
+  plus about 1/16" of depth is fine); a twin tenon has two mortises; a through tenon's mortise goes
+  through. The model check cuts mortises from tenons and lists them; confirm the count matches.
+- Each dado, groove, rabbet, slot, notch or lap is the width and depth of the part that fills it,
+  and that part is lengthened or widened by the depth.
+- Each dowel, peg, screw or bolt has a hole in every part it passes through, lined up, with a pilot
+  or clearance size that matches the hardware list; each bolt has its nut or barrel nut bore.
+- Each hardware item (slides, hinges, brackets, buttons, figure-8s) has its mortise, groove, bore
+  or mounting surface on both parts, and a step that makes it.
+- A joint the steps or drawings mention that the model doesn't have, or the reverse, is a `fail`.
 
 **Joinery**, for each joint the part is in
 - Still engages: tenons seated, laps fully overlap, slots match the thickness of what drops in.

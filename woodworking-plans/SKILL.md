@@ -17,6 +17,7 @@ scripts/selftest.js      the checks must catch known breaks
 examples/skeleton/plan.js    START HERE: a 4 KB side table using every part of the schema
 examples/castle-bed/plan.js  a full worked example (castle-joint queen bed, Rev D)
 examples/modern-dresser/plan.js  casework: an 8-drawer plywood dresser with slides and full drawer boxes
+examples/round-table/plan.js     curves and angles: a turned round top, tapered legs, arched aprons
 references/plan-schema.md    every field, the J helpers, bores        (read when writing plan.js)
 references/joinery.md        proportions and rules of thumb             (read when choosing joints)
 references/adversarial-review.md  review procedure and record format    (read for every review)
@@ -48,9 +49,18 @@ Copy `examples/skeleton/plan.js`. Every driving number goes in `PARAMS`; derive 
 - Units are inches; x is width, y depth (the viewer stands at −y), z up.
 - Each part is one plain `box` per piece, placed by `instances` where it sits in the assembly.
   Mirror copies that face the other way (`mirror: 'x'`).
+- Shape anything that is not square with a shape entry on the part, never with stacked boxes or
+  stair-step cuts: `outline` for arched or curved edges, round and oval tops, tapers and splayed
+  legs, `cutout` for mitres, bevels, coves and curved cutouts, `lathe` for turned legs and round
+  tops with an edge profile, `roundover` and `chamfer` for eased edges. The box is the blank; the
+  shape is what you saw, rout or turn from it. See `modeling.md` (Curves and angles). A builder who
+  says the curve looks like steps is right: there is no resolution to raise; use a shape.
 - Make every connection with a helper (`J.castle`, `J.mortiseTenon`, `J.halfLap`, `J.bridle`,
   `J.dado`, `J.groove`, `J.rabbet`, or `J.joint(type, parts)` for screws, brackets, resting parts).
-  It cuts the joinery, sets the tenoned part's length and returns the joint record. Defaults follow
+  It cuts the joinery, sets the tenoned part's length and returns the joint record. Every joint
+  needs both halves in the model: a tenon and its mortise (cut for you from the tenon), a dado,
+  groove, rabbet, slot or lap and the part that fills it, a dowel joint and its bores. The check
+  fails a joint whose mating half is missing. Defaults follow
   `joinery.md`; pass a size only to depart from them, and say why.
 - Model every bolt, nut, screw and peg in `bores`, so the check can prove each hole can be drilled,
   stays in the wood, that bolts reach their nuts, and that no two holes meet. Screws that hold a
@@ -73,8 +83,8 @@ sheet cut order, grain arrows and actual-size fasteners from the model; add what
 
 - `view.sections`: a Section A–A wherever a joint or profile is hidden from the outside views.
 - `story_sticks`: one for any repeated heights or spacings (headboards, drawer banks, shelves).
-- `details` with `pattern: true`, or `pattern: true` on a part, for curves, tapers and anything
-  better traced than measured; they print at 100%.
+- `pattern: true` on any part with a curve, or a `details` drawing with `pattern: true`, for
+  anything better traced than measured; they print at 100%.
 - `jigs`: every jig, fence or template a step relies on, drawn with its parts.
 - `steps[].wrong`: a "Don't" at the step people most often get wrong (glue where it must move,
   the wrong face up, a cut that can't be undone). One or two per plan, not one per step.
@@ -87,7 +97,7 @@ node scripts/build_plan.js plan.js --check
 ```
 
 It validates the plan against the schema, then proves from the geometry that the cut list matches,
-nothing overlaps, tenons seat, joints touch, the assembly connects, walls and towers are thick
+nothing overlaps, tenons seat in mortises cut to match, every joint has both halves, joints touch, the assembly connects, walls and towers are thick
 enough, cuts suit their tools, and every bore can be drilled and its fastener reaches. Fix every
 error; fix or explain every warning. It knows geometry, not strength: that is the review's job.
 

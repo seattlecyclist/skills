@@ -129,7 +129,13 @@ A problem shared by many copies of one bore is reported once, with the count.
   shape: [
     { box: [x, y, z, dx, dy, dz] },                 // material, part coordinates
     { cut: [x, y, z, dx, dy, dz], tool: 'dado' },   // removed material; tool: checked against its depth
-    { box: [...], role: 'tenon', through: false }   // tenon: allowed inside a joined part
+    { box: [...], role: 'tenon', through: false },  // tenon: allowed inside a joined part, which
+                                                    // gets the matching mortise cut automatically
+    // curves and angles, cut from the blank (modeling.md, Curves and angles):
+    { outline: [[u, v], { arc: [u, v], rise }, ...], axis: 'y', span: [from, to], tool: 'bandsaw' },  // keep inside
+    { cutout: [[u, v], ...], axis: 'z' },           // remove inside: mitres, bevels, coves, cutouts
+    { lathe: [[r, along], ...], axis: 'z', center: [u, v] },   // turned: keep inside the revolved profile
+    { roundover: 0.25, edges: 'top' }, { chamfer: 0.125, edges: ['bottom'] }   // ease the blank's edges
   ],
   instances: [{ at: [x, y, z], rot: 0, mirror: 'x', explode: [dx, dy, dz], label: 'A' }],
                               // explode: leave out; worked out from the joints (scripts/explode.js)
@@ -147,7 +153,8 @@ A problem shared by many copies of one bore is reported once, with the count.
 `rot` turns the part about z around its local origin before `at` is added. Most parts are easiest
 modeled in world orientation with `rot: 0`.
 
-The checker's notion of grain: the axis of the part's bounding box that matches `l`.
+The checker's notion of grain: the axis of the part's bounding box that matches `l`. A shaped
+part's `t`, `w`, `l` are its blank (the boxes before shaping).
 
 ## Joint
 
@@ -165,8 +172,19 @@ The checker's notion of grain: the axis of the part's bounding box that matches 
 ```
 
 Types with extra checks: `mortise-tenon` and `stub-tenon` (tenon thickness 25–55% of the stock),
-`castle` (towers at least a quarter of the post). Any other type string is fine (`dado`, `rabbet`,
+`castle` (towers at least a quarter of the post). Every joint must have both halves modeled: a type
+containing `tenon` needs a tenon of one part inside another (`joint-no-mortise`); `dado`, `groove`,
+`rabbet`, `housed`, `bridle`, `castle`, `half-lap`, `notch` and `slot` need a cut in one part that
+another part of the joint fills (`joint-no-housing`); `dowel` needs bores with its joint id
+(`joint-no-bore`, a warning). Any other type string is fine (`dado`, `rabbet`,
 `half-lap`, `bridle`, `dovetail`, `dowel`, `screwed`, `bed-bolt`, `bracket`, `rests`).
+
+Every joint also gets a drawing on the Joint Details sheet, made from the model, not authored: the
+first two listed parts that meet, cropped to where they meet and pulled apart the way the joint goes
+together, with the tenons, the cuts in the mating part and the joint's bores dimensioned. So model
+the joinery for real: a shelf needs its dado, a dowel its bore with
+`joint` set. A tenon in solid wood, parts that overlap with nothing cut, or parts that never meet are
+drawn in red with what to fix.
 
 ## Detail
 
@@ -183,7 +201,8 @@ Coordinates in inches, v up. Each item is one of:
 ```
 
 Plus `{ title, sub, w, h, wide, font, pattern }` on the detail itself. Use details for hardware
-placement and anything the auto layouts can't show (curves, angled cuts, fastener positions); use a
+placement and anything the auto layouts can't show (fastener positions, a jig's shape); model the
+curves and angles of the parts themselves with shape entries, not details; use a
 section view (below) for a plain cut through the model. `pattern: true` moves a detail to the
 Full-Size Patterns sheet, drawn at actual size (type 0.16") with a 1" check square, and the PDF tiles
 it across letter pages at 100%. Use it for curves, tapers and templates; draw the real outline in

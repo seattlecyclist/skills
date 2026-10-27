@@ -37,7 +37,11 @@ const cases = [
   ['bolt line misses the nut', p => { p.bores[1].copies.forEach(c => { c.at[2] -= 1; }); }, R => has(R, 'bolt-misses-nut')],
   ['cleat screw too short', p => { p.bores[4].len = 1.5; }, R => has(R, 'screw-length')],
   ['slat screw comes through the cleat', p => { p.bores[5].len = 3; }, R => has(R, 'fastener-exits')],
-  ['bit too short for the cross-bolt', p => { p.bores[0].bit = 6; }, R => has(R, 'bit-reach')]
+  ['bit too short for the cross-bolt', p => { p.bores[0].bit = 6; }, R => has(R, 'bit-reach')],
+  // every joint has both halves: tenons in mortises, housings filled, dowels bored
+  ['mortise-and-tenon joint with no tenons', p => { p.parts.forEach(q => { if (q.shape) q.shape = q.shape.filter(s => s.role !== 'tenon'); }); }, R => has(R, 'joint-no-mortise')],
+  ['joint called a dado with no dado cut', p => { p.joints.find(j => j.type === 'screwed').type = 'dado'; }, R => has(R, 'joint-no-housing')],
+  ['dowel joint with no bores', p => { p.joints.find(j => j.id === 'J4').type = 'dowel'; }, R => has(R, 'joint-no-bore')]
 ];
 let fail = 0;
 const out = (ok, name, why) => { if (!ok) fail++; console.log((ok ? 'ok   ' : 'FAIL ') + name + (ok || !why ? '' : '  -> ' + why)); };
@@ -72,6 +76,12 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   const tn = apron.shape.filter(s => s.role === 'tenon');
   out(tn.length === 4 && tn.every(t => t.box[4] === 0.25 && t.box[3] === 1.1875 && t.box[5] === 1.25) && apron.l === 30.625,
     'J.mortiseTenon: 1/4" tenons (a third of 3/4"), 1-3/16" long (2/3 of the leg), twinned (3" would be 12x), l updated', JSON.stringify(tn.map(t => t.box)) + ' l ' + apron.l);
+  const M = C.normalize({ parts: [legs, apron], joints: [js[1]] });
+  const lm = M.byId['3'].local.cuts.filter(c => c.mortise), tw = M.byId['4'].local.tenons;
+  out(M.mortises.length === 4 && lm.length === 2 && lm.every(c => tw.some(t => [0, 1, 2].every(k => Math.abs((c.max[k] - c.min[k]) - (t.max[k] - t.min[k])) < 1e-6))) && M.byId['3'].instances.every(I => I.cuts.filter(c => c.mortise).length === 2),
+    'J.mortiseTenon tenons get matching mortises cut in every leg (in the drawings and the 3D)', JSON.stringify(M.mortises.map(m => m.box)));
+  const U = C.normalize({ parts: JSON.parse(JSON.stringify([legs, apron])), joints: [] });
+  out(!U.mortises.length && has(C.check({ meta: { title: 't' }, parts: JSON.parse(JSON.stringify([legs, apron])), joints: [] }), 'tenon-undeclared'), 'no mortise is cut for a tenon whose joint is not declared; the check reports it');
   for (const [name, ps, j] of [['carcass', [sides, shelf], js[0]], ['leg and apron', [legs, apron], js[1]]]) {
     const R = C.check({ meta: { title: 't' }, parts: ps, joints: [j] });
     out(!R.errors.length && !R.warnings.length, 'helper-built ' + name + ' passes the model check', JSON.stringify(R.errors.concat(R.warnings).map(e => e.msg)));
@@ -130,9 +140,47 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   globalThis.PlanUnits = 'mm'; const mmTxt = C.fmt(0.75); globalThis.PlanUnits = 'in';
   out(mmTxt === '19 mm' && C.fmt(0.75) === '3/4"', 'units toggle formats millimetres and back', mmTxt);
   out(!validate(sk).length, 'skeleton (every field, new paperwork included) validates clean', JSON.stringify(validate(sk)));
+  out(Msk.mortises.length === 16 && Msk.byId['1'].instances.every(I => I.cuts.filter(c => c.mortise).length === 4), 'skeleton: each leg has its four mortises, one per apron tenon', Msk.mortises.length + ' mortises');
+  const long = prepare(SK(SK.PARAMS, Object.assign({}, J, { mortiseTenon: o => J.mortiseTenon(Object.assign({}, o, { length: 1.25 })) })));
+  out(has(C.check(long), 'tenon-clash'), 'skeleton with 1-1/4" tenons: front and side tenons collide in the leg');
   const bad = JSON.parse(JSON.stringify(sk));
   bad.view.sections[0].cut = 'w'; bad.story_sticks[0].parts = ['99']; bad.jigs[0].items = []; bad.steps[2].wrong = 3;
   const v = validate(bad).filter(e => e.level === 'error').map(e => e.at);
   out(['view.sections[0].cut', 'story_sticks[0].parts', 'jigs[0].items', 'steps[2].wrong'].every(a => v.includes(a)), 'validation catches bad sections, sticks, jigs and "don\'t" panels', v.join(', '));
+}
+// curves and angles: shapes cut from the blank are exact in the drawings and fit-checked on the lattice
+{
+  const RT = require('../examples/round-table/plan.js'), rt = prepare(RT(RT.PARAMS, J));
+  const R = C.check(rt), M = C.normalize(rt);
+  out(!R.errors.length && !R.warnings.length && !validate(rt).length, 'round table (lathe top, tapered legs, arched aprons): clean plan', JSON.stringify(R.errors.concat(R.warnings).map(e => e.msg)));
+  const top = M.byId['4'].instances[0].solid, v = top.cells.reduce((s, c) => s + C.vol(c), 0);
+  const want = Math.PI * 15 * 15 * 0.75 - (1 - Math.PI / 4) * 0.25 * 0.25 * 2 * Math.PI * (15 - 0.25 + 0.25 * 0.2234);
+  out(top.shaped && Math.abs(v - want) / want < 0.01 && C.surface(top).tris.length > 100 && !C.surface(top).quads.length, 'round top: a true circle in the mesh, and its volume within 1% on the check lattice', v.toFixed(1) + ' vs ' + want.toFixed(1));
+  // each mirrored or turned copy of the tapered leg tapers toward the middle of the table
+  const mid = 15;
+  const legs = M.byId['1'].instances, tipToward = legs.every(I => { const b = I.solid.bbox, inner = [0, 1].map(a => (Math.abs(b.min[a] - mid) < Math.abs(b.max[a] - mid) ? b.min[a] + 0.1 : b.max[a] - 0.1)), outer = [0, 1].map(a => (Math.abs(b.min[a] - mid) < Math.abs(b.max[a] - mid) ? b.max[a] - 0.2 : b.min[a] + 0.2));
+    return C.shapedAway(I.shp, [inner[0], inner[1], 0.5], I.tenons) && !C.shapedAway(I.shp, [outer[0], outer[1], 0.5], I.tenons) && !C.shapedAway(I.shp, [inner[0], inner[1], 22], I.tenons); });
+  out(tipToward, 'tapers follow mirrored and rotated copies: every leg is cut away on its inside faces at the foot, full at the top');
+  const ap = M.byId['2'];
+  out(ap.local.tenons.length === 4 && ap.instances.every(I => I.tenons.every(T => !C.shapedAway(I.shp, T.min.map((x, k) => (x + T.max[k]) / 2), I.tenons))), 'shapes never trim tenons: the arched aprons keep all four');
+  const arch = ap.localSolid.bbox;
+  out(Math.abs(arch.min[2]) < 1e-6 && Math.abs(arch.max[2] - 4.5) < 1e-6, 'a negative rise cuts into the shape (the arch rises into the apron, its ends stay full height)', JSON.stringify(arch));
+  const hb = C.normalize({ parts: [{ id: '1', name: 'Headboard', t: 1, w: 18, l: 60, stock: 'solid', shape: [{ box: [0, 0, 0, 60, 1, 18] }, { outline: [[0, 0], [60, 0], [60, 14], { arc: [0, 14], rise: 4 }], axis: 'y' }] }] }).parts[0].localSolid;
+  out(Math.abs(hb.bbox.max[2] - 18) < 1e-3 && !C.shapedAway({ list: hb.shp.list, inst: hb.shp.inst }, [30, 0.5, 17.9]) && C.shapedAway({ list: hb.shp.list, inst: hb.shp.inst }, [2, 0.5, 15.5]), 'arched headboard: a positive rise bulges out of the shape, 4" up at the centre, a true arc (no steps)');
+  // a mitred corner: two parts meet on the 45, no interference, real contact; leave one mitre off and they collide
+  const frame = cut => ({ meta: { title: 't' }, parts: [
+    { id: '1', name: 'Rail', qty: 1, t: 0.75, w: 2, l: 12, stock: 'solid', shape: [{ box: [0, 0, 0, 12, 2, 0.75] }, { cutout: [[0, 0], [2, 2], [-1, 2], [-1, 0]], axis: 'z' }] },
+    { id: '2', name: 'Stile', qty: 1, t: 0.75, w: 2, l: 12, stock: 'solid', shape: [{ box: [0, 0, 0, 2, 12, 0.75] }].concat(cut ? [{ cutout: [[0, 0], [2, 2], [2, -1], [0, -1]], axis: 'z' }] : []) }],
+    joints: [{ id: 'J1', type: 'mitre', parts: ['1', '2'], glue: true }] });
+  const Rm = C.check(frame(true)), Rx = C.check(frame(false));
+  out(!Rm.errors.length && !has(Rm, 'joint-no-contact'), 'mitred corner: the two 45s meet with no interference and count as touching', JSON.stringify(Rm.errors.concat(Rm.warnings).map(e => e.msg)));
+  out(has(Rx, 'interference'), 'mitre missing on one part: the corner overlap is interference');
+  const tl = C.normalize({ parts: [{ id: '1', name: 'Leg', t: 2, w: 2, l: 28, stock: 'solid', shape: [{ box: [0, 0, 0, 2, 2, 28] }, { lathe: [[0.6, 0], [0.75, 2], { arc: [0.75, 4], rise: 0.25 }, [0.9, 20], [1, 22]], axis: 'z' }] }] }).parts[0];
+  const sq = tl.localSolid;
+  out(!C.shapedAway(tl.local.shp, [0.05, 0.05, 25]) && C.shapedAway(tl.local.shp, [0.05, 0.05, 10]) && !C.shapedAway(tl.local.shp, [1, 1.95, 3]) && Math.abs(sq.bbox.max[2] - 28) < 1e-6, 'turned leg: round inside the profile, square pommel above it, a bead that bulges out');
+  const vb = JSON.parse(JSON.stringify(rt));
+  vb.parts[0].shape[1].axis = 'w'; vb.parts[0].shape[3].edges = 'sideways'; vb.parts[1].shape[1].outline = [{ arc: [1, 1], rise: 1 }];
+  const ve = validate(vb).filter(e => e.level === 'error').map(e => e.at);
+  out(['parts[0] (#1).shape[1].axis', 'parts[0] (#1).shape[3].edges', 'parts[1] (#2).shape[1].outline'].every(a => ve.includes(a)), 'validation catches a bad shape axis, edge name and profile', ve.join(', '));
 }
 process.exit(fail ? 1 : 0);

@@ -4,8 +4,8 @@ Use the helpers in `scripts/joints.js` first (table in `plan-schema.md`): they c
 half-laps, bridles, dadoes, grooves and rabbets and add tenons, sized by `joinery.md`. This file is
 for the joints they don't cover and for reading what they produce.
 
-Every part is a union of `box`es minus a union of `cut`s, in part coordinates, placed by its
-instances. The renderer turns that into exact faces and crease lines (no seams between boxes), and
+Every part is a union of `box`es minus a union of `cut`s, shaped by any curve or angle entries
+(below), in part coordinates, placed by its instances. The renderer turns that into exact faces and crease lines (no seams between boxes), and
 the checker turns it into cells it can intersect. Model the joint as you would cut it, so the check
 proves the fit and the exploded view shows the joinery.
 
@@ -32,9 +32,13 @@ the rail line; size any opening between post faces.
 
 ## Mortise and tenon
 
-Don't cut the mortise. Give the tenoned part `role: 'tenon'` boxes that extend into the mating
-part. The checker allows that overlap only inside a declared joint and requires the tenon to be
-fully inside material (pass `through: true` for a through tenon that shows on the far face).
+Don't cut the mortise yourself. Give the tenoned part `role: 'tenon'` boxes that extend into the
+mating part (`J.mortiseTenon` does this). The checker allows that overlap only inside a declared
+joint and requires the tenon to be fully inside material (pass `through: true` for a through tenon
+that shows on the far face). Once the joint is declared, `plan-core` cuts a mortise the exact size
+of each tenon into the mating part, copy by copy, so the drawings, sections and 3D view show it.
+A joint typed `mortise-tenon` or `stub-tenon` with no tenon entering a mating part fails the check
+(`joint-no-mortise`), and two tenons that meet inside one part fail it too (`tenon-clash`).
 
 ```js
 { box: [0, 0, 0, span, T, H] },                                        // rail body between shoulders
@@ -60,6 +64,60 @@ The cut list length includes both tenons.
   connections are checked and it shows in the exploded view.
 - **Gaps that hardware bridges** (bed-rail hooks, center-rail brackets, slides): leave the gap and
   declare `gap` on the joint.
+
+## Curves and angles
+
+The box is the blank you cut the part from. Shape entries then cut it the way the shop does, and
+the drawings, 3D view, patterns, joint details and print show the true curve or angle. Never build
+a curve from stacked boxes or stepped cuts. Shapes never trim `role: 'tenon'` boxes, so a tenon on
+a curved rail keeps its size. The cut list lists the blank (the boxes), so size `t`, `w`, `l` to it.
+
+A profile is drawn in two axes, seen along `axis` (the direction the saw blade passes through the
+part): along `y` you draw in (x, z), along `x` in (y, z), along `z` in (x, y). Profile entries:
+
+| Entry | Means |
+|---|---|
+| `[u, v]` | a corner; `[u, v, r]` rounds that corner to radius `r` (both neighbours straight) |
+| `{ arc: [u, v], rise: h }` | arc to [u, v] bulging `h` at the middle; positive bulges out of the shape, negative cuts into it |
+| `{ arc: [u, v], through: [u, v] }` | arc through a point |
+| `{ arc: [u, v], center: [u, v] }` | arc about a centre, the short way (`long: true` or `ccw` to choose) |
+| `{ curve: [[u, v], ...] }` | a smooth curve through the points (cabriole, ogee, freeform brackets) |
+| `{ circle: [cu, cv, r] }`, `{ ellipse: [cu, cv, ru, rv] }` | the whole profile |
+
+The shape entries:
+
+```js
+// arched top on a headboard panel 60 wide, 18 tall at the centre, 14 at the ends
+{ outline: [[0, 0], [60, 0], [60, 14], { arc: [0, 14], rise: 4 }], axis: 'y', tool: 'bandsaw' }
+// apron with a 1-1/4" arch cut up into its bottom edge
+{ outline: [[0, 0], [0, 4.5], [L, 4.5], [L, 0], { arc: [0, 0], rise: -1.25 }], axis: 'y' }
+// round or oval top from a square blank
+{ outline: { circle: [15, 15, 15] }, axis: 'z' }
+// leg tapered on its +x face, 1-3/4 at the top to 1" at the foot, from 19" up: cut it away
+{ cutout: [[0.96, -1], [2.75, -1], [2.75, 19], [1.75, 19]], axis: 'y' }
+// mitre: the triangle off the end of a 2"-wide rail, seen from above
+{ cutout: [[0, 0], [2, 2], [0, 2.01], [-1, 2.01], [-1, 0]], axis: 'z' }
+// bevel or chamfer along a part: a triangle cutout, or an edge treatment of the blank
+{ chamfer: 0.125, edges: 'bottom' }          // all four bottom edges of the blank
+{ roundover: 0.25, edges: ['top-front', 'top-back'] }   // top, bottom, front, back, left, right, pairs, 'long', 'all'
+// turned leg: [radius, height] pairs from foot to top, about the blank's centre; the blank stays
+// square outside the profile's height range (a pommel for the apron joinery)
+{ lathe: [[0.6, 0], [0.75, 2], { arc: [0.75, 4], rise: 0.25 }, [0.9, 20], [1, 22]], axis: 'z' }
+// round top with a 1/4" round-over on the top edge: a lathe profile about z
+{ lathe: [[15, 0], [15, 0.5], { arc: [14.75, 0.75], center: [14.75, 0.5] }], axis: 'z' }
+```
+
+- `outline` keeps what is inside the profile; `cutout` removes it. `span: [from, to]` limits either
+  to part of the blank along the axis (a taper that stops partway through the thickness).
+- `roundover` and `chamfer` ease the blank's straight edges only. On a curved edge (a round top,
+  an arched rail) use a `lathe` profile or say the round-over in the steps.
+- Splayed legs: draw the leg's side view as a parallelogram `outline` in a blank sized to its
+  bounding box (`blank.l_extra` for the longer stock); splay in two directions with two outlines,
+  one per axis. Mitres and bevels are `cutout` triangles; both parts of a mitre meet on the line.
+- Turned parts, round tops and curved parts get a Layout drawing with their points dimensioned,
+  radii and diameters labelled; set `pattern: true` so the curve also prints at full size.
+- The check measures shapes on a 1/16" lattice (coarser on long curves), so it proves fit to about
+  that. Faces that meet on a curve or an angle count as touching.
 
 ## Explode vectors
 
