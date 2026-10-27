@@ -233,6 +233,17 @@ module.exports = function build(P = PARAMS, J = require('../../scripts/joints.js
     ]
   };
 
+  // drawer openings: each row of each bank, between the case side and the divider; with no rails,
+  // a row's opening runs from its front's bottom edge to the next front up (case top for the top row)
+  const drawers = byRowTop.map(R => {
+    const d = drawer.find(x => x.R === R), f = fronts.find(x => x.R === R).f;
+    const z0 = Math.max(T, R.bot), z1 = Math.min(zInTop, R.top + P.rowGap);
+    return { name: NAMES[R.i] + ' drawers', slide: 'accuride-3832', length: S.l,
+      opening: { at: banks.map(bx => [bx, 0, r(Z0 + z0)]), w: bankW, h: r(z1 - z0), d: backY },
+      box: [d.sides.id, d.fb.id, d.bot.id], slides: slides.id, front: { part: f.id, style: 'full-overlay' },
+      waive: { 'drawer-wide': 'clothes weigh far less than the 100 lb rating, and the rabbeted, glued boxes stay square. For tools or files, use a slide rated for wide drawers (Accuride 3640 is rated on a 42" drawer).' } };
+  });
+
   return {
     meta: {
       series: 'Shop Plan', plan_no: '015', rev: P.rev, date: 'Oct 2026',
@@ -255,7 +266,7 @@ module.exports = function build(P = PARAMS, J = require('../../scripts/joints.js
       'Cut the eight fronts from one sheet in order, top row to bottom, and mark each one. Band the edges after the reliefs are cut.',
       'Bottoms are 6 mm Baltic birch; cut them 1/16" under the listed size so they drop into the grooves.'
     ],
-    joints, bores,
+    joints, bores, drawers,
     hardware: [
       { item: S.l + '" full-extension ball-bearing slides, 100 lb (Accuride 3832 class)', qty: (slides.qty / 2) + ' pr.', source: 'Woodworking supplier', note: '1/2" clearance per side, 45 mm tall.', part: slides.id },
       { item: '#6 × 5/8" pan-head screws', qty: 53, source: 'Usually with the slides', note: 'Slide cabinet members, three per slide; back to divider.' },

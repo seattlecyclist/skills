@@ -20,6 +20,7 @@ examples/modern-dresser/plan.js  casework: an 8-drawer plywood dresser with slid
 examples/round-table/plan.js     curves and angles: a turned round top, tapered legs, arched aprons
 references/plan-schema.md    every field, the J helpers, bores        (read when writing plan.js)
 references/joinery.md        proportions and rules of thumb             (read when choosing joints)
+references/drawers.md        slides, box, front and pull sizing          (read for any plan with drawers)
 references/adversarial-review.md  review procedure and record format    (read for every review)
 references/modeling.md       joints the helpers don't cover             (read only when needed)
 references/style-guide.md    the page's look, sampled colours, voice    (read only to change the template)
@@ -74,13 +75,20 @@ Copy `examples/skeleton/plan.js`. Every driving number goes in `PARAMS`; derive 
 - Model every bolt, nut, screw and peg in `bores`, so the check can prove each hole can be drilled,
   stays in the wood, that bolts reach their nuts, and that no two holes meet. Screws that hold a
   hardware flange (slides, hinges) start on the wood face with `hardware: true`.
-- Drawers: model the slides as hardware parts filling the side clearance, set 1/8" back from the
-  fronts; each box as sides, front and back, bottom (one part per drawer height, copies for the
-  banks); fronts as their own section. Size boxes from the slide (width = opening minus two
-  clearances, aimed mid-window, depth = slide length) and keep a box 1/4" clear of the case top
-  and bottom. Model the box stock at its real thickness (12 mm Baltic birch is 15/32"), because the
-  box width is built up from it and slides tolerate only about 1/32". The
-  dresser example shows the whole pattern, including staggered slide screws on a shared divider.
+- Drawers: read `drawers.md`. Choose the slide first (ask the builder, or use `accuride-3832`
+  and say so), then size every box from the opening and that slide's spec sheet with
+  `C.drawerSize`: side-mount width = opening minus two clearances aimed mid-window, undermount
+  inside width = opening minus the maker's deduction with the sides in its range, the bottom
+  recess and rear notches it needs, box length = slide length (NL), and the longest slide the
+  case depth allows. Model the slides as hardware parts in their real place (1/8" back from the
+  front; front thickness + 1/8" on inset drawers); each box as sides, front and back, bottom;
+  fronts as their own section. Model box stock at its real thickness (12 mm Baltic birch is
+  15/32"), because the box width is built up from it and slides tolerate about 1/32". Declare
+  every opening in `drawers` (plan-schema.md) with its slide, box, slide and front parts and the
+  pull: the check proves each box against the slide and the page prints the Drawer Breakout.
+  List the slides by maker and model with length and pair count, the pulls with their screws, and
+  the front-mounting screws in `hardware`. The dresser example shows the whole pattern, including
+  staggered slide screws on a shared divider.
 - Leave `explode` and `callout` out; they are worked out from the joints. Set them only to fix a
   view the render check shows is wrong (including a "balloon leaders cross" warning that reads badly). Drawers are the exception: auto explode lifts parts out of
   their grooves, so set boxes, slides and fronts by hand to come out the front (the dresser does).

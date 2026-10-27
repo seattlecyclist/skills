@@ -103,12 +103,14 @@ function review() {
     checks.push({ check: 'Dimensions of ' + touch.map(id => '{#' + id + '}').join(' ') + ': cut list re-derived by hand from PARAMS', evidence: 'TODO', result: 'TODO' });
     for (const j of js) checks.push({ check: j.id + ' ' + (j.title || j.type) + ' ' + j.parts.map(id => '{#' + id + '}').join(' ') + ': both halves present and matching, engages, proportions (joinery.md), tools, assembly order, load path', evidence: 'TODO', result: 'TODO' });
     if (bs.length) checks.push({ check: 'Fasteners ' + bs.map(b => b.id).join(', ') + ': can be bored and fitted once assembled, length, nut engagement', evidence: 'TODO', result: 'TODO' });
+    const drw = (R.stats.drawers || []).filter((d, i, all) => all.findIndex(x => x.name === d.name) === i && (plan.drawers || []).some(rec => rec.name === d.name && [].concat(rec.box || [], rec.slides || [], rec.front && rec.front.part || []).map(String).some(id => touch.includes(id))));
+    for (const d of drw) checks.push({ check: 'Drawer "' + d.name + '": box re-derived by hand from the opening and the ' + d.slide.name + ' sheet (drawers.md): width, inside width, height, length, slide length against case depth, front reveals, pull screw', evidence: 'TODO', result: 'TODO' });
     if (mates.size) checks.push({ check: 'Mates ' + [...mates.keys()].map(id => '{#' + id + '}').join(' ') + ': still fit, clearances to anything that moves', evidence: 'TODO', result: 'TODO' });
     checks.push({ check: 'Paperwork: ' + paper.map(p => p.ref).join('; '), evidence: 'TODO', result: 'TODO' });
     if (diff && diff.parts.some(d => d.unlisted)) checks.push({ check: 'Also moved, not listed in the change: ' + diff.parts.filter(d => d.unlisted).map(d => '{#' + d.id + '}').join(' '), evidence: 'TODO', result: 'TODO' });
     const existing = (plan.review || []).find(x => x.change === c.id);
     const halves = js.map(j => j.id + ' ' + j.type + ' ' + j.parts.map(nm).join(' + ') + ': ' + jointHalves(M, j, bores, F));
-    res.push({ change: c, touch, halves, mates: [...mates].map(([id, via]) => ({ id, via })), joints: js.map(j => j.id), bores: bs.map(b => b.id), paper: paper.concat(notes), mech, existing: !!existing,
+    res.push({ drawers: drw, change: c, touch, halves, mates: [...mates].map(([id, via]) => ({ id, via })), joints: js.map(j => j.id), bores: bs.map(b => b.id), paper: paper.concat(notes), mech, existing: !!existing,
       record: { rev: c.rev, change: c.id, verdict: 'TODO', mates: [...mates.keys()], checks } });
   }
   if (flags.has('--json')) { console.log(JSON.stringify({ check: { errors: R.errors, warnings: R.warnings }, validation: V, diff, changes: res }, null, 2)); return; }
@@ -132,6 +134,7 @@ function review() {
     P.push('Mates: ' + (r.mates.length ? r.mates.map(m => nm(m.id) + ' (' + m.via.join(', ') + ')').join(', ') : 'none'));
     P.push('Joints in scope: ' + (r.joints.join(', ') || 'none') + (r.bores.length ? '. Bores: ' + r.bores.join(', ') : ''));
     if (r.halves.length) { P.push('Joints and fittings, both halves (verify each against the drawings, steps and hardware list):'); for (const h of r.halves) P.push('  - ' + h); }
+    for (const d of r.drawers || []) { const b = d.box || {}, c = d.clear || {}; P.push('Drawer "' + d.name + '" (' + d.count + '): opening ' + F(d.opening.w) + ' x ' + F(d.opening.h) + ' x ' + F(d.opening.d) + ', ' + d.slide.name + (d.length ? ' ' + F(d.length) : '') + (d.slide.kind === 'side' ? ' (clearance ' + F(d.slide.clear[0]) + '-' + F(d.slide.clear[1]) + ' a side)' : d.slide.kind === 'under' ? ' (inside width = opening - ' + F(d.slide.k) + ', sides ' + F(d.slide.side[0]) + '-' + F(d.slide.side[1]) + ', recess ' + F(d.slide.recess) + ')' : '') + '; box ' + (b.w ? F(b.w) + ' x ' + F(b.h) + ' x ' + F(b.d) + (b.side ? ', ' + F(b.side) + ' sides' : '') + '; gaps ' + F(c.left) + ' / ' + F(c.right) + ', ' + F(c.below) + ' below, ' + F(c.above) + ' above' : 'not found') + (d.front ? '; front ' + F(d.front.w) + ' x ' + F(d.front.h) : '') + '.'); }
     P.push('Mechanical checks on these parts: ' + (r.mech.length ? '' : 'all pass (interference, seating, contact, walls, bores, tools)'));
     for (const m of r.mech) P.push('  - ' + m.code + ': ' + m.msg);
     P.push('Paperwork to re-read:');

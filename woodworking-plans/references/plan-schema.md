@@ -252,6 +252,39 @@ lowest edge), on a full-size stick printed across letter pages. `marks` adds ext
 (bolt heights, shelf pins). Use one for anything with repeated heights or spacings: headboards, drawer
 banks, shelf units.
 
+## Drawers
+
+One record per drawer size; required in any plan with a drawer. The check measures the modeled box,
+slides and front in each opening against the slide maker's numbers (`drawers.md`), and the page prints
+a **Drawer Breakout** sheet from them.
+
+```js
+drawers: [{
+  name: 'Top drawers',                 // as the builder would say it
+  slide: 'accuride-3832',              // catalogue key (drawers.md), or the maker's numbers:
+                                       // { like: 'accuride-3832', name, clear: [min, max] } or
+                                       // { kind: 'under', name, k, side: [min, max], h, below, above, recess, notch, lengths }
+  length: 18,                          // nominal slide length (NL for undermount runners)
+  opening: { at: [[x, y, z], ...],     // front-left-bottom corner of each opening this size (x across, y back, z up)
+             w: 28.875, h: 5.625, d: 19 },   // between the faces the slides mount to; floor to underside of what is above; front to back
+  box: ['10', '11', '12'],             // the box parts (sides, front and back, bottom)
+  slides: '9',                         // the slide hardware part
+  front: { part: '22', style: 'full-overlay' },   // inset | overlay | full-overlay | false-front
+  pull: { item: '3-3/4" bar pull', cc: '96 mm', screw: '8-32 x 1"', through_box: false, at: 'centred, 2" down' },
+  waive: { 'drawer-wide': 'why this departure from the maker is fine' }   // warnings only, with a reason
+}]
+```
+
+For openings with no rails between drawers (a bank of overlay drawers), each opening runs from its
+front's bottom edge up to the next front, or to the case top. `drawerSize(opening, slide, { side, inset })`
+in `plan-core.js` gives the box the slide wants; size the parts from it.
+
+Check codes: `drawer-clearance` (side-mount gap outside the window), `drawer-inside-width`,
+`drawer-side-thickness`, `drawer-height`, `drawer-under`, `drawer-recess`, `drawer-length`,
+`drawer-depth` (slide or runner longer than the case allows), `drawer-slides` (wrong number modeled),
+`drawer-front-fit` and `drawer-setback` (inset), and warnings `drawer-centred`, `drawer-gap`,
+`drawer-wide`, `drawer-slide-length`, `drawer-front-cover`, `drawer-pull-screw`, `drawer-play`.
+
 ## Generated paperwork
 
 These come from the model and need no fields:

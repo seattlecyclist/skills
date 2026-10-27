@@ -140,11 +140,16 @@ cutting diagram.
 - Dimensioned part layouts, section views, joinery details and cutting diagrams with cut order.
 - Jigs, full-size patterns and story sticks tiled at 100% in the PDF, build steps with "Show in 3D",
   and a finishing schedule.
+- A Drawer Breakout for any plan with drawers: each opening with its slide (maker, model, length,
+  clearances, mounting line), the box sized from the slide maker's spec sheet, the front's reveals or
+  overlay and the pull. `references/drawers.md` holds the slide catalogue and formulas, with sources.
 
 **Why it is a guardrail**
 
 - A geometric model check runs on every build: interference, joint contact, tenon seating,
   connectivity, wood movement and bores, before anything is drawn.
+- Drawer boxes are measured against their slide's spec: side clearance, undermount inside width,
+  side thickness, bottom recess, box and slide length against the case depth.
 - Every design and every later change gets an adversarial review that walks each change against the
   parts it touches and mates with, recorded on the plan's Revisions & Review sheet.
 - `selftest.js` proves the checks still catch known breaks.

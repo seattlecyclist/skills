@@ -121,6 +121,7 @@ input[type=range]{accent-color:var(--ink);width:150px}
 .ml>h2{font:700 1.65rem/1 var(--f-sans);text-transform:uppercase;margin:0;padding-bottom:7px;border-bottom:2px solid var(--green)}
 .ml .mcols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 28px;margin-top:6px}
 .tw{overflow-x:auto;min-width:0}
+.dbk{break-inside:avoid;margin:6px 0 22px}.dbk h3{font:700 1.05rem/1.2 var(--f-sans);border-bottom:2px solid var(--ink);padding-bottom:4px;margin:0 0 8px}.dbg{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:18px;align-items:start}.dbg figure{margin:0}.dbx{width:100%;height:auto;display:block}.dbg th{text-align:left;white-space:nowrap;vertical-align:top;padding-right:10px}@media (max-width:700px){.dbg{grid-template-columns:1fr}}
 table{border-collapse:collapse;width:100%;font:400 .95rem/1.25 var(--f-sans);font-variant-numeric:tabular-nums}
 th{font-weight:700;text-align:left;padding:5px 4px 2px;white-space:nowrap;vertical-align:bottom}
 td{padding:3px 4px 2px;border-bottom:1px solid var(--rule);vertical-align:top}
@@ -1038,6 +1039,59 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     const jr = joints.map((j, i) => '<tr><td class="n">' + esc(j.id || 'J' + (i + 1)) + '</td><td><b>' + esc(j.title || j.type) + '</b>' + (j.note ? '<div class="note">' + rich(j.note) + '</div>' : '') + '</td><td>' + (j.parts || []).map(String).map(chip).join('') + '</td><td>' + esc([j.glue ? 'Glue' : 'No glue', j.fasteners].filter(Boolean).join(' · ')) + '</td><td><button class="b" type="button" data-joint="' + i + '">Show</button></td></tr>').join('');
     sheet('Joinery', '<p>Every connection in the plan, what holds it, and where it is. <b>Show</b> isolates the joint in the exploded view.</p><div class="tw"><table class="plain"><thead><tr><th>No.</th><th>Joint</th><th>Parts</th><th>Held by</th><th></th></tr></thead><tbody>' + jr + '</tbody></table></div>');
   }
+  // ---- drawer breakout: every drawer opening with its slide, box, front and pull (plan.drawers) ----
+  const dRows = (P.drawers || []).length ? C.drawerChecks(M, P, () => {}, () => {}, () => {}) : [];
+  if (dRows.length) {
+    const groups = [];
+    for (const r of dRows) { const g = groups.find(x => x.name === r.name && x.rec === r.slide); if (g) g.rows.push(r); else groups.push({ name: r.name, rec: r.slide, rows: [r] }); }
+    const sv = (r) => {
+      const o = r.opening, b = r.box, W = o.w, H = o.h, sc = Math.min(300 / (W + 1.5), 170 / (H + 1.5)), x0 = o.at[0] - 0.75, z1 = o.at[2] + H + 0.75;
+      const X = x => ((x - x0) * sc).toFixed(1), Y = z => ((z1 - z) * sc).toFixed(1), Wd = v => (v * sc).toFixed(1);
+      let s = '<svg class="dbx" viewBox="0 0 ' + Wd(W + 1.5) + ' ' + Wd(H + 1.5) + '" role="img" aria-label="Front section of the ' + esc(r.name) + ' opening">';
+      s += '<rect x="' + X(o.at[0]) + '" y="' + Y(o.at[2] + H) + '" width="' + Wd(W) + '" height="' + Wd(H) + '" fill="none" stroke="var(--ink)" stroke-width="1.5"/>';
+      if (b) {
+        const bx = b.at[0], bz = b.at[2];
+        s += '<rect x="' + X(bx) + '" y="' + Y(bz + b.h) + '" width="' + Wd(b.w) + '" height="' + Wd(b.h) + '" fill="#f4ec9e" stroke="var(--ink)" stroke-width="1"/>';
+        if (b.side) s += '<rect x="' + X(bx + b.side) + '" y="' + Y(bz + b.h) + '" width="' + Wd(b.w - 2 * b.side) + '" height="' + Wd(b.h - (b.recess || 0)) + '" fill="#fff" stroke="var(--ink)" stroke-width=".6"/>';
+        if (r.slideAt) {
+          const sz = o.at[2] + r.slideAt.bottom, sh = 2 * (r.slideAt.centre - r.slideAt.bottom);
+          if (r.slide.kind === 'side') for (const sx of [o.at[0], bx + b.w]) s += '<rect x="' + X(sx) + '" y="' + Y(sz + sh) + '" width="' + Wd(sx === o.at[0] ? bx - o.at[0] : o.at[0] + W - sx) + '" height="' + Wd(sh) + '" fill="#c5c2be" stroke="var(--ink)" stroke-width=".6"/>';
+          else s += '<rect x="' + X(bx) + '" y="' + Y(sz + sh) + '" width="' + Wd(b.w) + '" height="' + Wd(sh) + '" fill="#c5c2be" stroke="var(--ink)" stroke-width=".6"/>';
+        }
+        s += '<text x="' + X(bx + b.w / 2) + '" y="' + Y(bz + b.h / 2) + '" font-size="11" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">box ' + esc(FT(b.w)) + ' × ' + esc(FT(b.h)) + '</text>';
+      }
+      if (r.front) { const e = r.front.edges; s += '<rect x="' + X(o.at[0] - e.left) + '" y="' + Y(o.at[2] + H + e.top) + '" width="' + Wd(r.front.w) + '" height="' + Wd(r.front.h) + '" fill="none" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3"/>'; }
+      return s + '</svg>';
+    };
+    const html = groups.map((g, gi) => {
+      const r = g.rows[0], s = r.slide, o = r.opening, b = r.box || {}, cl = r.clear || {}, n = g.rows.length;
+      const L = r.length;
+      const tr = (k, v) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
+      const rows = [];
+      rows.push(tr('Opening', F(o.w) + ' wide × ' + F(o.h) + ' high × ' + F(o.d) + ' deep'));
+      rows.push(tr('Slide', '<b>' + esc(s.name) + '</b>' + (L ? ', ' + F(L) + ' long' : '') + (s.kind === 'wood' ? '' : ' · ' + n + (s.kind === 'center' ? ' slide' + (n > 1 ? 's' : '') : ' pair' + (n > 1 ? 's' : ''))) + (s.load ? ' · rated ' + esc(s.load) : '') + (s.source ? '<div class="note">Numbers from ' + esc(s.source) + '.</div>' : '')));
+      if (s.kind === 'side') {
+        rows.push(tr('Slide clearance', F(s.clear[0]) + ' to ' + F(s.clear[1]) + ' each side; the model leaves ' + F(cl.left) + ' and ' + F(cl.right)));
+        rows.push(tr('Box width', F(o.w) + ' − 2 × ' + F((cl.left + cl.right) / 2) + ' = <b>' + F(b.w) + '</b>, held to ±1/64"'));
+      } else if (s.kind === 'under') {
+        rows.push(tr('Inside width', F(o.w) + ' − ' + F(s.k) + ' = <b>' + F(o.w - s.k) + '</b>; box ' + F(b.w) + ' outside with ' + F(b.side) + ' sides (' + F(s.side[0]) + '–' + F(s.side[1]) + ' allowed)'));
+        rows.push(tr('Runner room', F(s.below) + ' under the box, ' + F(s.above) + ' over it; box at most ' + F(o.h) + ' − ' + F(s.h) + ' = ' + F(o.h - s.h) + ' high'));
+        rows.push(tr('Bottom & notch', 'Bottom ' + F(b.recess) + ' up from the bottom of the sides (at least ' + F(s.recess) + '); notch each back corner ' + F(s.notch[0]) + ' wide × ' + F(s.notch[1]) + ' high and drill the runner hook hole'));
+      } else rows.push(tr('Side play', F(o.w - b.w) + ' in total (' + F(s.play[0]) + '–' + F(s.play[1]) + ')'));
+      if (b.w) rows.push(tr('Box', '<b>' + F(b.w) + ' wide × ' + F(b.h) + ' high × ' + F(b.d) + ' long</b>' + (b.inside ? ' · ' + F(b.inside) + ' inside' : '') + (b.side ? ' · ' + F(b.side) + ' sides' : '') + (b.recess != null ? ' · bottom ' + F(b.recess) + ' up' : '')));
+      if (b.w) rows.push(tr('Box parts', r.parts.map(id => M.byId[id]).filter(Boolean).map(q => chip(q.id) + ' ' + esc(q.name) + ' ' + (q.localSolid && q.localSolid.bbox ? [0, 1, 2].map(k => q.localSolid.bbox.max[k] - q.localSolid.bbox.min[k]).sort((u, v) => u - v).map(v => F(v)).join(' × ') : '')).join('<br>')));
+      if (b.w) rows.push(tr('Clearance in the case', F(cl.below) + ' below · ' + F(cl.above) + ' above · ' + F(cl.rear) + ' behind'));
+      if (r.slideAt) rows.push(tr('Mount the slides', (s.kind === 'side' ? 'Centreline ' + F(r.slideAt.centre) + ' above the opening floor, ' : 'Runner on the opening floor, ') + 'set back ' + F(r.slideAt.setback) + ' from the case front' + (s.screws ? ' · ' + esc(s.screws) + ' screws' : '')));
+      if (r.front) { const e = r.front.edges, ed = v => Math.abs(v) < 1 / 128 ? 'flush' : v > 0 ? F(v) + ' over' : F(-v) + ' gap'; rows.push(tr('Front', '<b>' + F(r.front.w) + ' × ' + F(r.front.h) + ' × ' + F(r.front.t) + '</b> ' + esc(r.style) + ' · left ' + ed(e.left) + ', right ' + ed(e.right) + ', top ' + ed(e.top) + ', bottom ' + ed(e.bottom))); }
+      const pl = (P.drawers.find(d => (d.name || '') === g.name) || {}).pull;
+      if (pl) rows.push(tr('Pull', esc([pl.item, pl.cc ? pl.cc + ' centres' : '', pl.screw ? pl.screw + ' screws' : ''].filter(Boolean).join(' · ')) + (pl.at ? '<div class="note">' + rich(pl.at) + '</div>' : '')));
+      const ids = [...new Set(r.parts.concat((P.drawers.find(d => (d.name || '') === g.name) || {}).slides || []).concat(r.front ? [r.front.id] : []).map(String))];
+      rows.push(tr('Parts', ids.map(chip).join('')));
+      return '<div class="dbk"><h3>' + esc(g.name) + (n > 1 ? ' · make ' + n : '') + '</h3><div class="dbg"><figure>' + sv(r) + '<figcaption class="note">Front section: opening, box (yellow), slides (grey), front (dashed).</figcaption></figure><div class="tw"><table class="plain">' + rows.join('') + '</table></div></div></div>';
+    }).join('');
+    sheet('Drawer Breakout', '<p>Each drawer opening, the slide it runs on and the box, front and pull sized from the slide maker\'s numbers. Measure every opening before you cut: the box width has only about 1/32" of slack on side-mount slides.</p>' + html);
+  }
+
 
   // ---- joint details: every joint drawn on its own, from the model, the mating parts pulled apart ----
   // Each detail crops the parts to where they meet, slides them apart the way the joint goes together,

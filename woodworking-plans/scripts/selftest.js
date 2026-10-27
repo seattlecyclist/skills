@@ -111,6 +111,23 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   const p2 = mk(); delete p2.bores.find(b => b.id === 'B2').hardware;
   const R2 = C.check(p2), sl = R2.warnings.filter(w => w.code === 'screw-length');
   out(sl.length === 1 && /more copies/.test(sl[0].msg), 'dresser: slide screws without `hardware` warn once, grouped across copies', JSON.stringify(sl.map(w => w.msg)));
+  // drawers: the boxes are measured against the slide's numbers
+  const top = R0.stats.drawers[0];
+  out(R0.stats.drawers.length === 8 && Math.abs(top.clear.left - 33 / 64) < 1e-6 && Math.abs(top.box.w - (28.875 - 66 / 64)) < 1e-6 && top.box.d === 18 && top.front && top.slideAt, 'drawers: each opening measures its box, clearances, front and slide line', JSON.stringify(top.clear));
+  const p3 = mk(); p3.parts.filter(q => /Top Box Sides/.test(q.name)).forEach(q => q.instances.forEach(i => { i.at[0] += i.mirror ? 0.125 : -0.125; }));
+  out(has(C.check(p3), 'drawer-clearance'), 'drawers: a box 1/4" too wide for its side-mount slides fails');
+  const p4 = mk(); p4.drawers[0].slide = 'blum-tandem-563h'; p4.drawers[0].length = 18;
+  const R4 = C.check(p4);
+  out(['drawer-inside-width', 'drawer-recess'].every(c => has(R4, c)), 'drawers: the same box on Blum Tandem fails the inside width and the bottom recess', R4.errors.filter(e => /^drawer/.test(e.code)).map(e => e.code).join(','));
+  const p5 = mk(); p5.drawers[0].length = 20;
+  out(has(C.check(p5), 'drawer-length'), 'drawers: a slide longer than the box fails');
+  const p6 = mk(); p6.drawers[0].slide = 'acme-9000';
+  out(validate(p6).some(v => v.at === 'drawers[0].slide'), 'drawers: an unknown slide is a validation error');
+  const p7 = mk(); delete p7.drawers[0].waive;
+  out(has(C.check(p7), 'drawer-wide'), 'drawers: a box wider than the slide is long warns unless the drawer accepts it with a reason');
+  const sz = C.drawerSize({ w: 22, h: 6, d: 21.5 }, C.slideSpec('accuride-3832'));
+  const sz2 = C.drawerSize({ w: 22, h: 6, d: 21.5 }, C.slideSpec('blum-tandem-563h'), { side: 0.625 });
+  out(sz.w === 22 - 66 / 64 && sz.length === 20 && sz2.length === 18 && Math.abs(sz2.w - (22 - 42 / 25.4 + 1.25)) < 1 / 64, 'drawers: drawerSize gives the worked examples in drawers.md', JSON.stringify([sz, sz2]));
 }
 
 // review worksheet

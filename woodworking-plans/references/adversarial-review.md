@@ -111,6 +111,14 @@ the drawings, the cut list notes and the steps. Missing halves are a `fail`, nev
 **Movement and clearances**
 - Wide solid parts (over about 6") can move across their width: no cross-grain glue, slotted screws or buttons where needed.
 - Moving parts (drawers, doors, lids, slides) keep their clearances after the change.
+- Drawers (every plan with one, see drawers.md): each opening is declared in `drawers`; the slide is a
+  real product named by maker, model and length; the box width, inside width, height and length
+  follow that slide's sheet (side clearance in its window, undermount inside width = opening − the
+  maker's deduction, sides in range, bottom recess and rear notch, box length = NL); the slide
+  fits the case depth with its setback (plus the front on inset drawers); fronts give even reveals
+  or the stated overlay; pull screws are the stack they pass through plus about 1/4"; the hardware
+  list carries slides (pairs), pulls and screws. Recompute one box from the opening and spec by
+  hand and compare it with the Drawer Breakout.
 - Anything the user puts in or on it (mattress, saw, books) still fits, and is located where it should be.
 
 **Paperwork**
