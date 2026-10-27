@@ -35,6 +35,12 @@ Get, or ask once for: the governing constraint (overall size, or what it holds o
 stock, any joinery the user named (a requirement, not a suggestion), and whether it must knock down
 (beds and big tables: yes). Pick tools, finish and skill level yourself and say so.
 
+Note where each governing size comes from as you go: the builder's words, their reference (a plan,
+PDF or drawing), a photo (an estimate: say what you scaled it from, such as a 30" table beside it)
+or your own choice. It goes in `meta.basis`, and anything you changed from their
+reference goes in `meta.changed` with the reason; the page shows both, so the builder knows which
+numbers to measure before buying wood.
+
 ## 2. Design
 
 Decide the visual idea in one sentence, the load path joint by joint (every load ends in bearing on

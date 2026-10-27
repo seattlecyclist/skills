@@ -140,6 +140,9 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   globalThis.PlanUnits = 'mm'; const mmTxt = C.fmt(0.75); globalThis.PlanUnits = 'in';
   out(mmTxt === '19 mm' && C.fmt(0.75) === '3/4"', 'units toggle formats millimetres and back', mmTxt);
   out(!validate(sk).length, 'skeleton (every field, new paperwork included) validates clean', JSON.stringify(validate(sk)));
+  const sb = JSON.parse(JSON.stringify(sk)); sb.meta.basis.push({ what: 'Seat 18"', from: 'guess' }, { what: 'Width 30"', from: 'photo' }); sb.meta.changed = [{ why: 'no what' }];
+  const sv = validate(sb), at = l => sv.filter(e => e.level === l).map(e => e.at);
+  out(at('error').includes('meta.basis[2].from') && at('error').includes('meta.changed[0].what') && at('warn').includes('meta.basis[3].note'), 'validation: a size\'s basis is you, reference, photo or choice, and a photo estimate says what it was scaled from', JSON.stringify(sv));
   out(Msk.mortises.length === 16 && Msk.byId['1'].instances.every(I => I.cuts.filter(c => c.mortise).length === 4), 'skeleton: each leg has its four mortises, one per apron tenon', Msk.mortises.length + ' mortises');
   const long = prepare(SK(SK.PARAMS, Object.assign({}, J, { mortiseTenon: o => J.mortiseTenon(Object.assign({}, o, { length: 1.25 })) })));
   out(has(C.check(long), 'tenon-clash'), 'skeleton with 1-1/4" tenons: front and side tenons collide in the leg');

@@ -9,7 +9,9 @@
 
   const KEYS = {
     plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note'],
-    meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'check', 'tools', 'toolkit'],
+    meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'basis', 'changed', 'check', 'tools', 'toolkit'],
+    basis: ['what', 'from', 'note'],
+    changed: ['what', 'why'],
     part: ['id', 'name', 'section', 'qty', 't', 'w', 'l', 'material', 'stock', 'mat', 'glueup', 'stock_t', 'blank', 'size', 'note', 'shape', 'instances', 'stage', 'callout', 'drawing', 'min_wall', 'pattern', 'grain'],
     shape: ['box', 'cut', 'role', 'through', 'tool', 'outline', 'cutout', 'lathe', 'splay', 'roundover', 'chamfer', 'axis', 'span', 'center', 'edges', 'ease', 'section', 'top'],
     instance: ['at', 'rot', 'mirror', 'explode', 'label'],
@@ -26,6 +28,7 @@
     review: ['rev', 'change', 'verdict', 'mates', 'checks'],
     check: ['check', 'evidence', 'result']
   };
+  const FROM = ['you', 'reference', 'photo', 'choice'];
   const STOCK = ['solid', 'sheet', 'hardware'], RESULTS = ['pass', 'fixed', 'flag', 'fail'], KINDS = ['bolt', 'screw', 'cross-dowel', 'hole', 'peg'];
   const DIRS = ['+x', '-x', '+y', '-y', '+z', '-z'];
 
@@ -81,6 +84,13 @@
     const meta = plan.meta || {}; if (!plan.meta) E('meta', 'missing'); else keys(meta, 'meta', 'meta');
     if (!meta.title) E('meta.title', 'missing');
     if (meta.overall) for (const k of ['w', 'd', 'h']) len(meta.overall[k], 'meta.overall.' + k, true);
+    arr(meta.basis, 'meta.basis').forEach((b, i) => {
+      const at = 'meta.basis[' + i + ']'; keys(b, 'basis', at);
+      if (!b.what) E(at + '.what', 'missing: say which size or feature');
+      if (!FROM.includes(b.from)) E(at + '.from', 'must be one of ' + FROM.join(', ') + ' (got ' + JSON.stringify(b.from) + ')');
+      if (b.from === 'photo' && !b.note) W(at + '.note', 'a size estimated from a photo should say what it was scaled from');
+    });
+    arr(meta.changed, 'meta.changed').forEach((c, i) => { const at = 'meta.changed[' + i + ']'; keys(c, 'changed', at); if (!c.what) E(at + '.what', 'missing'); });
 
     const secs = arr(plan.sections, 'sections').map(s => String(s.id));
     const parts = arr(plan.parts, 'parts');
