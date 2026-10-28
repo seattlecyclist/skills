@@ -1494,6 +1494,9 @@
     // 11b. drawers (plan.drawers): box, slide and front against the slide maker's numbers
     out.stats.drawers = drawerChecks(M, plan, err, warn, pass);
 
+    // 11c. doors (plan.doors): leaves and hinges against the hinge maker's overlay and reveal tables
+    out.stats.doors = doorChecks(M, plan, err, warn, pass);
+
     // 12. overall size
     const world = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
     for (const { i } of inst) if (i.bbox) for (let a = 0; a < 3; a++) { world.min[a] = Math.min(world.min[a], i.bbox.min[a]); world.max[a] = Math.max(world.max[a], i.bbox.max[a]); }
@@ -2027,7 +2030,235 @@
     return rows;
   }
 
-  const api = { SLIDES, slideSpec, drawerSize, drawerChecks, measures, at3, plAxes, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
+  // ---------- doors: hinge catalogue, sizing and checks (references/doors.md) ----------
+  // Millimetres, as the hinge makers publish them. overlay: the door's overlay on the face the hinge
+  // mounts to = k + C − H (C = cup boring distance from the door edge, H = mounting plate height);
+  // an inset door's reveal is −(k + C − H). adj = side adjustment either way after hanging. reveal =
+  // the maker's minimum reveal at the hinge edge by door thickness (rows) and cup distance (cols).
+  const BLUM_REVEAL = { C: [3, 4, 5, 6, 7], T: { 16: [0.5, 0.5, 0.5, 0.5, 0.5], 19: [1, 1, 0.9, 0.9, 0.9], 22: [1.8, 1.7, 1.7, 1.6, 1.6], 24: [2.7, 2.5, 2.4, 2.3, 2.2], 26: [4.3, 3.8, 3.4, 3.2, 3] } };
+  const SALICE_REVEAL = { C: [3, 4, 5, 6], T: { 16: [0.5, 0.5, 0.5, 0.5], 17: [0.7, 0.7, 0.7, 0.7], 18: [0.9, 0.9, 0.9, 0.9], 19: [1.2, 1.2, 1.2, 1.2], 20: [1.5, 1.5, 1.5, 1.5], 21: [1.8, 1.8, 1.8, 1.8], 22: [2.4, 2.1, 2.1, 2.1], 23: [3.7, 2.7, 2.6, 2.5], 24: [5.1, 4.1, 3.1, 3], 25: [6.5, 5.5, 4.1, 3.5], 26: [7.8, 6.8, 5.4, 4.4] } };
+  const GRASS_REVEAL = { C: [3, 4, 5, 6, 7], T: { 16: [0.6, 0.6, 0.6, 0.6, 0.6], 17: [0.6, 0.6, 0.6, 0.6, 0.6], 18: [0.7, 0.7, 0.7, 0.7, 0.7], 19: [0.9, 0.9, 0.9, 0.9, 0.9], 20: [1.1, 1.1, 1.1, 1.1, 1.1], 21: [1.4, 1.3, 1.3, 1.3, 1.3], 22: [1.6, 1.6, 1.6, 1.5, 1.5], 24: [2.4, 2.1, 2.1, 2.1, 2] } };
+  const HETTICH_REVEAL = { C: [3, 4, 4.5, 5, 6, 7], T: { 15: [0.2, 0.2, 0.2, 0.2, 0.2, 0.2], 16: [0.3, 0.3, 0.3, 0.3, 0.3, 0.3], 17: [0.4, 0.4, 0.4, 0.4, 0.4, 0.4], 18: [0.6, 0.6, 0.6, 0.6, 0.6, 0.5], 19: [0.8, 0.8, 0.8, 0.8, 0.7, 0.7], 20: [1.1, 1, 1, 1, 1, 0.9], 21: [1.4, 1.3, 1.3, 1.3, 1.2, 1.2], 22: [2.2, 1.8, 1.7, 1.6, 1.6, 1.5], 23: [3, 2.6, 2.4, 2.2, 2, 1.9], 24: [3.9, 3.4, 3.2, 3, 2.6, 2.4] } };
+  const blum = { cup: 35, depth: 13, C: [3, 7], adj: 2, plates: [0, 3, 6, 9], t: [16, 26], reveal: BLUM_REVEAL, angle: 110, pattern: '45/9.5', plateSet: 37, screws: '#6 × 5/8" pan-head (plate), #6 × 1/2" (cup)', source: 'Blum CLIP top BLUMOTION 110° planning sheet (Blum Inc. catalogue p. 12)' };
+  const salice = { cup: 35, depth: 11.5, C: [3, 6], adj: 2, plates: [0, 1.5, 3, 5], t: [16, 26], reveal: SALICE_REVEAL, angle: 110, pattern: '45/9.5', plateSet: 37, screws: '#6 × 5/8" pan-head', source: 'Salice Concealed Hinges for the Cabinet, USA catalogue (overlay formulas p. 4, minimum reveal p. 70)' };
+  const grass = { cup: 35, depth: 12.6, C: [3, 7], adj: 2, plates: [0, 2, 3], t: [16, 24], reveal: GRASS_REVEAL, angle: 110, pattern: '45/9.5', plateSet: 37, screws: '#6 × 5/8" pan-head', source: 'Grass Tiomos 110 catalogue pages (planning dimensions, minimum reveal)' };
+  const hettich = { cup: 35, depth: 13, C: [3, 7], adj: 2, plates: [0, 1.5, 3, 5], t: [15, 24], reveal: HETTICH_REVEAL, angle: 110, pattern: 'TH 52/5.5', plateSet: 37, screws: '#6 × 5/8" pan-head or 5 mm Euro screws', source: 'Hettich Sensys brochure HUK 14987 (8645i planning tables)' };
+  const HINGES = {
+    'blum-clip-top-110': Object.assign({}, blum, { kind: 'overlay', name: 'Blum CLIP top BLUMOTION 110° full overlay (71B3550)', k: 11, cabinet: 'frameless' }),
+    'blum-clip-top-110-half': Object.assign({}, blum, { kind: 'overlay', name: 'Blum CLIP top BLUMOTION 110° half overlay (71B3650)', k: 1.5, cabinet: 'frameless' }),
+    'blum-clip-top-110-inset': Object.assign({}, blum, { kind: 'inset', name: 'Blum CLIP top BLUMOTION 110° inset (71B3750)', k: -7, cabinet: 'frameless' }),
+    'blum-compact-39c': { kind: 'fixed', name: 'Blum COMPACT BLUMOTION 39C face-frame hinge', cabinet: 'face-frame', overlays: [1, 1.25, 1.3125, 1.375, 1.5, 1.5625], frameT: 0.75, cup: 35, depth: 13, C: [3, 3], t: [16, 26], reveal: BLUM_REVEAL, angle: 107, pattern: '45/9.5', screws: '#6 × 5/8" into the frame', source: 'Blum COMPACT BLUMOTION 39C programme (overlay = model suffix ÷ 16")' },
+    'salice-110': Object.assign({}, salice, { kind: 'overlay', name: 'Salice 200 series 110° full overlay ("A" crank, C2P6A99)', k: 15, cabinet: 'frameless' }),
+    'salice-110-half': Object.assign({}, salice, { kind: 'overlay', name: 'Salice 200 series 110° half overlay ("G" crank)', k: 6, cabinet: 'frameless' }),
+    'salice-110-inset': Object.assign({}, salice, { kind: 'inset', name: 'Salice 200 series 110° inset ("P" crank)', k: -2, cabinet: 'frameless' }),
+    'salice-110-face-frame': Object.assign({}, salice, { kind: 'overlay', name: 'Salice 110° 1/2" overlay face-frame hinge ("D" crank)', k: 10, cabinet: 'face-frame' }),
+    'grass-tiomos-110': Object.assign({}, grass, { kind: 'overlay', name: 'Grass Tiomos 110 full overlay (crank 0, F028138519)', k: 15, cabinet: 'frameless' }),
+    'grass-tiomos-110-k3': Object.assign({}, grass, { kind: 'overlay', name: 'Grass Tiomos 110 overlay (crank 3, F028138520)', k: 12, cabinet: 'frameless' }),
+    'grass-tiomos-110-half': Object.assign({}, grass, { kind: 'overlay', name: 'Grass Tiomos 110 half overlay (crank 9.5, F028138521)', k: 5.5, cabinet: 'frameless' }),
+    'hettich-sensys-110': Object.assign({}, hettich, { kind: 'overlay', name: 'Hettich Sensys 8645i 110° full overlay', k: 12.5, cabinet: 'frameless' }),
+    'hettich-sensys-110-half': Object.assign({}, hettich, { kind: 'overlay', name: 'Hettich Sensys 8645i 110° half overlay', k: 3, cabinet: 'frameless' }),
+    'hettich-sensys-110-inset': Object.assign({}, hettich, { kind: 'inset', name: 'Hettich Sensys 8645i 110° inset', k: -4, cabinet: 'frameless' }),
+    'butt-hinge': { kind: 'butt', name: 'Butt hinges, mortised (inset doors)', cabinet: 'any', t: [0, 99], source: 'traditional; see doors.md' }
+  };
+  // a door's hinge: a catalogue key, or an object (optionally { like: key, ...overrides })
+  function hingeSpec(h) {
+    if (typeof h === 'string') return HINGES[h] ? Object.assign({ key: h }, HINGES[h]) : null;
+    if (h && typeof h === 'object') return Object.assign({ key: h.like || 'custom' }, h.like && HINGES[h.like] ? HINGES[h.like] : {}, h);
+    return null;
+  }
+  // the maker's minimum reveal (mm) for a door thickness and cup distance: interpolated between rows
+  function hingeReveal(s, Tmm, Cmm) {
+    const R = s && s.reveal; if (!R) return null;
+    let ci = 0; R.C.forEach((c, i) => { if (c <= Cmm + 1e-6) ci = i; });
+    const ts = Object.keys(R.T).map(Number).sort((a, b) => a - b);
+    if (Tmm <= ts[0]) return R.T[ts[0]][ci];
+    for (let i = 1; i < ts.length; i++) if (Tmm <= ts[i]) { const a = ts[i - 1], b = ts[i], u = (Tmm - a) / (b - a); return Math.round((R.T[a][ci] * (1 - u) + R.T[b][ci] * u) * 10) / 10; }
+    return R.T[ts[ts.length - 1]][ci];
+  }
+  // the cup distance and plate that give an overlay (mm, negative = inset reveal): the plate that
+  // leaves the cup distance nearest the middle of its range, so the adjustment is spent evenly
+  function hingeSetup(s, overlayMM) {
+    if (!s || s.kind === 'butt') return null;
+    if (s.kind === 'fixed') { const o = s.overlays.map(v => v * 25.4).reduce((a, b) => Math.abs(b - overlayMM) < Math.abs(a - overlayMM) ? b : a); return { C: s.C[0], H: 0, overlay: o, fits: Math.abs(o - overlayMM) <= 1 }; }
+    const mid = (s.C[0] + s.C[1]) / 2, opts = [];
+    for (const H of s.plates || [0]) { const C = Math.round((overlayMM - s.k + H) * 2) / 2; if (C >= s.C[0] - 1e-6 && C <= s.C[1] + 1e-6) opts.push({ C, H, overlay: s.k + C - H }); }
+    if (!opts.length) return { fits: false, C: null, H: null };
+    opts.sort((a, b) => Math.abs(a.C - mid) - Math.abs(b.C - mid) || a.H - b.H);
+    return Object.assign({ fits: true }, opts[0]);
+  }
+  // hinges a door needs: Salice's chart by height and weight; Blum adds one over 600 mm wide
+  function hingeCount(h, lb, w) {
+    const n = h <= 36 && lb <= 20 ? 2 : h <= 60 && lb <= 40 ? 3 : h <= 84 && lb <= 60 ? 4 : 5;
+    return n + (w > 600 / 25.4 ? 1 : 0);
+  }
+  // pounds per cubic inch, for the hinge count: plywood ~42 pcf, MDF ~48, hardwood ~40, softwood ~28, glass 156
+  function density(mat) {
+    const m = String(mat || '').toLowerCase();
+    return /mdf|hdf/.test(m) ? 48 / 1728 : /glass/.test(m) ? 156 / 1728 : /ply|birch|melamine|particle/.test(m) ? 42 / 1728 : /pine|fir|cedar|spruce|poplar/.test(m) ? 28 / 1728 : 40 / 1728;
+  }
+  const solidWood = mat => !/ply|mdf|hdf|melamine|particle|glass|steel|board/i.test(String(mat || ''));
+  // door sizes for an opening: what the designer aims for. o: style, leaves (1|2), frame (the case
+  // edge or frame member width around the opening, one number or {left,right,top,bottom}), reveal at
+  // exposed edges, gap between leaves, overlay (face frame and partial overlay)
+  function doorSize(open, o) {
+    o = o || {};
+    const W = parseLen(open.w), H = parseLen(open.h), n = o.leaves || 1, style = o.style || 'full-overlay';
+    const fr = typeof o.frame === 'object' && o.frame ? o.frame : { left: o.frame, right: o.frame, top: o.frame, bottom: o.frame };
+    const f = k => fr[k] != null ? parseLen(fr[k]) : 0.75;
+    const rev = o.reveal != null ? parseLen(o.reveal) : style === 'inset' ? 0.09375 : 0.0625, gap = o.gap != null ? parseLen(o.gap) : style === 'inset' ? 0.09375 : 0.125;
+    const r32 = v => Math.floor(v * 32 + 1e-6) / 32;
+    let ov;
+    if (style === 'inset') ov = { left: -rev, right: -rev, top: -rev, bottom: -rev };
+    else if (style === 'full-overlay') ov = { left: f('left') - rev, right: f('right') - rev, top: f('top') - rev, bottom: f('bottom') - rev };
+    else if (style === 'half-overlay') ov = { left: f('left') / 2 - gap / 2, right: f('right') / 2 - gap / 2, top: f('top') - rev, bottom: f('bottom') - rev };
+    else { const v = o.overlay != null ? parseLen(o.overlay) : 0.5; ov = { left: v, right: v, top: v, bottom: v }; }
+    const total = W + ov.left + ov.right, w = r32((total - (n - 1) * gap) / n), h = r32(H + ov.top + ov.bottom);
+    return { w, h, leaves: n, overlay: ov, gap: n > 1 ? gap : null, reveal: rev, overlayMM: Math.round(ov.left * 25.4 * 10) / 10 };
+  }
+  function doorChecks(M, plan, err, warn, pass) {
+    const rows = [], tol = 1 / 128, ids = v => [].concat(v == null ? [] : v).map(String), fm = v => fmt(v) + ' (' + (Math.round(v * 254) / 10) + ' mm)';
+    const insts = (list, lo, hi, pad) => { const out = []; for (const id of list) { const p = M.byId[id]; if (!p) continue; for (const I of p.instances) if (I.bbox && within(ctr(I.bbox), lo, hi, pad)) out.push({ p, I, b: I.bbox }); } return out; };
+    const cupBores = (plan.bores || []).filter(b => b.kind === 'hole' && /cup|hinge/i.test(b.label || '') && parseLen(b.d) > 1);
+    (plan.doors || []).forEach((d, di) => {
+      const nm = d.name || 'Door ' + (di + 1), s = hingeSpec(d.hinge);
+      if (!s) { err('door-hinge', nm + ': hinge "' + (typeof d.hinge === 'string' ? d.hinge : '?') + '" is not in the catalogue (' + Object.keys(HINGES).join(', ') + '). Name one, or give the maker\'s numbers as an object.'); return; }
+      const op = d.opening || {}, W = parseLen(op.w), H = parseLen(op.h), style = d.style || 'full-overlay', cab = d.cabinet || s.cabinet || 'frameless';
+      const ats = Array.isArray(op.at && op.at[0]) ? op.at : [op.at || [0, 0, 0]];
+      const fr0 = d.frame == null ? 0.75 : d.frame, fr = typeof fr0 === 'object' ? fr0 : { left: fr0, right: fr0, top: fr0, bottom: fr0 }, f = k => fr[k] != null ? parseLen(fr[k]) : 0.75;
+      const leafIds = ids(d.leaves), hingeIds = ids(d.hinges);
+      const waived = new Set(), warn0 = warn, err0 = err;
+      warn = (code, msg, parts) => { const why = d.waive && d.waive[code]; if (!why) return warn0(code, msg, parts); if (!waived.has(code)) { waived.add(code); pass(code, msg + ' Accepted: ' + why); } };
+      if (s.kind !== 'butt' && s.cabinet !== 'any' && s.cabinet !== cab) warn('door-hinge-type', nm + ': the ' + s.name + ' is made for ' + s.cabinet + ' cabinets; this one is ' + cab + '.', hingeIds);
+      if (s.kind === 'inset' && style !== 'inset') err('door-hinge-type', nm + ': an inset hinge (' + s.name + ') cannot hang a ' + style + ' door.', hingeIds);
+      if (s.kind === 'overlay' && style === 'inset') err('door-hinge-type', nm + ': an overlay hinge (' + s.name + ') cannot hang an inset door; use the maker\'s inset (full-crank) version.', hingeIds);
+      ats.forEach((at0, k) => {
+        const at = at0.map(parseLen), lo = [at[0], at[1], at[2]], hi = [at[0] + W, at[1], at[2] + H];
+        const tag = nm + (ats.length > 1 ? ' (' + (k + 1) + ' of ' + ats.length + ')' : '');
+        const row = { name: nm, index: k, count: ats.length, hinge: s, style, cabinet: cab, opening: { at, w: W, h: H }, frame: { left: f('left'), right: f('right'), top: f('top'), bottom: f('bottom') }, leaves: [] };
+        rows.push(row);
+        const lv = insts(leafIds, [lo[0] - 3, lo[1] - 3, lo[2] - 3], [hi[0] + 3, lo[1] + 2, hi[2] + 3], [0, 0, 0]).sort((a, c) => a.b.min[0] - c.b.min[0]);
+        if (!lv.length) { err('door-no-leaf', tag + ': no door (' + leafIds.map(i => '#' + i).join(', ') + ') hangs in front of the opening at ' + at.map(v => fmt(v)).join(', ') + '.', leafIds); return; }
+        const pair = lv.length > 1, hinged = d.hinged || (pair ? 'pair' : 'left');
+        if (hinged === 'pair' && lv.length !== 2) err('door-leaves', tag + ': a pair of doors needs two leaves in the opening; the model has ' + lv.length + '.', leafIds);
+        const Cmm = d.cup != null ? Number(d.cup) : null, Hmm = d.plate != null ? Number(d.plate) : 0;
+        lv.forEach((x, li) => {
+          const B = x.b, w = B.max[0] - B.min[0], h = B.max[2] - B.min[2], t = B.max[1] - B.min[1];
+          const ed = { left: lo[0] - B.min[0], right: B.max[0] - hi[0], bottom: lo[2] - B.min[2], top: B.max[2] - hi[2] };   // + overlay, − reveal
+          const side = hinged === 'pair' ? (li === 0 ? 'left' : 'right') : hinged;
+          const lb = w * h * t * density(x.p.material), Tmm = t * 25.4;
+          const L = { id: x.p.id, w, h, t, edges: ed, side, weight: lb, material: x.p.material };
+          row.leaves.push(L);
+          const ltag = tag + (lv.length > 1 ? ', ' + side + ' door' : '');
+          // thickness against the hinge
+          if (s.t && (Tmm > s.t[1] + 0.3)) err('door-thickness', ltag + ': a ' + fm(t) + ' door is thicker than the ' + s.name + ' takes (' + s.t[1] + ' mm).', [x.p.id]);
+          else if (s.t && Tmm < s.t[0] - 0.3) warn('door-thickness', ltag + ': a ' + fm(t) + ' door is thinner than the ' + s.name + ' is made for (' + s.t[0] + ' mm); the cup leaves too little wood behind it.', [x.p.id]);
+          // hinges along the hinge edge
+          if (s.kind !== 'butt' || hingeIds.length) {
+            const ex = side === 'left' ? B.min[0] : B.max[0];
+            const hs = insts(hingeIds, [ex - 2.5, B.min[1] - 1, B.min[2]], [ex + 2.5, B.max[1] + 4, B.max[2]], [0, 0, 0]).map(q => ctr(q.b)[2] - B.min[2]).sort((a, c) => a - c);
+            L.hinges = hs; L.need = hingeCount(h, lb, w);
+            if (!hingeIds.length) warn('door-no-hinges', ltag + ': no hinge part is named, so the hinges are not on the material list or in the model.', [x.p.id]);
+            else if (!hs.length) err('door-hinges', ltag + ': no hinge (' + hingeIds.map(i => '#' + i).join(', ') + ') sits on the ' + side + ' edge of this door.', hingeIds);
+            else {
+              if (hs.length < L.need) err('door-hinge-count', ltag + ': a ' + fmt(h) + ' tall, ' + fmt(w) + ' wide door weighing about ' + Math.round(lb) + ' lb needs ' + L.need + ' hinges (Salice: 2 to 36" and 20 lb, 3 to 60" and 40 lb, 4 to 84" and 60 lb; Blum: one more over 600 mm wide); the model has ' + hs.length + '.', hingeIds);
+              const ends = [hs[0], h - hs[hs.length - 1]];
+              if (ends.some(e => e < 2 - tol || e > 6 + tol)) warn('door-hinge-position', ltag + ': hinge centres ' + ends.map(e => fmt(e)).join(' and ') + ' from the door ends; set them about 3"–4" in (2" to 6").', hingeIds);
+            }
+          }
+          // overlay or reveal at the hinge edge, from the hinge maker's formula
+          const hov = ed[side];
+          if (s.kind === 'overlay' || s.kind === 'inset') {
+            const C = Cmm != null ? Cmm : (hingeSetup(s, hov * 25.4) || {}).C;
+            const Hh = Cmm != null ? Hmm : ((hingeSetup(s, hov * 25.4) || {}).H || 0);
+            L.cup = C; L.plate = Hh;
+            if (C == null) err('door-overlay', ltag + ': the door ' + (hov >= 0 ? 'overlays the ' + side + ' edge by ' + fm(hov) : 'leaves a ' + fm(-hov) + ' reveal') + ', which no cup distance (' + s.C[0] + '–' + s.C[1] + ' mm) and plate (' + (s.plates || [0]).join(', ') + ' mm) on the ' + s.name + ' gives (overlay = ' + s.k + ' + cup distance − plate). Change the door size or the hinge.', [x.p.id]);
+            else {
+              if (C < s.C[0] - 1e-6 || C > s.C[1] + 1e-6) err('door-cup', ltag + ': a ' + C + ' mm cup distance is outside the ' + s.name + '\'s ' + s.C[0] + '–' + s.C[1] + ' mm range.', [x.p.id]);
+              const give = s.k + C - Hh; L.hingeOverlay = give;
+              if (Math.abs(hov * 25.4 - give) > (s.adj || 2) + 0.2) err('door-overlay', ltag + ': the ' + s.name + ' with a ' + C + ' mm cup distance on a ' + Hh + ' mm plate gives ' + (give >= 0 ? give + ' mm overlay' : -give + ' mm reveal') + ' (' + s.k + ' + ' + C + ' − ' + Hh + ', ±' + (s.adj || 2) + ' mm adjustment), but the door ' + (hov >= 0 ? 'overlays ' + fm(hov) : 'leaves a ' + fm(-hov) + ' reveal') + ' on its hinge edge.' + ((h => h && h.fits ? ' Bore the cup ' + h.C + ' mm from the edge and use the ' + h.H + ' mm plate.' : '')(hingeSetup(s, hov * 25.4))), [x.p.id]);
+            }
+          } else if (s.kind === 'fixed') {
+            L.cup = s.C[0]; L.plate = 0;
+            const o = s.overlays.find(v => Math.abs(v - hov) <= 1 / 32 + tol);
+            if (!o) err('door-overlay', ltag + ': the ' + s.name + ' comes in ' + s.overlays.map(v => fmt(v)).join(', ') + ' overlays; the door overlays ' + fmt(hov) + ' on its hinge edge.', [x.p.id]);
+            else L.hingeOverlay = o * 25.4;
+          }
+          // the hinge-edge reveal must clear the swing (inset), and exposed reveals stay even
+          const rv = hingeReveal(s, Tmm, L.cup != null ? L.cup : 3); L.minReveal = rv;
+          if (style === 'inset') {
+            const g = Object.values(ed).map(v => -v);
+            if (g.some(v => v < 1 / 32 - tol)) err('door-fit', ltag + ': the inset door is ' + fmt(w) + ' × ' + fmt(h) + ' in a ' + fmt(W) + ' × ' + fmt(H) + ' opening; it needs a gap all round (1/16"–1/8").', [x.p.id]);
+            else if (g.some(v => v > 0.1875 + tol)) warn('door-fit', ltag + ': the inset door leaves ' + g.map(v => fmt(v)).join(', ') + ' gaps; more than 3/16" reads as a mistake.', [x.p.id]);
+            if (rv != null && -ed[side] * 25.4 < rv - 0.05) err('door-swing', ltag + ': a ' + fm(t) + ' inset door needs at least ' + rv + ' mm at its hinge edge to swing past the case (' + s.name + ', ' + (L.cup != null ? L.cup : 3) + ' mm cup distance); it has ' + fm(-ed[side]) + '. Widen the gap, ease the edge or bore the cup further in.', [x.p.id]);
+          } else {
+            for (const e of ['left', 'right', 'top', 'bottom']) {
+              if (pair && ((e === 'right' && li === 0) || (e === 'left' && li === 1))) continue;
+              const fe = style === 'half-overlay' && (e === 'left' || e === 'right') ? f(e) / 2 : f(e);
+              if (cab === 'face-frame') { if (ed[e] > fe - 0.25 + tol) warn('door-frame-show', ltag + ': the door overlays the frame ' + fmt(ed[e]) + ' at the ' + e + ', leaving less than 1/4" of the ' + fmt(fe) + ' frame showing.', [x.p.id]); continue; }
+              const rev = fe - ed[e];
+              if (rev < -tol) warn('door-reveal', ltag + ': the door runs ' + fmt(-rev) + ' past the ' + e + ' edge of the case.', [x.p.id]);
+              else if (rev < 1 / 32 - tol || rev > 0.1875 + tol) warn('door-reveal', ltag + ': ' + fmt(rev) + ' reveal at the ' + e + ' edge; frameless doors want 1/16"–1/8".', [x.p.id]);
+            }
+          }
+          // pull screw: through the door, plus about 1/4"
+          const pl = d.pull;
+          if (pl && pl.screw) {
+            const m = String(pl.screw).match(/[x×]\s*([0-9\-\/. ]+)"?\s*$/i);
+            const len = m ? (() => { try { return parseLen(m[1].trim()); } catch (e) { return null; } })() : null;
+            if (len != null && (len < t + 0.125 - tol || len > t + 0.5 + tol)) warn('door-pull-screw', ltag + ': a ' + fmt(len) + ' pull screw through a ' + fmt(t) + ' door; use about ' + fmt(t + 0.25) + '.', [x.p.id]);
+          }
+          // the cup bore: diameter and depth from the hinge sheet, inside the door
+          if (s.cup) {
+            const cb = cupBores.find(b => b.copies && b.copies.some(c => { const q = c.at.map(parseLen); return q[0] >= B.min[0] - 0.1 && q[0] <= B.max[0] + 0.1 && q[2] >= B.min[2] && q[2] <= B.max[2]; }));
+            if (cb) {
+              const bd = parseLen(cb.d) * 25.4, dp = parseLen(cb.depth) * 25.4; L.bore = { d: bd, depth: dp, id: cb.id };
+              if (Math.abs(bd - s.cup) > 0.6) err('door-cup', ltag + ': the hinge cup is bored ' + Math.round(bd * 10) / 10 + ' mm; the ' + s.name + ' needs ' + s.cup + ' mm.', [x.p.id]);
+              if (s.depth && (dp < s.depth - 0.6 || dp > Tmm - 2)) warn('door-cup', ltag + ': the cup is bored ' + Math.round(dp * 10) / 10 + ' mm deep; the hinge wants ' + s.depth + ' mm and at least 2 mm of door behind it.', [x.p.id]);
+            }
+          }
+          // frame-and-panel: the panel sits in its grooves with room to move
+          const cn = d.construction;
+          if (cn && cn.type === 'frame-and-panel' && cn.panel != null) {
+            const g = parseLen(cn.groove != null ? cn.groove : 0.375), pnl = insts(ids(cn.panel), B.min, B.max, [0.1, 0.5, 0.1])[0];
+            const st = insts(ids(cn.stiles), B.min, B.max, [0.1, 0.5, 0.1]), rl = insts(ids(cn.rails), B.min, B.max, [0.1, 0.5, 0.1]);
+            if (pnl && st.length >= 2 && rl.length >= 2) {
+              const P2 = pnl.b, mid = ctr(B), sl = st.find(q => ctr(q.b)[0] < mid[0]), sr = st.find(q => ctr(q.b)[0] > mid[0]), rb = rl.find(q => ctr(q.b)[2] < mid[2]), rt = rl.find(q => ctr(q.b)[2] > mid[2]);
+              const clearW = sl && sr ? sr.b.min[0] - sl.b.max[0] : 0, clearH = rb && rt ? rt.b.min[2] - rb.b.max[2] : 0;
+              const eW = ((P2.max[0] - P2.min[0]) - clearW) / 2, eH = ((P2.max[2] - P2.min[2]) - clearH) / 2;
+              L.panel = { w: P2.max[0] - P2.min[0], h: P2.max[2] - P2.min[2], engageW: eW, engageH: eH, groove: g, solid: solidWood(pnl.p.material) };
+              if (eW > g + tol || eH > g + tol) err('door-panel', ltag + ': the panel runs ' + fmt(Math.max(eW, eH)) + ' into ' + fmt(g) + ' deep grooves; it cannot go in.', [pnl.p.id]);
+              else if (L.panel.solid && g - eW < 1 / 16 - tol && L.panel.w > 6) warn('door-panel', ltag + ': a ' + fmt(L.panel.w) + ' wide solid panel has only ' + fmt(g - eW) + ' a side to swell; cut it to leave about 1/8" a side (less in a dry winter shop).', [pnl.p.id]);
+              if (Math.min(eW, eH) < 0.25 - tol) warn('door-panel', ltag + ': the panel sits only ' + fmt(Math.min(eW, eH)) + ' in its groove and can pull out as it shrinks; aim for 1/4" or more.', [pnl.p.id]);
+            }
+          }
+        });
+        // the pair's meeting gap
+        if (lv.length === 2) {
+          const g = lv[1].b.min[0] - lv[0].b.max[0]; row.gap = g;
+          const solid = lv.some(x => solidWood(x.p.material));
+          if (g < 1 / 32 - tol) err('door-gap', tag + ': the two doors are ' + fmt(g) + ' apart; they bind. Leave 1/16"–1/8".', leafIds);
+          else if (g > 0.1875 + tol || g < 1 / 16 - tol) warn('door-gap', tag + ': ' + fmt(g) + ' between the doors; 1/16"–1/8" reads as even.', leafIds);
+          else if (solid && g < 5 / 32 - tol) warn('door-gap', tag + ': ' + fmt(g) + ' between solid-wood doors; they swell across their width, so shops leave about 4 mm (5/32").', leafIds);
+        }
+      });
+      warn = warn0; err = err0;
+    });
+    // doors hinged back to back on one partition both open at once: twice the minimum reveal between them
+    const edges = [];
+    rows.forEach(r => r.leaves.forEach(L => { const x = r.opening.at[0] + (L.side === 'left' ? -L.edges.left : r.opening.w + L.edges.right); edges.push({ r, L, x }); }));
+    for (let i = 0; i < edges.length; i++) for (let j = i + 1; j < edges.length; j++) {
+      const a = edges[i], b = edges[j]; if (a.L.side === b.L.side) continue;
+      const [lf, rt] = a.L.side === 'left' ? [a, b] : [b, a];   // a left-hinged door's edge to the right of a right-hinged one
+      const g = lf.x - rt.x, za = [lf.r.opening.at[2] - lf.L.edges.bottom, lf.r.opening.at[2] + lf.r.opening.h + lf.L.edges.top], zb = [rt.r.opening.at[2] - rt.L.edges.bottom, rt.r.opening.at[2] + rt.r.opening.h + rt.L.edges.top];
+      if (g < -tol || g > 2 || Math.min(za[1], zb[1]) - Math.max(za[0], zb[0]) < 1) continue;
+      const need = ((lf.L.minReveal || 0) + (rt.L.minReveal || 0)) / 25.4;
+      if (g < need - 0.002) err('door-swing', lf.r.name + ' and ' + rt.r.name + ': doors hinged back to back are ' + fmt(g) + ' apart; both open at once, so they need the two minimum reveals, ' + Math.round(need * 254) / 10 + ' mm. Use a thinner door, ease the edges or move the cups.', [lf.L.id, rt.L.id]);
+    }
+    if (rows.some(r => r.leaves.length)) pass('doors', rows.length + ' door opening' + (rows.length === 1 ? '' : 's') + ' measured against the hinge maker\'s overlay and reveal tables.');
+    return rows;
+  }
+
+  const api = { HINGES, hingeSpec, hingeReveal, hingeSetup, hingeCount, doorSize, doorChecks, SLIDES, slideSpec, drawerSize, drawerChecks, measures, at3, plAxes, faces, profile, shapedAway, toLocalPt, toWorldPt, isShape, cutList, buyList, toolsFor, storyMarks, cutOrder, hasGrain, storeName, expandBores, cutDepth, TOOLS, nominal, parseLen, fmt, fmtHTML, fracParts, normalize, solid, surface, check, pack, layouts, lumberStats, toAABB, xformAABB, inter, vol };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.PlanCore = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -18,9 +18,11 @@ examples/skeleton/plan.js    START HERE: a 4 KB side table using every part of t
 examples/castle-bed/plan.js  a full worked example (castle-joint queen bed, Rev D)
 examples/modern-dresser/plan.js  casework: an 8-drawer plywood dresser with slides and full drawer boxes
 examples/round-table/plan.js     curves and angles: a turned round top, tapered legs, arched aprons
+examples/wall-cabinet/plan.js    doors: a frameless wall cabinet, a pair of overlay doors on Blum hinges
 references/plan-schema.md    every field, the J helpers, bores        (read when writing plan.js)
 references/joinery.md        proportions and rules of thumb             (read when choosing joints)
 references/drawers.md        slides, box, front and pull sizing          (read for any plan with drawers)
+references/doors.md          door sizes, reveals, hinges, cups, pulls    (read for any plan with doors)
 references/adversarial-review.md  review procedure and record format    (read for every review)
 references/modeling.md       joints the helpers don't cover             (read only when needed)
 references/style-guide.md    the page's look, sampled colours, voice    (read only to change the template)
@@ -89,6 +91,18 @@ Copy `examples/skeleton/plan.js`. Every driving number goes in `PARAMS`; derive 
   List the slides by maker and model with length and pair count, the pulls with their screws, and
   the front-mounting screws in `hardware`. The dresser example shows the whole pattern, including
   staggered slide screws on a shared divider.
+- Doors: read `doors.md`. Settle the cabinet (frameless or face frame) and the style (full overlay,
+  half overlay, face-frame overlay, inset) first, then the hinge (ask the builder, or use
+  `blum-clip-top-110` and say so), then size each door with `C.doorSize`: frameless full overlay
+  = case width − 2 × reveal (1/16" or 1/8"), pairs split it less a 1/8" gap (4 mm on solid wood),
+  inset = opening − 2 × gap. Get the cup distance and plate that give that overlay from
+  `C.hingeSetup` (overlay = k + cup distance − plate, in mm, from the maker's sheet); a door the
+  hinge cannot reach is wrong, not something to adjust out. Count hinges by height and weight (2 to
+  36" and 20 lb, 3 to 60", 4 to 84"), 3"–4" from the ends. Model the doors, the hinges as hardware
+  parts on the hinge edge, and the 35 mm cup bores at the maker's depth in `bores`. Declare every
+  opening in `doors` (plan-schema.md): the check proves each door against its hinge and the page
+  prints the Door Breakout. List the hinges by maker and model with their plates, and the pulls with
+  their screws. The wall cabinet example shows the whole pattern.
 - Leave `explode` and `callout` out; they are worked out from the joints. Set them only to fix a
   view the render check shows is wrong (including a "balloon leaders cross" warning that reads badly). Drawers are the exception: auto explode lifts parts out of
   their grooves, so set boxes, slides and fronts by hand to come out the front (the dresser does).
