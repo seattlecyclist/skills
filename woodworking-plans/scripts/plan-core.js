@@ -2175,7 +2175,7 @@
             else {
               if (C < s.C[0] - 1e-6 || C > s.C[1] + 1e-6) err('door-cup', ltag + ': a ' + C + ' mm cup distance is outside the ' + s.name + '\'s ' + s.C[0] + '–' + s.C[1] + ' mm range.', [x.p.id]);
               const give = s.k + C - Hh; L.hingeOverlay = give;
-              if (Math.abs(hov * 25.4 - give) > (s.adj || 2) + 0.2) err('door-overlay', ltag + ': the ' + s.name + ' with a ' + C + ' mm cup distance on a ' + Hh + ' mm plate gives ' + (give >= 0 ? give + ' mm overlay' : -give + ' mm reveal') + ' (' + s.k + ' + ' + C + ' − ' + Hh + ', ±' + (s.adj || 2) + ' mm adjustment), but the door ' + (hov >= 0 ? 'overlays ' + fm(hov) : 'leaves a ' + fm(-hov) + ' reveal') + ' on its hinge edge.' + ((h => h && h.fits ? ' Bore the cup ' + h.C + ' mm from the edge and use the ' + h.H + ' mm plate.' : '')(hingeSetup(s, hov * 25.4))), [x.p.id]);
+              if (Math.abs(hov * 25.4 - give) > (s.adj || 2) + 0.2) err('door-overlay', ltag + ': the ' + s.name + ' with a ' + C + ' mm cup distance on a ' + Hh + ' mm plate gives ' + (give >= 0 ? give + ' mm overlay' : -give + ' mm reveal') + ' (' + s.k + ' + ' + C + ' − ' + Hh + ', ±' + (s.adj || 2) + ' mm adjustment), but the door ' + (hov >= 0 ? 'overlays ' + fm(hov) : 'leaves a ' + fm(-hov) + ' reveal') + ' on its hinge edge.' + ((h => h && h.fits ? ' Bore the cup ' + h.C + ' mm from the edge and use the ' + h.H + ' mm plate.' : ' No cup distance and plate on this hinge reaches it (' + (s.k + s.C[0] - Math.max(...(s.plates || [0]))) + ' to ' + (s.k + s.C[1]) + ' mm): resize the door or choose another hinge.')(hingeSetup(s, hov * 25.4))), [x.p.id]);
             }
           } else if (s.kind === 'fixed') {
             L.cup = s.C[0]; L.plate = 0;
