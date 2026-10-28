@@ -1,0 +1,139 @@
+<!doctype html>
+<!--
+  A 15 second teaser for a made-up budgeting app, "Tally". It shows the four beats most product films need:
+  the real app (a screenshot, with typing drawn over it), the product's idea made physical (bars that fly in
+  and get measured), the payoff (a stamp), and an end card. Run ./run.sh to capture, check, render and mix it.
+  ?format=v gives the 9:16 cut, ?t=8 freezes one moment.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tally teaser</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;600&display=block" rel="stylesheet">
+<style>html, body { margin: 0; overflow: hidden; background: #F4F1EA; }</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+import * as THREE from "three";
+import * as K from "../../assets/kit.js";
+
+const F = K.format(), { width: W, height: H, vertical: V } = F;
+const DURATION = 15.5;
+const FONTS = ["800 40px Inter", "400 40px Inter", "600 40px Inter", "600 40px 'JetBrains Mono'"];
+await K.loadFonts(FONTS); // before any sprite draws text
+const fonts = { display: "Inter", body: "Inter", mono: "JetBrains Mono" };
+const colors = { card: "#FFFFFF", ink: "#1F2421", muted: "#6B716D", accent: "#1F7A5A", chrome: "#EFEBE3", dots: "#D6D0C3", red: "#C2412D" };
+
+// ---------- the timeline: every beat hangs off a voiceover line (see lines.txt and timeline.json) ----------
+const T = {
+  type: [1.0, 2.6], send: 2.8, appOut: 4.8,             // line 1 "Ask your money a question."
+  lands: [5.0, 5.35, 5.7, 6.05, 6.4],                    // line 2 "Tally lays out every category..."
+  measure: 7.4, limit: 8.0, caption: [8.4, 11.6],        // line 3 "Groceries: four hundred twelve dollars..."
+  stamp: 11.2,
+  end: 12.4, cues: [12.8, 13.1, 13.5, 13.9],             // line 4 "Tally. Stay on budget."
+};
+
+// ---------- footage: the app screenshot and where its elements are (from capture.mjs --boxes) ----------
+const shot = await K.loadImage("out/app.png");
+const boxes = await (await fetch("out/app.json")).json();
+const input = boxes["#ask input"], button = boxes["#ask button"], main = boxes["main"], month = boxes["#month"];
+const appCanvas = Object.assign(document.createElement("canvas"), { width: shot.width, height: shot.height });
+const ag = appCanvas.getContext("2d");
+const crop = V ? { x: month.x - 24, y: 0, w: month.w + 48, h: month.y + month.h + 40 }
+               : { x: 0, y: 0, w: shot.width, h: main.y + main.h };
+const appScale = (V ? W * 0.9 : W * 0.78) / crop.w;
+const QUESTION = "How much did I spend on groceries?";
+
+function drawApp(t) {
+  ag.drawImage(shot, 0, 0);
+  const s = shot.width / 1600; // capture scale
+  const text = K.typed(QUESTION, t, ...T.type);
+  if (t >= T.type[0]) {
+    ag.fillStyle = "#FBFAF7"; ag.fillRect(input.x + 3 * s, input.y + 3 * s, input.w - 6 * s, input.h - 6 * s);
+    ag.fillStyle = colors.ink; ag.font = `400 ${16 * s}px Inter`; ag.textBaseline = "middle";
+    ag.fillText(text, input.x + 17 * s, input.y + input.h / 2);
+    if (Math.floor(t * 2.5) % 2 === 0 && t < T.send) ag.fillRect(input.x + 18 * s + ag.measureText(text).width, input.y + 14 * s, 2 * s, input.h - 28 * s);
+  }
+  const press = K.window01(t, T.send - 0.08, T.send + 0.2, 0.06, 0.12);
+  if (press > 0) { ag.fillStyle = `rgba(0,0,0,${0.25 * press})`; K.roundRect(ag, button.x, button.y, button.w, button.h, 10 * s); ag.fill(); }
+}
+
+// ---------- the 3D set: one bar per category, a limit line and a measurement ----------
+const S = K.stage({ width: W, height: H, background: "#F4F1EA" });
+K.studioLights(S.scene, { shadowSize: 40 });
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: "#EDE8DD", roughness: 1 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; S.scene.add(floor);
+
+const DATA = [["Groceries", 412], ["Transport", 126], ["Eating out", 188], ["Utilities", 154], ["Fun", 97]];
+const UNIT = 50; // dollars per world unit
+const parts = DATA.map(([name, v], i) => {
+  const h = v / UNIT, x = (i - 2) * 4.2;
+  const mesh = K.outlinedBox([2.6, h, 2.6], { color: i === 0 ? "#2E8B67" : "#BFD8CB" });
+  S.scene.add(mesh);
+  const label = K.spriteFrom((g, w, hh) => { g.fillStyle = colors.ink; g.font = "600 44px Inter"; g.textAlign = "center"; g.fillText(name, w / 2, hh / 2 + 14); }, 400, 100, 3.6);
+  label.position.set(x, 0.5, 3.4); S.scene.add(label);
+  const value = K.spriteFrom((g, w, hh) => { g.fillStyle = colors.ink; g.font = "600 52px JetBrains Mono"; g.textAlign = "center"; g.fillText("$" + v, w / 2, hh / 2 + 18); }, 300, 100, 2.6);
+  value.position.set(x, h + 1.1, 0); S.scene.add(value);
+  return { mesh, label, value, at: [x, h / 2, 0], from: [i % 2 ? 6 : -6, 14, 8], land: T.lands[i] };
+});
+const bars = K.assembly(parts, { fly: 0.7 });
+const groceries = parts[0];
+const dim = K.dimension(S.scene, { a: [groceries.at[0] - 2.1, 0, 1.4], b: [groceries.at[0] - 2.1, 412 / UNIT, 1.4], tick: [-1, 0, 0], label: "$412", t0: T.measure, labelOffset: 1.9, font: "600 64px JetBrains Mono" });
+
+const LIMIT = 450;
+const limit = new THREE.Mesh(new THREE.BoxGeometry(4.2, 0.14, 0.14), new THREE.MeshBasicMaterial({ color: colors.red }));
+limit.position.set(groceries.at[0], LIMIT / UNIT, 1.4); S.scene.add(limit);
+const limitLabel = K.spriteFrom((g, w, h) => { g.fillStyle = colors.red; g.font = "600 46px JetBrains Mono"; g.textAlign = "center"; g.fillText("limit $450", w / 2, h / 2 + 16); }, 360, 100, 3.2);
+limitLabel.position.set(groceries.at[0] + 3.6, LIMIT / UNIT + 0.2, 1.4); S.scene.add(limitLabel);
+
+// One camera job per beat: settle on the whole chart while bars land, then push in on groceries, then hold.
+const g0 = groceries.at[0], far = V ? 1.75 : 1, wide = V ? 2.5 : 1; // a 9:16 frame needs to stand further back
+const SHOTS = [
+  [4.3, [V ? 1 : 12, 15 * wide, 38 * wide], [0, 3, 0]],
+  [6.9, [V ? 0.5 : 5, 10 * wide, 30 * wide], [0, 4, 0]],
+  [9.6, [g0 + (V ? 4 : 2), 10 + (V ? 4 : 0), 23 * far], [g0 + (V ? 1 : -3.5), 5.5, 0]],
+  [12.4, [g0 + (V ? 3.6 : 1.6), 10 + (V ? 4 : 0), 22.4 * far], [g0 + (V ? 1 : -3.5), 5.5, 0]],
+];
+
+const CAPTION = { t: T.caption, kicker: "GROCERIES · OCTOBER", head: "$412 of $450", sub: "Ask in plain words. See it in one look." };
+
+function renderAt(t) {
+  bars.update(t);
+  for (const p of parts) { const a = K.smooth(K.ramp(t, p.land + 0.1, p.land + 0.5)); p.value.material.opacity = a; p.label.material.opacity = a; p.value.visible = p.label.visible = a > 0; }
+  const focus = K.smooth(K.ramp(t, T.measure - 0.4, T.measure + 0.3)); // others fade back once we measure groceries
+  for (const p of parts.slice(1)) p.value.material.opacity *= 1 - 0.75 * focus;
+  groceries.value.material.opacity *= 1 - focus; // the dimension carries the number from here
+  dim.update(t);
+  const lk = K.smooth(K.ramp(t, T.limit, T.limit + 0.5));
+  limit.visible = lk > 0; limit.scale.x = Math.max(lk, 0.001);
+  limitLabel.visible = lk > 0; limitLabel.material.opacity = K.smooth(K.ramp(t, T.limit + 0.3, T.limit + 0.7));
+  K.cameraAt(S.camera, SHOTS, t);
+  S.renderer.render(S.scene, S.camera);
+
+  const g = S.g; g.clearRect(0, 0, W, H);
+  if (t < T.appOut) { drawApp(t); K.browserWindow(g, t, appCanvas, { width: W, height: H, crop, scale: appScale, focusX: V ? 0.5 : 0.78, t0: 0, t1: T.appOut, address: "app.tally.example", fonts, colors }); }
+  K.caption(g, t, CAPTION, { width: W, height: H, vertical: V, fonts, colors });
+  K.stamp(g, t, T.stamp, { x: V ? W / 2 : W * 0.27, y: V ? H * 0.17 : H * 0.24, title: "ON BUDGET", sub: "$38 TO SPARE", color: colors.accent, titleFont: "800 88px Inter", subFont: "600 36px JetBrains Mono" });
+  K.endCard(g, t, { t0: T.end, width: W, height: H, vertical: V, name: "Tally", phrases: ["Ask.", "See.", "Stay on budget."], cues: T.cues, url: "tally.example", fonts, colors });
+}
+
+// Every sound one frame after the picture event that causes it.
+const FRAME = 1 / 60;
+function renderAudio() {
+  const events = [];
+  for (let i = 0; i < QUESTION.length; i++) if (QUESTION[i] !== " ") events.push(["tick", T.type[0] + (T.type[1] - T.type[0]) * (i + 1) / QUESTION.length + FRAME, i]);
+  events.push(["send", T.send + FRAME], ["whoosh", T.appOut - 0.6]);
+  T.lands.forEach((t, i) => events.push(["knock", t + FRAME, i]));
+  events.push(["pencil", T.measure + FRAME, 0.55], ["shimmer", T.limit + 0.4], ["thud", T.stamp + FRAME], ["chime", T.cues[0] + FRAME]);
+  return K.renderSound({
+    duration: DURATION, events,
+    music: { chords: [[0, [220, 261.63, 329.63, 392]], [4.4, [174.61, 220, 261.63, 329.63]], [8, [196, 246.94, 293.66, 349.23]], [11.2, [261.63, 329.63, 392, 493.88]]], until: DURATION - 0.3, fadeFrom: 13.5 },
+  });
+}
+
+await K.boot({ width: W, height: H, duration: DURATION, renderAt, renderAudio, fonts: FONTS });
+</script>
+</body>
+</html>

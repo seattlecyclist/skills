@@ -1,0 +1,70 @@
+<!doctype html>
+<!--
+  Starter scene. Copy it next to your footage, set KIT to where kit.js lives, then build beats.
+  Open it in a browser to preview on a loop; ?t=3 freezes one moment; ?format=v is the 9:16 cut.
+  Render with scripts/stills.mjs (check) and scripts/render.mjs (film); pass --root a folder that
+  contains both this page and kit.js.
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Scene</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500;600&display=block" rel="stylesheet">
+<style>html, body { margin: 0; overflow: hidden; background: #F4F1EA; }</style>
+<!-- Offline? npm i three@0.160.0 and point this at ./node_modules/three/build/three.module.js -->
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }</script>
+</head>
+<body>
+<div id="stage"></div>
+<script type="module">
+import * as THREE from "three";
+import * as K from "./kit.js"; // adjust the path to kit.js
+
+const { width: W, height: H, vertical: V } = K.format();
+const DURATION = 8;
+const FONTS = ["800 40px Inter", "400 40px Inter", "600 40px 'JetBrains Mono'"];
+const fonts = { display: "Inter", body: "Inter", mono: "JetBrains Mono" };
+const colors = { card: "#FFFFFF", ink: "#1F2421", muted: "#6B716D", accent: "#1F7A5A", chrome: "#EFEBE3", dots: "#D6D0C3" };
+await K.loadFonts(FONTS);
+
+// The timeline. Hang every beat off a voiceover line's start, and keep all times here.
+const T = { land: [0.8, 1.2, 1.6], caption: [2.2, 5.6], end: 6.2 };
+
+const S = K.stage({ width: W, height: H, background: "#F4F1EA" });
+K.studioLights(S.scene);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: "#EDE8DD", roughness: 1 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; S.scene.add(floor);
+
+// Three blocks that fly in and land, one after another.
+const parts = [0, 1, 2].map(i => {
+  const mesh = K.outlinedBox([3, 3, 3], { color: i === 1 ? "#2E8B67" : "#BFD8CB" });
+  S.scene.add(mesh);
+  return { mesh, at: [(i - 1) * 4.5, 1.5, 0], from: [0, 12, 6], land: T.land[i] };
+});
+const blocks = K.assembly(parts);
+
+// One camera job per beat: a slow settle while the blocks land, then a gentle drift.
+const far = V ? 2 : 1;
+const SHOTS = [[0, [10, 12 * far, 30 * far], [0, 1.5, 0]], [3, [4, 8 * far, 24 * far], [0, 2, 0]], [DURATION, [2, 8 * far, 23 * far], [0, 2, 0]]];
+
+function renderAt(t) {
+  blocks.update(t);
+  K.cameraAt(S.camera, SHOTS, t);
+  S.renderer.render(S.scene, S.camera);
+  const g = S.g; g.clearRect(0, 0, W, H);
+  K.caption(g, t, { t: T.caption, kicker: "STEP ONE", head: "Your headline here", sub: "One line of support." }, { width: W, height: H, vertical: V, fonts, colors });
+  K.endCard(g, t, { t0: T.end, width: W, height: H, vertical: V, name: "Name", phrases: ["Short.", "Sharp."], cues: [T.end + 0.3, T.end + 0.6, T.end + 0.9], url: "example.com", fonts, colors });
+}
+
+// Every sound one frame after its picture event.
+const FRAME = 1 / 60;
+const renderAudio = () => K.renderSound({
+  duration: DURATION,
+  events: [...T.land.map((t, i) => ["knock", t + FRAME, i]), ["chime", T.end + 0.3 + FRAME]],
+  music: { chords: [[0, [220, 261.63, 329.63, 392]], [4, [174.61, 220, 261.63, 329.63]]], fadeFrom: DURATION - 2 },
+});
+
+await K.boot({ width: W, height: H, duration: DURATION, renderAt, renderAudio, fonts: FONTS });
+</script>
+</body>
+</html>

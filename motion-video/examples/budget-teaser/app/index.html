@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- A made-up budgeting app, "Tally", standing in for the product you are filming. capture.mjs screenshots it. -->
+<html>
+<head>
+<meta charset="utf-8">
+<title>Tally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@500&display=block" rel="stylesheet">
+<style>
+  body { margin: 0; font: 16px Inter, sans-serif; background: #F4F1EA; color: #1F2421; }
+  header { display: flex; align-items: center; gap: 12px; padding: 18px 32px; background: #fff; border-bottom: 1px solid #E2DDD2; }
+  header b { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  header .dot { width: 14px; height: 14px; border-radius: 4px; background: #1F7A5A; }
+  header nav { margin-left: auto; display: flex; gap: 24px; color: #6B716D; }
+  main { display: grid; grid-template-columns: 1.3fr 1fr; gap: 28px; padding: 32px; }
+  .card { background: #fff; border: 1px solid #E2DDD2; border-radius: 12px; padding: 24px; }
+  h2 { margin: 0 0 16px; font-size: 15px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #6B716D; }
+  .row { display: flex; justify-content: space-between; padding: 12px 0; border-top: 1px solid #EFEBE3; }
+  .row span:last-child { font-family: "JetBrains Mono", monospace; }
+  .total { font-size: 44px; font-weight: 800; letter-spacing: -0.02em; }
+  .total small { font-size: 16px; font-weight: 400; color: #6B716D; }
+  .bar { height: 10px; border-radius: 5px; background: #E8E3D8; margin-top: 14px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 72%; background: #1F7A5A; }
+  #ask { display: flex; gap: 10px; margin-top: 22px; }
+  #ask input { flex: 1; font: inherit; padding: 14px 16px; border: 1px solid #D6D0C3; border-radius: 10px; background: #FBFAF7; }
+  #ask button { font: 600 16px Inter; padding: 0 20px; border: 0; border-radius: 10px; background: #1F7A5A; color: #fff; }
+</style>
+</head>
+<body>
+<header><span class="dot"></span><b>Tally</b><nav><span>Overview</span><span>Budgets</span><span>Accounts</span></nav></header>
+<main>
+  <section class="card" id="spend">
+    <h2>October spending</h2>
+    <div class="row"><span>Rent</span><span>$1,850.00</span></div>
+    <div class="row"><span>Groceries</span><span>$412.38</span></div>
+    <div class="row"><span>Transport</span><span>$126.40</span></div>
+    <div class="row"><span>Eating out</span><span>$188.15</span></div>
+    <div class="row"><span>Utilities</span><span>$154.02</span></div>
+    <div class="row"><span>Fun</span><span>$96.50</span></div>
+  </section>
+  <section class="card" id="month">
+    <h2>This month</h2>
+    <div class="total" id="total">$2,827 <small>of $3,900</small></div>
+    <div class="bar"><i></i></div>
+    <form id="ask" onsubmit="return false"><input placeholder="Ask about your money"><button>Ask</button></form>
+  </section>
+</main>
+</body>
+</html>

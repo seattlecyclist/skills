@@ -6,6 +6,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 | Skill | What it does |
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
+| [motion-video](#motion-video) | Make a short promo or explainer motion video for any product: real screens, 3D objects that assemble and get measured, captions, sound, voiceover, in 16:9 and 9:16. |
 | [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
 
 ## Install
@@ -17,6 +18,7 @@ Clone the repo and symlink (or copy) the skills you want into `~/.claude/skills/
 git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
+ln -s ~/src/skills/motion-video ~/.claude/skills/motion-video
 ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
 ```
 
@@ -118,6 +120,82 @@ For Rails apps whose flows need fixtures or sign-in helpers, the Capybara adapte
 frames from inside a system test.
 
 Full workflow, storyboard reference, theming and pitfalls: [annotated-demo-video/SKILL.md](annotated-demo-video/SKILL.md).
+
+---
+
+## motion-video
+
+Makes a short promo, teaser or explainer film for whatever the user has: a product, an app, a feature,
+an idea. The film is an HTML page whose picture is a pure function of time, `renderAt(t)`, rendered frame
+by frame in headless Chrome and piped into ffmpeg. That makes every render identical, lets any moment be
+checked as a still before the long render, and lines sound up with picture to the frame.
+
+**What you get**
+
+- 16:9 and 9:16 (and 1:1) MP4s from one scene, mixed to -14 LUFS and -2 dBTP.
+- A scene kit (`kit.js`, three.js): eased shot lists, parts that fly in and land, dimension lines that
+  draw themselves, a browser window showing a real screenshot with typing painted over it, captions, a
+  rubber stamp and an end card.
+- Sound synthesized from the picture's own events (key ticks, knocks as parts land, a stamp thud, a
+  chime) over a music bed, each one frame after its event.
+- A voiceover when a key is available: ElevenLabs or OpenAI TTS line by line, or one take (from an
+  ElevenLabs connector or the user's own recording) split into lines at its pauses. With neither, the
+  film is made with captions only.
+
+**Why it is a guardrail**
+
+- Contact sheets of chosen moments are the review step. The agent reads them, for both formats, before
+  spending minutes on a full render and again before delivering.
+- Real footage. Screens are captured from the running product, with element boxes, rather than mocked.
+- Measured, not guessed: the scene animates over the captured boxes, and the loudness target is
+  measured and reported.
+
+### Demo
+
+A 15 s teaser for a made-up budgeting app, "Tally", in
+[motion-video/examples/budget-teaser/](motion-video/examples/budget-teaser/): the app with a question
+typed in, the spending categories landing as bars, groceries measured against its limit, an ON BUDGET
+stamp and an end card.
+
+[![Contact sheet of the Tally teaser](motion-video/examples/budget-teaser/output/sheet.png)](motion-video/examples/budget-teaser/output/tally-h.mp4)
+
+- 🎬 16:9: [tally-h.mp4](motion-video/examples/budget-teaser/output/tally-h.mp4)
+- 📱 9:16: [tally-v.mp4](motion-video/examples/budget-teaser/output/tally-v.mp4)
+- 🖼 Contact sheets: [16:9](motion-video/examples/budget-teaser/output/sheet.png), [9:16](motion-video/examples/budget-teaser/output/sheet-v.png)
+
+### Usage
+
+**Prerequisites:** Node 18+ with Playwright and Chromium, Python 3 and ffmpeg. Claude Code cloud
+containers have all of them. Scenes load three.js and fonts from CDNs. For a voiceover, set
+`ELEVENLABS_API_KEY` or `OPENAI_API_KEY`.
+
+**Self-test** (a quick 12 fps draft of the demo):
+
+```bash
+export MV=~/.claude/skills/motion-video
+FPS=12 $MV/examples/budget-teaser/run.sh
+```
+
+**Ask Claude** for a film:
+
+> Make a 20 second launch video for our app at https://app.example.com, 16:9 and vertical, with a
+> voiceover. The idea: you ask a question and get a chart in one look.
+
+Claude asks once for what it cannot find (colours, URL, the one idea), writes the script and beat sheet,
+captures the real screens, builds the scene, checks contact sheets, renders, voices and mixes it.
+
+**Or drive it by hand:**
+
+```bash
+mkdir film && cd film
+cp $MV/assets/scene.template.html scene.html && cp $MV/assets/kit.js .
+node $MV/scripts/stills.mjs scene.html --out stills --count 10
+node $MV/scripts/render.mjs scene.html --fps 60 --out film.mp4
+python3 $MV/scripts/voiceover.py tts lines.txt --out vo && python3 $MV/scripts/voiceover.py place timeline.json --duration 20 --out vo.wav
+python3 $MV/scripts/mix.py film.mp4 --sfx film.sfx.wav --vo vo.wav --out final.mp4
+```
+
+Full workflow, beat sheet, principles, voiceover paths and pitfalls: [motion-video/SKILL.md](motion-video/SKILL.md).
 
 ---
 
