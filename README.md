@@ -143,6 +143,11 @@ cutting diagram.
 - A Drawer Breakout for any plan with drawers: each opening with its slide (maker, model, length,
   clearances, mounting line), the box sized from the slide maker's spec sheet, the front's reveals or
   overlay and the pull. `references/drawers.md` holds the slide catalogue and formulas, with sources.
+- A Door Breakout for any plan with doors: each opening with its doors sized from the case and the
+  style's reveals, the hinge (maker, model, count and positions), the cup bore distance and plate
+  worked from the hinge maker's overlay formula, the swing clearance and the pull.
+  `references/doors.md` holds the hinge catalogue (Blum, Salice, Grass, Hettich), reveal rules and
+  door construction, with sources.
 
 **Why it is a guardrail**
 
@@ -150,6 +155,8 @@ cutting diagram.
   connectivity, wood movement and bores, before anything is drawn.
 - Drawer boxes are measured against their slide's spec: side clearance, undermount inside width,
   side thickness, bottom recess, box and slide length against the case depth.
+- Doors are measured against their hinge's sheet: the overlay its cup distance and plate give, the
+  minimum reveal at the hinge edge, hinge count for the door's height and weight, the cup bore.
 - Every design and every later change gets an adversarial review that walks each change against the
   parts it touches and mates with, recorded on the plan's Revisions & Review sheet.
 - `selftest.js` proves the checks still catch known breaks.

@@ -8,7 +8,7 @@
   const C = require('./plan-core.js');
 
   const KEYS = {
-    plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note', 'drawers'],
+    plan: ['meta', 'materials', 'sections', 'parts', 'cutlist_notes', 'joints', 'bores', 'hardware', 'details', 'details_intro', 'view', 'stock', 'cutting_note', 'steps', 'revisions', 'review', 'jigs', 'story_sticks', 'finish', 'hardware_note', 'drawers', 'doors'],
     meta: ['series', 'plan_no', 'rev', 'date', 'title', 'subtitle', 'overall', 'wood', 'skill', 'time', 'intro', 'needs', 'basis', 'changed', 'check', 'tools', 'toolkit'],
     basis: ['what', 'from', 'note'],
     changed: ['what', 'why'],
@@ -27,6 +27,9 @@
     opening: ['at', 'w', 'h', 'd'],
     dfront: ['part', 'style'],
     pull: ['item', 'cc', 'screw', 'qty', 'through_box', 'at', 'note'],
+    door: ['name', 'hinge', 'cabinet', 'style', 'opening', 'frame', 'leaves', 'hinges', 'hinged', 'cup', 'plate', 'construction', 'pull', 'catch', 'note', 'waive'],
+    dopening: ['at', 'w', 'h'],
+    construction: ['type', 'stiles', 'rails', 'panel', 'groove', 'note'],
     revision: ['rev', 'date', 'summary', 'changes'],
     change: ['id', 'summary', 'parts', 'reason'],
     review: ['rev', 'change', 'verdict', 'mates', 'checks'],
@@ -255,6 +258,28 @@
       if (!ids(d.box).length) E(at + '.box', 'missing: the box part numbers (sides, front and back, bottom)');
       ids(d.box).concat(ids(d.slides)).forEach(id => { if (!has(id)) E(at, 'part ' + id + ' does not exist'); });
       if (d.front != null) { keys(d.front, 'dfront', at + '.front'); if (obj(d.front)) { ids(d.front.part).forEach(id => { if (!has(id)) E(at + '.front.part', 'part ' + id + ' does not exist'); }); if (d.front.style != null && !['inset', 'overlay', 'full-overlay', 'false-front'].includes(d.front.style)) E(at + '.front.style', 'should be inset, overlay, full-overlay or false-front'); } }
+      if (d.pull != null) keys(d.pull, 'pull', at + '.pull');
+    });
+    arr(plan.doors, 'doors').forEach((d, i) => {
+      const at = 'doors[' + i + ']'; keys(d, 'door', at); if (!obj(d)) return;
+      if (!d.name) W(at + '.name', 'missing: name the doors as the builder would ("Upper doors")');
+      if (typeof d.hinge === 'string') { if (!C.HINGES[d.hinge]) E(at + '.hinge', '"' + d.hinge + '" is not in the hinge catalogue: ' + Object.keys(C.HINGES).join(', ') + ' (or give the maker\'s numbers as an object, see doors.md)'); }
+      else if (!obj(d.hinge)) E(at + '.hinge', 'missing: a catalogue key like "blum-clip-top-110", or an object with the maker\'s numbers');
+      else if (!['overlay', 'inset', 'fixed', 'butt'].includes(d.hinge.kind || (C.HINGES[d.hinge.like] || {}).kind)) E(at + '.hinge.kind', 'should be overlay, inset, fixed or butt (or set like: a catalogue key)');
+      if (d.style != null && !['full-overlay', 'half-overlay', 'overlay', 'inset'].includes(d.style)) E(at + '.style', 'should be full-overlay, half-overlay, overlay (face frame) or inset');
+      if (d.cabinet != null && !['frameless', 'face-frame'].includes(d.cabinet)) E(at + '.cabinet', 'should be frameless or face-frame');
+      if (d.hinged != null && !['left', 'right', 'pair'].includes(d.hinged)) E(at + '.hinged', 'should be left, right or pair');
+      ['cup', 'plate'].forEach(k => { if (d[k] != null && typeof d[k] !== 'number') E(at + '.' + k, 'should be a number of millimetres, as the hinge maker gives it'); });
+      keys(d.opening, 'dopening', at + '.opening');
+      if (obj(d.opening)) {
+        ['w', 'h'].forEach(k => len(d.opening[k], at + '.opening.' + k));
+        const list = Array.isArray(d.opening.at && d.opening.at[0]) ? d.opening.at : [d.opening.at];
+        list.forEach((q, k) => { if (!Array.isArray(q) || q.length !== 3) E(at + '.opening.at' + (list.length > 1 ? '[' + k + ']' : ''), 'should be [x, y, z]: the left, front, bottom corner of the opening (or a list of them)'); });
+      } else E(at + '.opening', 'missing: { at, w, h } of the opening the door covers');
+      const ids = v => [].concat(v == null ? [] : v);
+      if (!ids(d.leaves).length) E(at + '.leaves', 'missing: the door part numbers');
+      ids(d.leaves).concat(ids(d.hinges)).forEach(id => { if (!has(id)) E(at, 'part ' + id + ' does not exist'); });
+      if (d.construction != null) { keys(d.construction, 'construction', at + '.construction'); if (obj(d.construction)) { if (!['slab', 'frame-and-panel', 'glass'].includes(d.construction.type)) E(at + '.construction.type', 'should be slab, frame-and-panel or glass'); ['stiles', 'rails', 'panel'].forEach(k => ids(d.construction[k]).forEach(id => { if (!has(id)) E(at + '.construction.' + k, 'part ' + id + ' does not exist'); })); } }
       if (d.pull != null) keys(d.pull, 'pull', at + '.pull');
     });
     if (plan.finish != null) { keys(plan.finish, 'finish', 'finish'); arr(plan.finish.steps, 'finish.steps'); }

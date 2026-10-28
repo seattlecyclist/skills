@@ -119,6 +119,15 @@ the drawings, the cut list notes and the steps. Missing halves are a `fail`, nev
   or the stated overlay; pull screws are the stack they pass through plus about 1/4"; the hardware
   list carries slides (pairs), pulls and screws. Recompute one box from the opening and spec by
   hand and compare it with the Drawer Breakout.
+- Doors (every plan with one, see doors.md): each opening is declared in `doors`; the hinge is a
+  real product named by maker, model and plate; each door's size follows from the opening, the
+  case edge and the style's reveals (1/16"–1/8" at outer edges, 1/8" between, 4 mm on solid wood,
+  1/16"–1/8" all round inset); the hinge gives the overlay (k + cup distance − plate, within its
+  ±2 mm adjustment) with the cup inside the maker's range; the hinge-edge gap clears the maker's
+  minimum reveal (twice it between doors hinged back to back); hinge count suits the height and
+  weight; cups are 35 mm at the maker's depth; frame-and-panel panels float with room to swell;
+  the hardware list carries hinges, plates, pulls and catches. Recompute one door and its cup by
+  hand and compare it with the Door Breakout.
 - Anything the user puts in or on it (mattress, saw, books) still fits, and is located where it should be.
 
 **Paperwork**

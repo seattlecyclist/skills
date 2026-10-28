@@ -130,6 +130,35 @@ for (const [name, mut, ok] of vcases) { const p = make(); mut(p); const V = vali
   out(sz.w === 22 - 66 / 64 && sz.length === 20 && sz2.length === 18 && Math.abs(sz2.w - (22 - 42 / 25.4 + 1.25)) < 1 / 64, 'drawers: drawerSize gives the worked examples in drawers.md', JSON.stringify([sz, sz2]));
 }
 
+// doors: the wall cabinet's pair is measured against the Blum CLIP top sheet, and breaks are caught
+{
+  const wc = require('../examples/wall-cabinet/plan.js');
+  const P0 = () => JSON.parse(JSON.stringify(wc.PARAMS));
+  const mk = P => prepare(wc(P || wc.PARAMS, J));
+  const p0 = mk(), R0 = C.check(p0), d0 = R0.stats.doors[0];
+  out(!R0.errors.length && !R0.warnings.length && !validate(p0).length, 'wall cabinet: clean plan', JSON.stringify(R0.errors.concat(R0.warnings).map(e => e.msg)));
+  out(d0.leaves.length === 2 && Math.abs(d0.leaves[0].edges.left - 0.625) < 1e-6 && d0.leaves[0].hingeOverlay === 16 && d0.leaves[0].hinges.length === 2 && d0.leaves[0].need === 2 && Math.abs(d0.gap - 0.125) < 1e-6 && d0.leaves[0].minReveal === 0.9, 'doors: each leaf measures its overlay, hinge overlay, hinges and the pair gap', JSON.stringify(d0.leaves[0]));
+  const P1 = P0(); P1.door.reveal = 0;
+  out(has(C.check(mk(P1)), 'door-overlay'), 'doors: a door 3/4" over the side is more than the hinge reaches with its cup and plate');
+  const p2 = mk(); p2.doors[0].hinge = 'blum-clip-top-110-inset';
+  out(has(C.check(p2), 'door-hinge-type'), 'doors: an inset hinge on an overlay door fails');
+  const p3 = mk(); p3.parts.find(q => q.id === '12').instances.pop();
+  out(has(C.check(p3), 'door-hinge-count'), 'doors: a door left with one hinge fails the hinge count');
+  const P4 = P0(); P4.h = 40;
+  out(has(C.check(mk(P4)), 'door-hinge-count'), 'doors: a 39-3/4" door on two hinges fails (Salice: three over 36")');
+  const p5 = mk(); p5.bores.find(b => b.id === 'B1').d = 32 / 25.4;
+  out(has(C.check(p5), 'door-cup'), 'doors: a 32 mm cup bore for a 35 mm hinge fails');
+  const p6 = mk(); p6.parts.find(q => q.id === '11').material = 'Cherry';
+  out(has(C.check(p6), 'door-gap'), 'doors: solid-wood doors 1/8" apart warn (shops leave about 4 mm)');
+  const p7 = mk(); p7.doors[0].hinge = 'acme-hinge';
+  out(validate(p7).some(v => v.at === 'doors[0].hinge'), 'doors: an unknown hinge is a validation error');
+  const p8 = mk(); p8.doors[0].cup = 9;
+  out(has(C.check(p8), 'door-cup') && has(C.check(p8), 'door-overlay'), 'doors: a cup bored outside the hinge\'s 3–7 mm range fails');
+  const blum = C.hingeSpec('blum-clip-top-110'), het = C.hingeSpec('hettich-sensys-110-inset');
+  const sz = C.doorSize({ w: 28.5, h: 27.5 }, { leaves: 2, frame: { left: 0.75, right: 0.75, top: 1.25, bottom: 1.25 } });
+  out(sz.w === 14.875 && sz.h === 29.875 && C.hingeSetup(blum, 17.5).fits && C.hingeSetup(blum, 17.5).C === 6.5 && C.hingeReveal(blum, 19, 3) === 1 && C.hingeReveal(het, 22, 4) === 1.8 && C.hingeCount(29.75, 8, 14.8) === 2 && C.hingeCount(50, 30, 25) === 4, 'doors: doorSize, hingeSetup, hingeReveal and hingeCount give the worked examples in doors.md', JSON.stringify(sz));
+}
+
 // review worksheet
 {
   const r = execFileSync(process.execPath, [path.join(__dirname, 'build_plan.js'), BED, '--review', '--change', 'C1'], { encoding: 'utf8' });

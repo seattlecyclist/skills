@@ -1092,6 +1092,64 @@ figcaption .zb button.one{width:auto;padding:0 4px}
     sheet('Drawer Breakout', '<p>Each drawer opening, the slide it runs on and the box, front and pull sized from the slide maker\'s numbers. Measure every opening before you cut: the box width has only about 1/32" of slack on side-mount slides.</p>' + html);
   }
 
+  // ---- door breakout: every door opening with its leaves, hinges, cups and pulls (plan.doors) ----
+  const oRows = (P.doors || []).length ? C.doorChecks(M, P, () => {}, () => {}, () => {}) : [];
+  if (oRows.some(r => r.leaves.length)) {
+    const groups = [];
+    for (const r of oRows) { if (!r.leaves.length) continue; const g = groups.find(x => x.name === r.name); if (g) g.rows.push(r); else groups.push({ name: r.name, rows: [r] }); }
+    const mmv = v => (Math.round(v * 10) / 10) + ' mm';
+    const sv = (r) => {
+      const o = r.opening, fr = r.frame, W = o.w + fr.left + fr.right, H = o.h + fr.top + fr.bottom, pad = 1.2;
+      const sc = Math.min(300 / (W + 2 * pad), 300 / (H + 2 * pad)), x0 = o.at[0] - fr.left - pad, z1 = o.at[2] + o.h + fr.top + pad;
+      const X = x => ((x - x0) * sc).toFixed(1), Y = z => ((z1 - z) * sc).toFixed(1), Wd = v => (v * sc).toFixed(1);
+      let s = '<svg class="dbx" viewBox="0 0 ' + Wd(W + 2 * pad) + ' ' + Wd(H + 2 * pad) + '" role="img" aria-label="Front view of the ' + esc(r.name) + ' opening">';
+      s += '<rect x="' + X(o.at[0] - fr.left) + '" y="' + Y(o.at[2] + o.h + fr.top) + '" width="' + Wd(W) + '" height="' + Wd(H) + '" fill="#efe7c8" stroke="var(--ink)" stroke-width="1"/>';
+      s += '<rect x="' + X(o.at[0]) + '" y="' + Y(o.at[2] + o.h) + '" width="' + Wd(o.w) + '" height="' + Wd(o.h) + '" fill="#fff" stroke="var(--ink)" stroke-width="1.2"/>';
+      for (const L of r.leaves) {
+        const lx = o.at[0] - L.edges.left, lz = o.at[2] - L.edges.bottom;
+        s += '<rect x="' + X(lx) + '" y="' + Y(lz + L.h) + '" width="' + Wd(L.w) + '" height="' + Wd(L.h) + '" fill="rgba(244,236,158,.55)" stroke="var(--ink)" stroke-width="1" stroke-dasharray="5 3"/>';
+        const hx = L.side === 'left' ? lx : lx + L.w;
+        for (const z of L.hinges || []) {
+          const cx = hx + (L.side === 'left' ? 1 : -1) * ((L.cup || 4) + 17.5) / 25.4;
+          s += '<circle cx="' + X(cx) + '" cy="' + Y(lz + z) + '" r="' + Wd(17.5 / 25.4) + '" fill="#c5c2be" stroke="var(--ink)" stroke-width=".6"/>';
+        }
+        s += '<text x="' + X(lx + L.w / 2) + '" y="' + Y(lz + L.h / 2) + '" font-size="11" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">' + esc(FT(L.w)) + ' × ' + esc(FT(L.h)) + '</text>';
+        s += '<text x="' + X(lx + L.w / 2) + '" y="' + Y(lz + L.h / 2) + '" dy="14" font-size="9" text-anchor="middle" dominant-baseline="central" fill="var(--ink)">hinged ' + L.side + '</text>';
+      }
+      return s + '</svg>';
+    };
+    const html = groups.map(g => {
+      const r = g.rows[0], s = r.hinge, o = r.opening, n = g.rows.length, rec = P.doors.find(d => (d.name || '') === g.name) || {};
+      const tr = (k, v) => '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
+      const ed = v => Math.abs(v) < 1 / 128 ? 'flush' : v > 0 ? F(v) + ' overlay' : F(-v) + ' reveal';
+      const rows = [];
+      rows.push(tr('Opening', F(o.w) + ' wide × ' + F(o.h) + ' high · ' + esc(r.cabinet) + ' · ' + esc(r.style) + (r.leaves.length > 1 ? ' · pair' : ' · single door')));
+      rows.push(tr('Case edge around it', 'left ' + F(r.frame.left) + ', right ' + F(r.frame.right) + ', top ' + F(r.frame.top) + ', bottom ' + F(r.frame.bottom)));
+      const L0 = r.leaves[0];
+      const fw = r.style === 'inset' ? F(o.w) + ' − gaps' : F(o.w) + ' + ' + F(L0.edges.left) + ' + ' + F(r.leaves[r.leaves.length - 1].edges.right);
+      rows.push(tr('Door size', r.leaves.map(L => '<b>' + F(L.w) + ' × ' + F(L.h) + ' × ' + F(L.t) + '</b> (' + L.side + '-hinged' + (L.weight ? ', about ' + Math.round(L.weight) + ' lb' : '') + ')').join('<br>') + '<div class="note">Width: (' + fw + (r.gap != null ? ' − ' + F(r.gap) + ' gap' : '') + ')' + (r.leaves.length > 1 ? ' ÷ 2' : '') + '. Height: ' + F(o.h) + ' + ' + F(L0.edges.top) + ' + ' + F(L0.edges.bottom) + '.</div>'));
+      const meet = (L, e) => r.leaves.length > 1 && ((L.side === 'left' && e === 'right') || (L.side === 'right' && e === 'left'));
+      rows.push(tr('Edges', r.leaves.map(L => (r.leaves.length > 1 ? L.side + '-hinged door: ' : '') + ['left', 'right', 'top', 'bottom'].filter(e => !meet(L, e)).map(e => e + ' ' + ed(L.edges[e])).join(', ')).join('<br>') + (r.gap != null ? '<br><b>' + F(r.gap) + '</b> gap where the doors meet' : '')));
+      rows.push(tr('Hinge', '<b>' + esc(s.name) + '</b>' + (s.angle ? ' · opens ' + s.angle + '°' : '') + (s.pattern ? ' · screw pattern ' + esc(s.pattern) : '') + (s.source ? '<div class="note">Numbers from ' + esc(s.source) + '.</div>' : '')));
+      rows.push(tr('Hinges per door', r.leaves.map(L => (L.hinges || []).length + ' (needs ' + L.need + ') at ' + (L.hinges || []).map(z => F(z)).join(', ') + ' up from the door bottom').join('<br>')));
+      if (L0.cup != null) {
+        rows.push(tr('Cup bore', (s.cup ? s.cup + ' mm Forstner, ' + (s.depth ? s.depth + ' mm deep' : 'to the hinge sheet') + ', ' : '') + '<b>' + L0.cup + ' mm</b> from the door edge to the cup (cup centre ' + mmv(L0.cup + (s.cup || 35) / 2) + ' = ' + F((L0.cup + (s.cup || 35) / 2) / 25.4) + ' in)' + (L0.bore ? '; the plan bores it ' + mmv(L0.bore.d) + ' × ' + mmv(L0.bore.depth) : '')));
+        rows.push(tr('Mounting plate', L0.plate + ' mm plate' + (s.plateSet ? ', screws on the ' + s.plateSet + ' mm line back from the case front' : '') + (s.screws ? ' · ' + esc(s.screws) : '')));
+        if (L0.hingeOverlay != null) rows.push(tr('Overlay check', s.kind === 'fixed' ? 'The hinge is made for ' + mmv(L0.hingeOverlay) + '; the door overlays ' + F(L0.edges[L0.side]) : (s.k + ' + ' + L0.cup + ' − ' + L0.plate + ' = <b>' + mmv(L0.hingeOverlay) + '</b> ' + (L0.hingeOverlay >= 0 ? 'overlay' : 'reveal') + ' from the hinge (±' + (s.adj || 2) + ' mm adjustment); the door has ' + mmv(Math.abs(L0.edges[L0.side]) * 25.4))));
+      }
+      if (L0.minReveal != null) rows.push(tr('Swing clearance', 'At least ' + mmv(L0.minReveal) + ' at the hinge edge for a ' + mmv(L0.t * 25.4) + ' door; twice that between doors hinged back to back on one partition'));
+      const cn = rec.construction;
+      if (cn) rows.push(tr('Construction', esc(cn.type) + (L0.panel ? ' · panel ' + F(L0.panel.w) + ' × ' + F(L0.panel.h) + ' in ' + F(L0.panel.groove) + ' grooves, ' + F(L0.panel.engageW) + ' in each side groove' + (L0.panel.solid ? ' (solid: room to swell ' + F(L0.panel.groove - L0.panel.engageW) + ' a side)' : '') : '') + (cn.note ? '<div class="note">' + rich(cn.note) + '</div>' : '')));
+      const pl = rec.pull;
+      if (pl) rows.push(tr('Pull', esc([pl.item, pl.cc ? pl.cc + ' centres' : '', pl.screw ? pl.screw + ' screws' : ''].filter(Boolean).join(' · ')) + (pl.at ? '<div class="note">' + rich(pl.at) + '</div>' : '')));
+      if (rec.catch) rows.push(tr('Catch / closing', esc(rec.catch)));
+      const ids = [...new Set([].concat(rec.leaves || [], rec.hinges || [], cn ? [].concat(cn.stiles || [], cn.rails || [], cn.panel || []) : []).map(String))];
+      rows.push(tr('Parts', ids.map(chip).join('')));
+      return '<div class="dbk"><h3>' + esc(g.name) + (n > 1 ? ' · make ' + n : '') + '</h3><div class="dbg"><figure>' + sv(r) + '<figcaption class="note">Front view: case edge (tan), opening (white), doors (dashed) and hinge cups (grey).</figcaption></figure><div class="tw"><table class="plain">' + rows.join('') + '</table></div></div></div>';
+    }).join('');
+    sheet('Door Breakout', '<p>Each door opening, the hinge it hangs on and the door, cup bore and plate sized from the hinge maker\'s tables. Bore one test cup in scrap and hang it before boring the doors: the overlay comes from the cup distance, and the hinge only adjusts about 2 mm either way.</p>' + html);
+  }
+
 
   // ---- joint details: every joint drawn on its own, from the model, the mating parts pulled apart ----
   // Each detail crops the parts to where they meet, slides them apart the way the joint goes together,

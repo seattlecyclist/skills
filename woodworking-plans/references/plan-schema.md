@@ -285,6 +285,44 @@ Check codes: `drawer-clearance` (side-mount gap outside the window), `drawer-ins
 `drawer-front-fit` and `drawer-setback` (inset), and warnings `drawer-centred`, `drawer-gap`,
 `drawer-wide`, `drawer-slide-length`, `drawer-front-cover`, `drawer-pull-screw`, `drawer-play`.
 
+## Doors
+
+One record per door opening size; required in any plan with a hinged door. The check measures the
+modeled doors and hinges in front of each opening against the hinge maker's numbers (`doors.md`),
+and the page prints a **Door Breakout** sheet from them.
+
+```js
+doors: [{
+  name: 'Upper doors',                 // as the builder would say it
+  hinge: 'blum-clip-top-110',          // catalogue key (doors.md), or { like: key, ...overrides }, or the maker's numbers
+  cabinet: 'frameless',                // frameless | face-frame
+  style: 'full-overlay',               // full-overlay | half-overlay | overlay (face frame) | inset
+  hinged: 'pair',                      // left | right | pair (two leaves, hinged on the outer edges)
+  opening: { at: [[x, y, z], ...],     // left, front, bottom corner of each opening this size (y = the case front face)
+             w: 28.5, h: 27.5 },       // between the sides / frame members; under the top to over the bottom
+  frame: { left: 0.75, right: 0.75, top: 1.25, bottom: 1.25 },   // case edge or frame width the door may cover (default 3/4")
+  leaves: '11',                        // the door part(s)
+  hinges: '12',                        // the hinge hardware part
+  cup: 5, plate: 0,                    // cup distance from the door edge and plate height, mm (hingeSetup gives them)
+  construction: { type: 'frame-and-panel', stiles: '14', rails: '15', panel: '16', groove: 0.375 },   // or { type: 'slab' }
+  pull: { item: '96 mm bar pull', cc: '96 mm', screw: '8-32 x 1"', at: '3" up from the bottom corner' },
+  catch: 'Soft-close in the hinge cup',
+  waive: { 'door-gap': 'why this departure is fine' }   // warnings only, with a reason
+}]
+```
+
+`doorSize(opening, { style, leaves, frame, reveal, gap, overlay })`, `hingeSetup(hinge, overlayMM)`,
+`hingeReveal(hinge, doorMM, cupMM)` and `hingeCount(height, lb, width)` in `plan-core.js` give the
+sizes; size the parts from them. Model the 35 mm cups as `bores` with "cup" in the label.
+
+Check codes: `door-hinge` (not in the catalogue), `door-hinge-type` (inset hinge on an overlay door
+or the reverse), `door-no-leaf`, `door-leaves`, `door-thickness`, `door-hinges` (none on the hinge
+edge), `door-hinge-count`, `door-overlay` (no cup distance and plate gives it, or the declared ones
+miss by more than the adjustment), `door-cup` (cup distance out of range, bore not the hinge's
+diameter), `door-fit` (inset gaps), `door-swing` (under the minimum reveal), `door-gap` (pair bind),
+`door-panel` (panel longer than its grooves), and warnings `door-reveal`, `door-frame-show`,
+`door-hinge-position`, `door-pull-screw`, `door-no-hinges`.
+
 ## Generated paperwork
 
 These come from the model and need no fields:
