@@ -153,8 +153,11 @@ Pick the path by what is available, and say which one you used:
    `ELEVENLABS_MODEL_ID`, `OPENAI_TTS_VOICE`, `OPENAI_TTS_MODEL`, `OPENAI_TTS_INSTRUCTIONS`.
 2. **An ElevenLabs connector (MCP) instead of a key**: list voices, pick one that fits the brand (a warm
    narrator by default), generate the whole script as one take with line breaks as pauses, download it,
-   then `voiceover.py split take.mp3 --lines N --script lines.txt --out out/vo`. Split cuts at the N-1
-   longest pauses; tune `--min-gap` and `--noise` if it finds too few.
+   then `voiceover.py split take.mp3 --lines N --script lines.txt --out out/vo`. Split prints every
+   pause it finds and cuts at the N-1 longest. A pause inside a line ("Groceries: … dollars.") can be as
+   long as a line break, so read the printed pauses against the script; when the pick is wrong, pass the
+   right ones with `--cuts 1.6,5.04,9.12`. Keep the take and its cut times with the film so a later
+   remix needs no new generation (the example ships `voice/take.mp3`).
 3. **A take the user recorded**: same `split`.
 4. **None of these**: no voice. The captions carry the words, and the music bed and effects carry the
    rhythm. Tell the user a voice can be added later by setting a key and re-running the mix; the picture

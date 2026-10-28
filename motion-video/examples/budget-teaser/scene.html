@@ -28,10 +28,11 @@ const colors = { card: "#FFFFFF", ink: "#1F2421", muted: "#6B716D", accent: "#1F
 
 // ---------- the timeline: every beat hangs off a voiceover line (see lines.txt and timeline.json) ----------
 const T = {
+  // times fitted to voice/take.mp3 as split and placed by run.sh (line starts 0.6, 4.7, 8.0, 12.6 s)
   type: [1.0, 2.6], send: 2.8, appOut: 4.8,             // line 1 "Ask your money a question."
   lands: [5.0, 5.35, 5.7, 6.05, 6.4],                    // line 2 "Tally lays out every category..."
-  measure: 7.4, limit: 8.0, caption: [8.4, 11.6],        // line 3 "Groceries: four hundred twelve dollars..."
-  stamp: 11.2,
+  measure: 9.1, limit: 9.9, caption: [8.3, 12.0],        // line 3 "...four hundred twelve dollars" lands on the label
+  stamp: 11.1,                                           //        "Under budget."
   end: 12.4, cues: [12.8, 13.1, 13.5, 13.9],             // line 4 "Tally. Stay on budget."
 };
 

@@ -3,7 +3,7 @@
 
   voiceover.py keys                                   # which TTS keys this machine has
   voiceover.py tts lines.txt --out vo/ [--provider elevenlabs|openai] [--voice ID] [--model ID]
-  voiceover.py split take.mp3 --lines 6 --out vo/      # one recorded or generated take -> line01.wav ...
+  voiceover.py split take.mp3 --lines 6 --out vo/ [--script lines.txt] [--cuts 1.6,5.0,...]  # one take -> line01.wav ...
   voiceover.py place timeline.json --duration 24.5 --out vo-track.wav
 
 lines.txt holds one spoken line per line. `tts` and `split` both write line01.wav, line02.wav ... and
@@ -113,11 +113,17 @@ def silences(path, noise, min_gap):
 def cmd_split(a):
     total = duration(a.take)
     gaps = [g for g in silences(a.take, a.noise, a.min_gap) if 0.05 < g[0] and g[1] < total - 0.05]
-    if len(gaps) < a.lines - 1:
-        sys.exit(f"Found {len(gaps)} pauses, need {a.lines - 1}. Lower --min-gap or raise --noise (now {a.min_gap} s, {a.noise} dB).")
-    # the longest pauses are the line breaks; shorter ones are pauses inside a line
-    cuts = sorted(sorted(gaps, key=lambda g: g[1] - g[0], reverse=True)[:a.lines - 1])
-    bounds = [0.0] + [(s + e) / 2 for s, e in cuts] + [total]
+    print("pauses: " + "  ".join(f"{(s + e) / 2:.2f}s ({e - s:.2f})" for s, e in gaps))
+    if a.cuts:
+        mids = [float(x) for x in a.cuts.split(",")]
+        if len(mids) != a.lines - 1: sys.exit(f"--cuts needs {a.lines - 1} times")
+    else:
+        if len(gaps) < a.lines - 1:
+            sys.exit(f"Found {len(gaps)} pauses, need {a.lines - 1}. Lower --min-gap or raise --noise (now {a.min_gap} s, {a.noise} dB).")
+        # the longest pauses are the line breaks; shorter ones are pauses inside a line. When a pause
+        # inside a line is as long as a break, check the printed pauses and pass --cuts instead.
+        mids = [(s + e) / 2 for s, e in sorted(sorted(gaps, key=lambda g: g[1] - g[0], reverse=True)[:a.lines - 1])]
+    bounds = [0.0] + mids + [total]
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     texts = [l.strip() for l in Path(a.script).read_text().splitlines() if l.strip()] if a.script else [""] * a.lines
     files = []
@@ -149,7 +155,7 @@ def main():
     t = sub.add_parser("tts"); t.add_argument("script"); t.add_argument("--out", required=True)
     t.add_argument("--provider", choices=["elevenlabs", "openai"]); t.add_argument("--voice"); t.add_argument("--model"); t.set_defaults(fn=cmd_tts)
     s = sub.add_parser("split"); s.add_argument("take"); s.add_argument("--lines", type=int, required=True); s.add_argument("--out", required=True)
-    s.add_argument("--script", help="lines.txt, to label the pieces"); s.add_argument("--noise", type=float, default=-38); s.add_argument("--min-gap", type=float, default=0.25)
+    s.add_argument("--script", help="lines.txt, to label the pieces"); s.add_argument("--cuts", help="explicit cut times, e.g. 1.6,5.04,9.12"); s.add_argument("--noise", type=float, default=-38); s.add_argument("--min-gap", type=float, default=0.25)
     s.set_defaults(fn=cmd_split)
     pl = sub.add_parser("place"); pl.add_argument("timeline"); pl.add_argument("--duration", type=float, required=True); pl.add_argument("--out", required=True)
     pl.set_defaults(fn=cmd_place)

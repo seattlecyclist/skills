@@ -18,14 +18,21 @@ node $S/stills.mjs scene.html --root ../.. --format v --out out/stills-v --count
 echo "Check out/stills/sheet.png and out/stills-v/sheet.png"
 [ "${1:-}" = stills ] && exit 0
 
-# 3. voice: one generated file per line, placed at its beat. No key, no voice; the film still works.
+# 3. voice: with a TTS key, one generated file per line; otherwise split the recorded take that ships
+#    with the example (an ElevenLabs take; the scene's beat times are fitted to it). Either way the
+#    lines are placed at their beats. With neither, the film is made without a voice.
 VO=()
 if python3 $S/voiceover.py keys >/dev/null; then
   python3 $S/voiceover.py tts lines.txt --out out/vo
+  echo "New TTS lines run to different lengths than the take: check where each ends below, then move T in scene.html."
+elif [ -f voice/take.mp3 ]; then
+  python3 $S/voiceover.py split voice/take.mp3 --lines 4 --script lines.txt --cuts 1.60,5.04,9.12 --out out/vo
+fi
+if [ -f out/vo/line04.wav ]; then
   python3 $S/voiceover.py place timeline.json --duration $DURATION --out out/vo-track.wav
   VO=(--vo out/vo-track.wav)
 else
-  echo "No ELEVENLABS_API_KEY or OPENAI_API_KEY: making the film without a voiceover."
+  echo "No voice: making the film without a voiceover."
 fi
 
 # 4. picture and sound, then 5. the mix

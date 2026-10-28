@@ -155,7 +155,9 @@ checked as a still before the long render, and lines sound up with picture to th
 A 15 s teaser for a made-up budgeting app, "Tally", in
 [motion-video/examples/budget-teaser/](motion-video/examples/budget-teaser/): the app with a question
 typed in, the spending categories landing as bars, groceries measured against its limit, an ON BUDGET
-stamp and an end card.
+stamp and an end card. Narrated by an ElevenLabs voice: one take, split into lines at its pauses, with
+the beats timed to the words (the dimension label lands on "four hundred twelve dollars", the stamp on
+"under budget").
 
 [![Contact sheet of the Tally teaser](motion-video/examples/budget-teaser/output/sheet.png)](motion-video/examples/budget-teaser/output/tally-h.mp4)
 
