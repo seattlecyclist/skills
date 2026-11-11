@@ -7,6 +7,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
 | [motion-video](#motion-video) | Make a short promo or explainer motion video for any product: real screens, 3D objects that assemble and get measured, captions, sound, voiceover, in 16:9 and 9:16. |
+| [plan-to-photo](#plan-to-photo) | Turn a furniture plan and a description of a room into a photorealistic render of the piece in that room, built from the plan's exact geometry. |
 | [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
 
 ## Install
@@ -19,6 +20,7 @@ git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
 ln -s ~/src/skills/motion-video ~/.claude/skills/motion-video
+ln -s ~/src/skills/plan-to-photo ~/.claude/skills/plan-to-photo
 ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
 ```
 
@@ -198,6 +200,100 @@ python3 $MV/scripts/mix.py film.mp4 --sfx film.sfx.wav --vo vo.wav --out final.m
 ```
 
 Full workflow, beat sheet, principles, voiceover paths and pitfalls: [motion-video/SKILL.md](motion-video/SKILL.md).
+
+---
+
+## plan-to-photo
+
+Takes a plan and a description of a setting (a bedroom, a kitchen, a living room) and makes a
+photorealistic picture of the piece in that room. The plan's geometry is imported exactly, so the
+joinery, tapers and proportions in the picture are the ones that will be built; AI image generators
+redraw the piece and lose them, so this is done the archviz way, in Blender Cycles.
+
+**What you get**
+
+- A 3000x2000 render of the piece in a room built around it: walls, a window with trim and sheer
+  curtains, a plank floor, a rug, lamps, books, art.
+- Scanned CC0 materials from Poly Haven and ambientCG, with the wood grain running along every part
+  and a finish applied (oiled walnut is darker and warmer than a raw scan).
+- Soft goods from cloth simulation: a duvet folded back, creased pillows that lean on the headboard
+  and dent the mattress, a throw.
+- An HDRI sky with its sun cut out and replaced by a matched sun lamp, window portals, AgX tone
+  mapping, depth of field.
+- A review sheet: the frame plus 100% crops where renders give themselves away.
+
+**Why it is a guardrail**
+
+- Exact geometry. It renders the plan you will build, not a picture that looks like it.
+- Every rule in `references/realism.md` comes from a real miss on the example bed: floating pillows,
+  slat-shaped light leaks under the bed, procedural wood, blotchy walls, a blown sun patch, a window
+  view that looked pasted in.
+- Builds print checks (pillow to headboard, pillow to mattress, mattress dent, model bbox) and the
+  review sheet is read before a final render is spent.
+- Versioned: one change per version, same camera, so versions compare side by side.
+
+### Demo
+
+The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching walnut nightstands
+(render v6):
+
+![Walnut castle-leg bed rendered in a bedroom](plan-to-photo/examples/walnut-bed/walnut-bed-bedroom.jpg)
+
+- 📐 The plan it was made from: [plan.js](plan-to-photo/examples/walnut-bed/plan.js) and the shop plan
+  page [plan.html](plan-to-photo/examples/walnut-bed/plan.html) (download and open)
+- 🧾 Scene: [scene.json](plan-to-photo/examples/walnut-bed/scene.json) and
+  [walnut_bed.py](plan-to-photo/examples/walnut-bed/walnut_bed.py) (rebuilt legs and curved headboard,
+  the nightstands)
+- 📜 How it got there, v1 to v6: [original/](plan-to-photo/examples/walnut-bed/original/)
+
+### Usage
+
+**Prerequisites:** Blender 4.2+ (`blender` on PATH, or `pip install bpy`), Node 18+ for plan.js
+export, Python 3 with Pillow. A GPU for the final: about 15 minutes at 3000x2000 on an Apple M2 Max,
+hours on a CPU. Network access to polyhaven.com and ambientcg.com for the scans.
+
+**Self-test** (exports the plan, fetches the scans, builds, renders a quarter-size preview):
+
+```bash
+export P2P=~/.claude/skills/plan-to-photo
+$P2P/examples/walnut-bed/run.sh /tmp/walnut-bed --preview
+```
+
+**Ask Claude** for a render. Some prompts that work:
+
+> Render my bed plan (plan.js) in a calm Scandinavian bedroom: white oak floor, linen bedding in
+> oatmeal, morning light from a window on the left. Photorealistic, 3:2.
+
+> Put this walnut sideboard in a mid-century living room with a dark green wall, a wool rug and late
+> afternoon sun. Shoot it straight on at eye height.
+
+> Here is my kitchen island model (island.glb). Show it in a bright kitchen with a white quartz
+> counter, brass pulls, two pendant lights and a bowl of lemons.
+
+> Make a catalogue shot of the round dining table from my woodworking plan, with four chairs pulled
+> out, a linen runner and an overcast window behind it.
+
+> Same scene, but make the throw mauve and swap the oak nightstands for walnut ones that match the
+> bed. Keep the camera.
+
+> The pillows look like they're floating and there are stripes in the shadow under the bed. Fix
+> them and render v4.
+
+Claude reads the plan, picks a room recipe and says what it chose, fetches the scans, builds the
+scene, previews and reviews it, then renders the final and iterates by version.
+
+**Or drive it by hand:**
+
+```bash
+node $P2P/scripts/export_obj.js plan.js bed.obj
+python3 $P2P/scripts/fetch_assets.py assets $(python3 $P2P/scripts/fetch_assets.py assets --list bedroom)
+blender -b -P $P2P/scripts/build_scene.py -- scene.json
+blender -b -P $P2P/scripts/render.py -- scene.blend v1.png --hdri assets/hdri/borghese_gardens_4k.exr \
+  --cam 2.45,-1.1,0.95 --target 0.6,1.3,0.5 --sun-az 160 --res 3000x2000 --samples 2048
+python3 $P2P/scripts/review.py v1.png
+```
+
+Full workflow, scene spec, room recipes and realism rules: [plan-to-photo/SKILL.md](plan-to-photo/SKILL.md).
 
 ---
 

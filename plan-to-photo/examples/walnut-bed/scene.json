@@ -1,0 +1,68 @@
+{
+  "about": "Walnut castle-leg queen bed (plan MP-01 Rev A) in a styled bedroom. Plan coordinates: foot-left outside leg corner at the origin, headboard at +Y, meters.",
+  "assets": "assets",
+  "out": "scene.blend",
+  "materials": {
+    "walnut": {"type": "wood", "set": "walnut_veneer_02", "tone": [0.24, 0.205, 0.19], "gamma": 1.5, "rough": [0.32, 0.50], "bump": 0.12},
+    "maple": {"type": "wood", "set": "maple_veneer", "procedural": [[0.45, 0.32, 0.19], [0.60, 0.45, 0.29], [0.66, 0.52, 0.36]], "rough": [0.45, 0.55]},
+    "floor": {"type": "planks", "set": "white_oak_veneer", "plank_w": 0.185, "plank_l": 1.7, "tile": 0.5, "tone": [0.92, 0.86, 0.78]},
+    "rug": {"type": "surface", "set": "Carpet016", "tile": 0.45, "hsv": [0.5, 0.55, 0.9], "rough": [0.85, 1.0], "bump": 0.7, "bump_dist": 0.003, "sheen": 1.0, "color": [0.55, 0.51, 0.44]},
+    "duvet": {"type": "fabric", "color": [0.60, 0.55, 0.47], "set": "rough_linen", "tile": 0.27, "bump": 0.22},
+    "sham": {"type": "fabric", "color": [0.42, 0.37, 0.30], "set": "rough_linen", "tile": 0.54, "bump": 0.22},
+    "pillow": {"type": "fabric", "color": [0.72, 0.71, 0.68], "set": "rough_linen", "tile": 0.30, "bump": 0.12, "sheen": 0.3},
+    "sheet": {"type": "fabric", "color": [0.70, 0.69, 0.66], "set": "rough_linen", "tile": 0.15, "bump": 0.12, "sheen": 0.3, "uv": false},
+    "throw": {"type": "fabric", "color": [0.12, 0.083, 0.08], "set": "knitted_fleece", "tile": 0.27, "bump": 0.35, "sheen": 0.9},
+    "wall": {"type": "paint", "color": [0.70, 0.67, 0.62], "var": 0.01, "bump": 0.02, "scale": 30},
+    "limewash": {"type": "paint", "color": [0.337, 0.307, 0.268], "var": 0.03, "bump": 0.02},
+    "trim": {"type": "plain", "color": [0.74, 0.72, 0.68], "rough": 0.45},
+    "ceiling": {"type": "plain", "color": [0.78, 0.77, 0.74], "rough": 0.95},
+    "sheer": {"type": "translucent", "color": [0.9, 0.88, 0.84], "mix": 0.45, "transparent": 0.55},
+    "shade": {"type": "translucent", "color": [0.9, 0.8, 0.62], "mix": 0.5},
+    "ceramic": {"type": "plain", "color": [0.55, 0.50, 0.43], "rough": 0.55, "coat": 0.3},
+    "ceramic_dark": {"type": "plain", "color": [0.06, 0.055, 0.05], "rough": 0.6},
+    "brass": {"type": "metal", "color": [0.8, 0.6, 0.35], "rough": 0.3},
+    "steel": {"type": "metal", "color": [0.4, 0.4, 0.4], "rough": 0.4},
+    "pages": {"type": "plain", "color": [0.72, 0.69, 0.62], "rough": 0.9},
+    "book_blue": {"type": "plain", "color": [0.12, 0.16, 0.18], "rough": 0.7},
+    "book_tan": {"type": "plain", "color": [0.45, 0.38, 0.28], "rough": 0.7},
+    "frame_oak": {"type": "wood", "set": "white_oak_veneer", "tone": [0.9, 0.85, 0.78], "rough": [0.45, 0.6]},
+    "canvas": {"type": "canvas"}
+  },
+  "model": {
+    "file": "bed.obj",
+    "units": "m",
+    "offset": [0, 0, 0.008],
+    "skip": ["^P1_", "^P12_", "^P13_"],
+    "assign": [{"match": "hard_maple", "material": "maple"}],
+    "default": "walnut",
+    "ease_mm": 1.2
+  },
+  "room": {
+    "x": [-1.35, 3.05], "y": [-3.4, 2.256], "height": 2.7,
+    "materials": {"floor": "floor", "wall": "wall", "wall_back": "limewash", "trim": "trim", "ceiling": "ceiling", "sheer": "sheer", "rod": "steel"},
+    "windows": [{"wall": "left", "from": -0.75, "to": 0.95, "sill": 0.55, "head": 2.35, "meeting_rail": 1.64, "curtains": true}],
+    "baseboard": 0.11,
+    "rug": {"x": [-0.382, 2.058], "y": [-0.95, 2.206], "material": "rug"}
+  },
+  "props": [
+    {"kind": "lamp", "name": "LampL", "at": [-0.38, 2.066, 0.5588], "base": "ceramic_dark", "shade": "shade", "rod": "brass"},
+    {"kind": "lamp", "name": "LampR", "at": [2.066, 2.076, 0.5588], "base": "ceramic_dark", "shade": "shade", "rod": "brass"},
+    {"kind": "books", "name": "Book", "at": [1.956, 1.976, 0.5588], "covers": ["book_blue", "book_tan"], "pages": "pages"},
+    {"kind": "vessel", "name": "Vase", "type": "vase", "at": [-0.21, 1.956, 0.5588], "material": "ceramic"},
+    {"kind": "art", "name": "Art", "x": [0.288, 1.388], "z": [1.42, 2.12], "wall_y": 2.256, "frame": "frame_oak", "canvas": "canvas"}
+  ],
+  "dress": ["walnut_bed.py", "bed.py"],
+  "bed": {
+    "opening": [0.0508, 0.0508, 1.6256, 2.1336],
+    "deck_z": 0.300,
+    "mattress_h": 0.254,
+    "headboard_y": 2.1844,
+    "materials": {"sheet": "sheet", "duvet": "duvet", "pillow": "pillow", "sham": "sham", "throw": "throw"},
+    "throw_side": 1
+  },
+  "render": {
+    "cam": "2.45,-1.1,0.95", "target": "0.6,1.3,0.5", "focus": "1.70,0.45,0.3", "lens": 28, "shift_y": 0.07,
+    "fstop": 5.6, "hdri": "assets/hdri/borghese_gardens_4k.exr", "sun_az": 160, "exposure": 1.1, "wb": 5400,
+    "res": "3000x2000", "samples": 2048
+  }
+}
