@@ -1,6 +1,6 @@
 ---
 name: plan-to-photo
-description: Turn a furniture or woodworking plan (a woodworking-plans plan.js, an OBJ/GLB/STL/FBX model, or dimensioned drawings) plus a description of a setting (a bedroom, kitchen, living room, dining room, office, patio) into a photorealistic render of the piece in that room, built in Blender Cycles from the plan's exact geometry with scanned CC0 materials, cloth-simulated soft goods, an HDRI sky with a matched sun, and a review pass for the giveaways (floating pillows, light leaks, plastic wood, blown highlights). Use whenever the user wants to see a plan "for real", asks for a photoreal or realistic render, a lifestyle or catalogue shot, a "what would it look like in my bedroom/kitchen", or says "render my plan", "make a photo of this", "put this bed in a bedroom".
+description: Turn a furniture or woodworking plan (a woodworking-plans plan.js or plan.html, a plan PDF, images of plan pages such as scans, phone photos or screenshots, an OBJ/GLB/STL/FBX model, or dimensioned drawings) plus a description of a setting (a bedroom, kitchen, living room, dining room, office, patio) into a photorealistic render of the piece in that room, built in Blender Cycles from the plan's exact geometry with scanned CC0 materials, cloth-simulated soft goods, an HDRI sky with a matched sun, and a review pass for the giveaways (floating pillows, light leaks, plastic wood, blown highlights). Use whenever the user wants to see a plan "for real" (including when they attach a plan PDF or picture), asks for a photoreal or realistic render, a lifestyle or catalogue shot, a "what would it look like in my bedroom/kitchen", or says "render my plan", "make a photo of this", "put this bed in a bedroom".
 ---
 
 # Plan to photo
@@ -17,19 +17,23 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | Path | What it is |
 |---|---|
 | `scripts/export_obj.js` | woodworking-plans `plan.js` → OBJ in meters, a material group per wood. |
+| `scripts/read_drawings.py` | Plan PDF or images → one PNG per page, the text layer if any, a contact sheet and a page index; `--tile` for small text. |
+| `scripts/build_model.js` | `model.json` (parts read off a PDF or images) → the same OBJ, checked against the takeoff, the overall size, overlaps and floating parts. |
 | `scripts/fetch_assets.py` | Download CC0 scans and HDRIs from Poly Haven and ambientCG; `--list <setting>` for a starter set. |
 | `scripts/build_scene.py` | `scene.json` → `scene.blend`: model, materials, room, props, dress scripts. |
 | `scripts/p2p.py` | The helper library every script uses (geometry, scanned materials, cloth, contact, props, room). |
 | `scripts/dress/bed.py` | Dress a bed frame: mattress, duvet, pillows, lumbar, throw. |
 | `scripts/render.py` | HDRI with matched sun, window portals, camera, Cycles on the GPU, AgX. `--preview`, `--border`. |
 | `scripts/review.py` | Review sheet: the frame plus 100% crops of the places renders give themselves away. |
+| `references/drawings.md` | Reading a PDF or image plan into `takeoff.json` and `model.json`. **Read before modelling from drawings.** |
 | `references/realism.md` | The rules, each from a real miss. **Read before the first preview.** |
 | `references/settings.md` | Room recipes: bedroom, kitchen, living, dining, office, bathroom, patio, workshop. |
 | `references/scene-spec.md` | Every field of `scene.json` and how dress scripts work. |
-| `examples/walnut-bed/` | The worked example: plan, shop plan, scene, dress script, final render, and the original scripts. |
+| `examples/walnut-bed/` | The worked example: plan, shop plan, scene, dress script, final render, and the original scripts. Also the same bed from its PDF: `Castle-Leg-Bed-rev-A.pdf`, `takeoff.json`, `model.json`, `run_pdf.sh`. |
 
 **Needs** Blender 4.2 or newer (`blender` on PATH, or the `bpy` pip package for Python 3.11+),
-Node 18+ for plan.js export, Python 3 with Pillow for review sheets, and network access to Poly Haven
+Node 18+ for plan.js export, Python 3 with Pillow for review sheets, poppler (`pdftoppm`) or
+PyMuPDF for PDF plans, and network access to Poly Haven
 and ambientCG the first time. A GPU (Apple Metal, NVIDIA OptiX/CUDA, AMD HIP) turns a 3000x2000 final
 into 8 to 20 minutes; a CPU takes hours, so on a CPU-only machine deliver previews and run the final
 where there is a GPU (a cloud container builds and previews fine; the user's Mac renders the final).
@@ -38,8 +42,10 @@ If `scripts/` is missing, the full skill is in `plan-to-photo/` of https://githu
 ## 1. Brief
 
 Get, or ask once for only what you cannot infer:
-- **The plan.** A `plan.js` from woodworking-plans (best: exact parts and materials), a 3D model file,
-  or a drawing with dimensions (model the piece in a dress script from the dimensions).
+- **The plan.** A `plan.js` from woodworking-plans (best: exact parts and materials), a PDF or images
+  of a plan (a shop plan PDF, scans, phone photos, screenshots, a dimensioned sketch), or a 3D model
+  file. For a PDF or images, ask once for any page that is missing (no parts list, no side view)
+  rather than guessing a whole dimension.
 - **The setting.** Room type and style ("a calm Scandinavian bedroom", "a dark green kitchen with
   brass"), time of day, and anything specific (their own floor, a wall colour, a window on the left).
   Pick the closest recipe in `references/settings.md` and fill the gaps yourself; say what you chose.
@@ -51,6 +57,18 @@ Get, or ask once for only what you cannot infer:
 node scripts/export_obj.js plan.js model.obj              # prints the material groups and part ids
 node scripts/export_obj.js plan.js model.obj --skip 1,12  # drop parts you will rebuild
 ```
+
+**From a PDF or images**, read the drawings into a model first (`references/drawings.md`):
+
+```bash
+python3 scripts/read_drawings.py plan.pdf drawings/          # pages, contact sheet, index; then read them
+node scripts/build_model.js model.json model.obj --takeoff takeoff.json [--skip 1,12]
+```
+
+Write `takeoff.json` (every size off the parts list, with its page) and `model.json` (each part's
+blank, cuts, curves and copies, inches, front-left-bottom corner at the origin, back at +Y). The OBJ
+is the same as a plan.js export, so everything below applies unchanged. Every check must pass; a
+FAIL is nearly always a misreading, so go back to the page.
 
 Decide what to rebuild: anything the camera sees large that the export facets or simplifies (curved
 boards, radiused or turned legs). Rebuild it in a dress script in the plan's own coordinates with the
