@@ -29,6 +29,14 @@ render the way a viewer does. Check each one on the review sheet before calling 
   dozens of 1 to 3 cm compression folds and filling lumps along the normals after the sim; five of
   five critics preferred it. Don't go finer: 3 mm creases and crinkle bump maps read as pockmarks
   or a pasted pattern (r02, r03), and quilt puffs as blobs (r07).
+- **Put cloth's fine creases in the shader, not the mesh.** Cloth has no subsurface and a fuzzy
+  sheen (roughness 0.3), and `fabric` draws sparse, thin crease lines as bump (`crease` 0.3,
+  `crease_scale` 6, `crease_sharp` 14). Five of five critics preferred that to plain linen
+  (gauntlet run 2, r03). Doing it in geometry failed. More, smaller `wrinkle` folds read as
+  displacement blobs (r01, 0 of 5). Subdividing the sim mesh twice for sharp creases leaves pinpoint
+  dimples like tufting (r02 and r03 draft). A 12 mm cloth sim collapsed the duvet into a heap. Keep
+  the lines sparse: a dense contour pattern reads as embossed matelassé. Close crops still call it
+  a bump map, so this narrows the gap, not closes it.
 
 ## Light
 

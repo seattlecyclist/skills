@@ -462,7 +462,8 @@ def surface(name, set_dir=None, tile=0.5, color=None, hsv=(0.5, 1.0, 1.0), rough
     return m
 
 
-def fabric(name, color, set_dir=None, tile=0.27, bump=0.22, rough=(0.78, 0.95), sheen=0.6, uv=True, weave=900):
+def fabric(name, color, set_dir=None, tile=0.27, bump=0.22, rough=(0.78, 0.95), sheen=0.6, uv=True, weave=900,
+           sheen_rough=0.3, sss=0.0, crease=0.3, crease_scale=6.0, crease_sharp=14.0):
     """Cloth: your colour, with the scan's weave in bump and roughness, plus sheen. Linen, percale,
     knit, boucle, velvet. Use UVs (uv=True) on cloth-sim sheets so the weave follows the drape."""
     maps = find_maps(set_dir)
@@ -474,16 +475,25 @@ def fabric(name, color, set_dir=None, tile=0.27, bump=0.22, rough=(0.78, 0.95), 
     nz = t.noise(vec, 3.0, detail=4, rough=0.6)
     t.link(t.ramp(nz.outputs['Fac'], [(0.3, tuple(c * 0.92 for c in color)), (0.7, tuple(min(1, c * 1.05) for c in color))]), t.bsdf.inputs['Base Color'])
     h = maps.get('disp') or maps.get('rough')
+    under = None
+    if crease > 0:
+        cz = t.noise(tc.outputs['Object'], crease_scale, detail=6, rough=0.55, dist=1.5)
+        line = t.m('SUBTRACT', 1.0, t.m('MULTIPLY', t.m('ABSOLUTE', t.m('SUBTRACT', cz.outputs['Fac'], 0.5)), 2.0))
+        under = t.bump(t.m('POWER', line, crease_sharp), crease, 0.002)
     if h:
-        t.link(t.bump(t.tex(img(h, True), vec, proj).outputs['Color'], bump, 0.0005), t.bsdf.inputs['Normal'])
+        wv = t.bump(t.tex(img(h, True), vec, proj).outputs['Color'], bump, 0.0005)
+        if under is not None: t.link(under, wv.node.inputs['Normal'])
+        t.link(wv, t.bsdf.inputs['Normal'])
     else:
         wa = t.new('ShaderNodeTexWave', wave_type='BANDS', bands_direction='X'); wa.inputs['Scale'].default_value = weave * tile
         wb = t.new('ShaderNodeTexWave', wave_type='BANDS', bands_direction='Y'); wb.inputs['Scale'].default_value = weave * tile
         t.link(vec, wa.inputs['Vector']); t.link(vec, wb.inputs['Vector'])
-        t.link(t.bump(t.m('MULTIPLY', wa.outputs['Fac'], wb.outputs['Fac']), bump, 0.002), t.bsdf.inputs['Normal'])
+        wv = t.bump(t.m('MULTIPLY', wa.outputs['Fac'], wb.outputs['Fac']), bump, 0.002)
+        if under is not None: t.link(under, wv.node.inputs['Normal'])
+        t.link(wv, t.bsdf.inputs['Normal'])
     if 'rough' in maps: t.link(t.maprange(t.tex(img(maps['rough'], True), vec, proj).outputs['Color'], 0, 1, *rough), t.bsdf.inputs['Roughness'])
     else: t.set('Roughness', sum(rough) / 2)
-    t.set('Sheen Weight', sheen); t.set('Sheen Roughness', 0.4); t.set('Subsurface Weight', 0.05)
+    t.set('Sheen Weight', sheen); t.set('Sheen Roughness', sheen_rough); t.set('Subsurface Weight', sss)
     return m
 
 
