@@ -221,6 +221,14 @@ redraw the piece and lose them, so this is done the archviz way, in Blender Cycl
 - An HDRI sky with its sun cut out and replaced by a matched sun lamp, window portals, AgX tone
   mapping, depth of field.
 - A review sheet: the frame plus 100% crops where renders give themselves away.
+- Optional 3D outputs (`"outputs": ["still", "pano", "viewer"]` in scene.json, or `--mode`):
+  - `pano`: a 360 Cycles render from one spot at eye height (8192x4096) with a Pannellum page. A
+    photoreal look around. About 35 minutes at 768 spp on an M2 Max.
+  - `viewer`: the scene with its Cycles lighting baked into textures, as a Draco GLB with a three.js
+    orbit page. Walk around the piece freely. The light is fixed and there are no moving
+    reflections. 10 to 12 minutes at 384 spp for about 100 objects.
+  - The still stays the best quality. A live real-time version (no bake) looked plastic: no bounce
+    light, no soft sun, not the stills' tone mapping. Baking fixed that.
 
 **Why it is a guardrail**
 
@@ -245,6 +253,9 @@ The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching 
   [walnut_bed.py](plan-to-photo/examples/walnut-bed/walnut_bed.py) (rebuilt legs and curved headboard,
   the nightstands)
 - 📜 How it got there, v1 to v6: [original/](plan-to-photo/examples/walnut-bed/original/)
+- 🧭 3D: [viewer/](plan-to-photo/examples/walnut-bed/viewer/) has the orbit page with its baked GLB
+  and the 360 page with its pano. Download the folder, run `python3 -m http.server` in it and open
+  http://localhost:8000/ (`file://` will not load the model).
 
 ### Usage
 
@@ -291,6 +302,8 @@ blender -b -P $P2P/scripts/build_scene.py -- scene.json
 blender -b -P $P2P/scripts/render.py -- scene.blend v1.png --hdri assets/hdri/borghese_gardens_4k.exr \
   --cam 2.45,-1.1,0.95 --target 0.6,1.3,0.5 --sun-az 160 --res 3000x2000 --samples 2048
 python3 $P2P/scripts/review.py v1.png
+blender -b -P $P2P/scripts/render.py -- scene.blend v1.png [same flags] --mode pano,viewer
+cd viewer && python3 -m http.server 8000      # open http://localhost:8000/
 ```
 
 Full workflow, scene spec, room recipes and realism rules: [plan-to-photo/SKILL.md](plan-to-photo/SKILL.md).

@@ -122,4 +122,8 @@ for d in SPEC.get('dress', []):
     exec(compile(open(path).read(), path, 'exec'), NS)
 
 clear_collisions()
+for o in NS['MODEL']:
+    try: o['p2p_hero'] = 1
+    except ReferenceError: pass
+sc()['p2p_outputs'] = json.dumps({k: SPEC[k] for k in ('outputs', 'viewer', 'pano') if k in SPEC})
 save(OUT)

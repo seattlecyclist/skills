@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>360 View</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css">
+<script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"></script>
+<style>
+  :root { --bg: #111; --fg: #efe7dc; }
+  html, body, #pano { margin: 0; width: 100%; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+  .note { position: fixed; left: 16px; bottom: 14px; opacity: .8; text-shadow: 0 1px 2px #000; z-index: 2; }
+  .note a { color: inherit; border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; text-decoration: none; }
+</style>
+</head>
+<body>
+<div id="pano"></div>
+<div class="note"><a id="orbit" href="index.html" hidden>3D view</a></div>
+<script>
+fetch('viewer.json').then(r => r.json()).then(cfg => {
+  const p = cfg.pano;
+  if (cfg.glb) document.getElementById('orbit').hidden = false;
+  window.__viewer = pannellum.viewer('pano', { type: 'equirectangular', panorama: p.image, autoLoad: true, hfov: p.hfov || 95, pitch: p.pitch || 0, yaw: 0, showZoomCtrl: true });
+  window.__viewer.on('load', () => { window.__ready = true; });
+}).catch(() => {
+  document.getElementById('pano').textContent = 'Could not read viewer.json. Serve this folder over http (python3 -m http.server), file:// will not work.';
+});
+</script>
+</body>
+</html>

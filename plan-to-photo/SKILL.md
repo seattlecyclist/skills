@@ -21,7 +21,9 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | `scripts/build_scene.py` | `scene.json` → `scene.blend`: model, materials, room, props, dress scripts. |
 | `scripts/p2p.py` | The helper library every script uses (geometry, scanned materials, cloth, contact, props, room). |
 | `scripts/dress/bed.py` | Dress a bed frame: mattress, duvet, pillows, lumbar, throw. |
-| `scripts/render.py` | HDRI with matched sun, window portals, camera, Cycles on the GPU, AgX. `--preview`, `--border`. |
+| `scripts/render.py` | HDRI with matched sun, window portals, camera, Cycles on the GPU, AgX. `--preview`, `--border`, `--mode still,pano,viewer`. |
+| `scripts/bake.py` | `--mode viewer`: bake the lit scene into textures, export a Draco GLB. |
+| `viewer/` | The pages copied next to the outputs: `index.html` (three.js orbit) and `pano.html` (Pannellum 360). |
 | `scripts/review.py` | Review sheet: the frame plus 100% crops of the places renders give themselves away. |
 | `references/realism.md` | The rules, each from a real miss. **Read before the first preview.** |
 | `references/settings.md` | Room recipes: bedroom, kitchen, living, dining, office, bathroom, patio, workshop. |
@@ -105,6 +107,54 @@ Show the user the render (and the review sheet if something is still open, sayin
 they ask for becomes the next version: copy the spec, change only that, same camera, render `v2`, and
 put the versions side by side. Keep every version's spec and .blend so "go back to v4's window" is
 one line. Record the camera and light flags in the spec's `render` block.
+
+## 7. 3D outputs: pano and viewer
+
+Besides the still, `render.py` can make two things to look around in. Pick them with `"outputs"` in
+`scene.json` (default `["still"]`) or `--mode still,pano,viewer`. They run in one Blender process
+with the same light and camera flags as the still, so they match it.
+
+| Output | What it is | Use it for | Cost on an M2 Max |
+|---|---|---|---|
+| `still` | The photograph. | Best quality. Anything that will be judged closely. | 8 to 20 min at 3000x2000 |
+| `pano` | Equirectangular 360 Cycles render from one spot at eye height, plus `pano.html`. | A photoreal look around the room from where you stand. | about 35 min at 8192x4096, 768 spp |
+| `viewer` | The scene with its Cycles lighting baked into textures, as a Draco GLB, plus `index.html`. | Free orbit around the piece in a browser. | 10 to 12 min at 384 spp for about 100 objects |
+
+```bash
+blender -b -P scripts/render.py -- scene.blend v1.png [same light and camera] --mode pano,viewer
+blender -b -P scripts/render.py -- scene.blend v1.png [same light and camera] --mode pano,viewer \
+  --pano-res 1024x512 --pano-samples 32 --bake-spp 16 --texel 200        # quick check, a few minutes
+cd viewer && python3 -m http.server 8000                                  # then open http://localhost:8000/
+```
+
+Everything goes in `viewer/` next to the still (`--viewer-dir` to change): `index.html`,
+`pano.html`, `viewer.json` (start camera, file names), `<name>.glb` and `<name>-360.jpg`. The full
+pano PNG is written next to the still as `<name>-360.png`. Open the pages over http; `file://` can't
+fetch the GLB or `viewer.json`. The pages load three.js 0.165.0 and Pannellum 2.5.6 from
+cdn.jsdelivr.net.
+
+**Pano.** The camera stands at `pano.at` (x, y; default the still camera's) at `pano.eye` (1.6 m)
+and faces the still's target, so the page opens on the piece. No depth of field.
+The 8192x4096 JPEG loads fine on a desktop browser; some phones can't take a texture that wide, so
+for a page meant for phones render or resize it to 4096x2048.
+
+**Viewer.** Each mesh gets its own UVs and two bakes: colour at full resolution and light
+(direct + indirect) at half, at `viewer.spp` samples. The light is blurred by about 1.2 cm to hide
+noise, multiplied into the colour, and saved with the scene's AgX look, exposure and white balance,
+so the texels already look like the still. Shades, sheers, glass and emissive parts bake their full
+shading instead. The page draws every texel unlit. Texture size follows `viewer.texel` (px per meter,
+900); the plan's parts get 2.2 times that, the floor, walls and rug 4096. The walls behind the
+camera, their baseboards and windows, the ceiling and the outside ground light the bake but are cut
+from the GLB so the orbit camera can see in; set `viewer.cutaway` (name regexes) to choose others.
+The HDRI is baked onto a sky dome so the window shows the same view as the still. Use `--bake-spp 16`
+for a layout check; it is blotchy. 256 is the default, 384 for a final. No USDZ.
+
+**Why bake.** The first viewer for the walnut bed used live real-time lighting (model-viewer, colour
+plus ambient occlusion, an environment map for reflections). It looked plastic and fake. A real-time
+rasteriser has no bounce light, no soft sun through a window, and not the stills' tone mapping.
+Baking the Cycles light and dropping live reflections fixed it; even an environment intensity of
+0.04 tinted the walnut grey-blue. The cost is that the light is fixed: no moving reflections or
+highlights, and nothing in the scene can move.
 
 ## Pitfalls
 

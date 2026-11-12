@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3D View</title>
+<style>
+  :root { --bg: #1b1815; --fg: #efe7dc; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--fg); font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+  canvas { display: block; touch-action: none; }
+  .note { position: fixed; left: 16px; right: 16px; bottom: 14px; opacity: .8; text-shadow: 0 1px 2px #000; }
+  .note a, .note button { color: inherit; background: none; border: 1px solid currentColor; border-radius: 4px; padding: 2px 8px; cursor: pointer; font: inherit; text-decoration: none; margin-left: 8px; }
+  #load { position: fixed; inset: 0; display: grid; place-items: center; font-size: 15px; padding: 16px; text-align: center; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="load">Loading model…</div>
+<div class="note">Drag to orbit, scroll to zoom, right-drag to pan.<button id="reset">Reset view</button><a id="pano" href="pano.html" hidden>360 view</a></div>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const load = document.getElementById('load');
+let cfg;
+try {
+  cfg = await (await fetch('viewer.json')).json();
+} catch (e) {
+  load.textContent = 'Could not read viewer.json. Serve this folder over http (python3 -m http.server), file:// will not work.';
+  throw e;
+}
+if (cfg.pano) document.getElementById('pano').hidden = false;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NoToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const cam = cfg.camera;
+const camera = new THREE.PerspectiveCamera(cam.fov, innerWidth / innerHeight, 0.05, 200);
+const HOME = { pos: new THREE.Vector3(...cam.position), tgt: new THREE.Vector3(...cam.target) };
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 0.4; controls.maxDistance = cfg.maxDistance || 7;
+const home = () => { camera.position.copy(HOME.pos); controls.target.copy(HOME.tgt); controls.update(); };
+home();
+document.getElementById('reset').onclick = home;
+
+const draco = new DRACOLoader().setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/libs/draco/gltf/');
+const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync(cfg.glb);
+gltf.scene.traverse(o => {
+  if (!o.isMesh) return;
+  const map = o.material.map;
+  if (map) map.colorSpace = THREE.SRGBColorSpace;
+  const fam = o.material.name.split('__')[1] || 'matte';
+  if (fam === 'sheer') {
+    o.material = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+  } else if (fam === 'glass') {
+    o.material = new THREE.MeshBasicMaterial({ map, transparent: true, opacity: 0.35, depthWrite: false });
+  } else {
+    o.material = new THREE.MeshBasicMaterial({ map, side: fam === 'sky' ? THREE.BackSide : THREE.FrontSide });
+  }
+});
+scene.add(gltf.scene);
+load.remove();
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.22, 0.5, 0.9));
+composer.addPass(new OutputPass());
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+renderer.setAnimationLoop(() => { controls.update(); composer.render(); });
+window.__ready = true;
+</script>
+</body>
+</html>

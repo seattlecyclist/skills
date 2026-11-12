@@ -20,6 +20,10 @@ Options (all optional; defaults are the walnut bed's):
   --backplate path       (separate high-res image seen only through windows; --haze 0.12 --bp-gain 1.0)
   --suncheck             (render 64 px looking at the sun direction, to verify the HDRI alignment)
   --device auto|cpu
+  --mode still,pano,viewer  (what to make; default: the spec's "outputs", else still)
+  --pano-at x,y  --eye 1.6  --pano-res 8192x4096  --pano-samples 768   (pano: equirectangular 360)
+  --bake-spp 256  --texel 900  --cutaway regex,regex   (viewer: baked GLB for the three.js page)
+  --viewer-dir dir       (default: viewer/ next to the output; pages, GLB and pano JPG go here)
 Lamps already in the scene (bedside lamps, pendants, under-cabinet strips) are kept.
 """
 import bpy, sys, os, math, json, argparse
@@ -45,11 +49,21 @@ ap.add_argument('--border', default=None)
 ap.add_argument('--backplate', default=None); ap.add_argument('--haze', type=float, default=0.12)
 ap.add_argument('--bp-gain', type=float, default=1.0)
 ap.add_argument('--suncheck', action='store_true'); ap.add_argument('--device', default='auto')
+ap.add_argument('--mode', default=None); ap.add_argument('--viewer-dir', default=None)
+ap.add_argument('--pano-at', default=None); ap.add_argument('--eye', type=float, default=None)
+ap.add_argument('--pano-res', default=None); ap.add_argument('--pano-samples', type=int, default=None)
+ap.add_argument('--bake-spp', type=int, default=None); ap.add_argument('--texel', type=float, default=None)
+ap.add_argument('--cutaway', default=None)
 A = ap.parse_args(argv)
 V = lambda s: Vector(tuple(map(float, s.split(','))))
 
 bpy.ops.wm.open_mainfile(filepath=os.path.abspath(A.scene))
 sc = bpy.context.scene; col = sc.collection
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+OUTS = json.loads(sc.get('p2p_outputs', '{}'))
+MODES = (A.mode or ','.join(OUTS.get('outputs', ['still']))).split(',')
+STEM = os.path.splitext(os.path.abspath(A.out))[0]
+VDIR = os.path.abspath(A.viewer_dir or os.path.join(os.path.dirname(STEM), 'viewer'))
 LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 
 
@@ -156,6 +170,7 @@ if A.fstop > 0:
     cd.dof.aperture_fstop = A.fstop; cd.dof.focus_distance = (V(A.focus or A.target) - V(A.cam)).length
 
 rx, ry = map(int, A.res.lower().split('x'))
+RES = (rx, ry)
 if A.preview: rx, ry = rx // 4, ry // 4
 c.samples = 64 if A.preview else A.samples
 c.use_adaptive_sampling = True; c.adaptive_threshold = 0.05 if A.preview or c.samples <= 200 else 0.006
@@ -177,5 +192,42 @@ vs.exposure = A.exposure
 try: vs.use_white_balance = True; vs.white_balance_temperature = A.wb
 except Exception as e: print('WB not available:', e)
 sc.render.image_settings.file_format = 'PNG'; sc.render.filepath = os.path.abspath(A.out)
-bpy.ops.render.render(write_still=True)
-print('RENDERED', A.out, '%dx%d' % (rx, ry), c.samples, 'spp')
+if 'still' in MODES:
+    bpy.ops.render.render(write_still=True)
+    print('RENDERED', A.out, '%dx%d' % (rx, ry), c.samples, 'spp')
+
+if 'pano' in MODES:
+    import bake
+    pc = OUTS.get('pano', {})
+    at = V(A.pano_at) if A.pano_at else Vector(pc.get('at', list(V(A.cam))[:2]))
+    eye = A.eye if A.eye is not None else pc.get('eye', 1.6)
+    loc = Vector((at[0], at[1], eye)); tgt = V(A.target)
+    pd = bpy.data.cameras.new('p2p_pano'); pd.type = 'PANO'
+    try: pd.panorama_type = 'EQUIRECTANGULAR'
+    except Exception: pd.cycles.panorama_type = 'EQUIRECTANGULAR'
+    pano = bpy.data.objects.new('p2p_pano', pd); col.objects.link(pano); sc.camera = pano
+    pano.location = loc; pano.rotation_euler = (math.pi / 2, 0, math.atan2(tgt.y - loc.y, tgt.x - loc.x) - math.pi / 2)
+    px, py = map(int, (A.pano_res or pc.get('res', '8192x4096')).lower().split('x'))
+    c.samples = A.pano_samples or pc.get('samples', 768); c.adaptive_threshold = 0.006 if c.samples > 200 else 0.05
+    sc.render.resolution_x = px; sc.render.resolution_y = py; sc.render.use_border = False
+    sc.render.filepath = STEM + '-360.png'
+    bpy.ops.render.render(write_still=True)
+    os.makedirs(VDIR, exist_ok=True); jpg = os.path.join(VDIR, os.path.basename(STEM) + '-360.jpg')
+    sc.render.image_settings.file_format = 'JPEG'; sc.render.image_settings.quality = 88
+    bpy.data.images['Render Result'].save_render(jpg, scene=sc)
+    sc.render.image_settings.file_format = 'PNG'
+    pitch = math.degrees(math.atan2(tgt.z - eye, (tgt - loc).xy.length))
+    bake.write_config(VDIR, pano={'image': os.path.basename(jpg), 'pitch': round(pitch, 1), 'hfov': 95})
+    bake.copy_template('pano.html', VDIR)
+    sc.camera = cam
+    print('PANO', STEM + '-360.png', jpg, '%dx%d' % (px, py), c.samples, 'spp')
+
+if 'viewer' in MODES:
+    import bake
+    vc = OUTS.get('viewer', {})
+    os.makedirs(VDIR, exist_ok=True)
+    cut = A.cutaway.split(',') if A.cutaway else vc.get('cutaway') or bake.default_cutaway(V(A.cam), V(A.target))
+    print('CUTAWAY', cut)
+    bake.bake_viewer(VDIR, os.path.basename(STEM), bake.start_camera(V(A.cam), V(A.target), A.lens, A.shift_y, RES),
+                     spp=A.bake_spp or vc.get('spp', 256), texel=A.texel or vc.get('texel', 900), cutaway=cut, hero=vc.get('hero'),
+                     env_image=im if A.hdri else None, env_rot=rot if A.hdri else 0.0, env_strength=A.env)
