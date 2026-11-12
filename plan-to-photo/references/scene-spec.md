@@ -52,9 +52,19 @@ full worked file is `examples/walnut-bed/scene.json`.
   ],
   "dress": ["my_parts.py", "bed.py"], // run in order; bare names are looked up in scripts/dress/ first
   "bed": { ... },                     // read by dress/bed.py, see its docstring
-  "render": { ... }                   // not read by the scripts; keep the render command's values here as a record
+  "render": { ... },                  // not read by the scripts; keep the render command's values here as a record
+  "outputs": ["still"],               // what render.py makes: still, pano, viewer (--mode overrides)
+  "pano": {"at": [2.45, -1.1], "eye": 1.6, "res": "8192x4096", "samples": 768},
+  "viewer": {"spp": 256, "texel": 900, "cutaway": ["^Ceiling$", "^Outside$", "^Wall_front$", "^Base_front$"], "hero": ["^NS[LR]_"]}
 }
 ```
+
+`outputs`, `pano` and `viewer` are stored in the .blend by `build_scene.py` and read by `render.py`;
+the matching flags (`--mode`, `--pano-at`, `--eye`, `--pano-res`, `--pano-samples`, `--bake-spp`,
+`--texel`, `--cutaway`) override them. `pano.at` defaults to the camera's x, y. `viewer.cutaway`
+defaults to the walls behind the camera (with their baseboards and windows), the ceiling and
+`Outside`. `viewer.hero` (name regexes) gives more objects the model's texture density; the
+model and anything a dress script appends to `MODEL` get it already. SKILL.md section 7 has the details.
 
 ## Dress scripts
 

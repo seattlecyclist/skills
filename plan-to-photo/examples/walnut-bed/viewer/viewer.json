@@ -1,0 +1,22 @@
+{
+ "glb": "walnut-bed.glb",
+ "camera": {
+  "position": [
+   2.45,
+   0.95,
+   1.1
+  ],
+  "target": [
+   0.5828,
+   0.7734,
+   -1.3223
+  ],
+  "fov": 46.4
+ },
+ "maxDistance": 9.46,
+ "pano": {
+  "image": "walnut-bed-360.jpg",
+  "pitch": -12,
+  "hfov": 95
+ }
+}
