@@ -248,7 +248,10 @@ The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching 
   the nightstands)
 - 📄 The same bed from its PDF shop plan: [Castle-Leg-Bed-rev-A.pdf](plan-to-photo/examples/walnut-bed/Castle-Leg-Bed-rev-A.pdf)
   read into [takeoff.json](plan-to-photo/examples/walnut-bed/takeoff.json) and
-  [model.json](plan-to-photo/examples/walnut-bed/model.json); `run_pdf.sh` renders it with the same scene
+  [model.json](plan-to-photo/examples/walnut-bed/model.json); `run_pdf.sh` renders it with the same scene as
+  [walnut-bed-from-pdf.jpg](plan-to-photo/examples/walnut-bed/walnut-bed-from-pdf.jpg) (Blender 5.3, Metal). The plan.js
+  path renders a pixel-identical image on the same machine; it differs slightly from the v6 image
+  above (camera, cloth drape, sun patch) because renders vary between Blender versions
 - 📜 How it got there, v1 to v6: [original/](plan-to-photo/examples/walnut-bed/original/)
 
 ### Usage
