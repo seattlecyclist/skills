@@ -1,0 +1,1524 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style></head><body><title>Kapex 120 Miter Station</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the shop fills the screen; a drawing-set step card and big shop-floor buttons sit over it like a clipboard on the bench.
+   Deliberately one look in both themes: a dark walnut HUD over a lit scene. */
+:root{
+  --ink:#F3ECE0; --muted:#BDB09C; --panel:rgba(24,19,15,.82); --panel-solid:#1A1511; --line:rgba(243,236,224,.16);
+  --birch:#E2B76E; --birch-ink:#2A1D0E; --dim:#8FB3E6; --ok:#9CC98A;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:#14100D;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;overflow:hidden;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+#app{position:relative;height:100%;width:100%;overflow:hidden;background:#14100D}
+#c{position:absolute;inset:0;}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 45%,rgba(0,0,0,0) 55%,rgba(10,7,5,.45) 100%)}
+#c{width:100%;height:100%;display:block;touch-action:none;outline:none}
+
+/* top bar */
+.top{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:12px;pointer-events:none;
+  padding-top:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{pointer-events:auto;display:grid;gap:2px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:3px;padding:8px 12px 9px;min-width:0}
+.eyebrow{font-family:var(--f-display);font-weight:600;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
+.tools{pointer-events:auto;margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tool{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:3px;padding:8px 11px;font-size:13px;font-weight:500;cursor:pointer;min-height:38px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
+.tool:hover{border-color:rgba(243,236,224,.45)}
+.tool[aria-pressed="true"]{background:var(--birch);color:var(--birch-ink);border-color:var(--birch)}
+.tool svg{width:16px;height:16px;flex:none}
+
+/* progress */
+.progress{position:absolute;left:0;right:0;bottom:0;display:flex;gap:3px;height:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));margin-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.progress a{flex:1;display:block;background:rgba(243,236,224,.18);border-radius:1px;position:relative}
+.progress a::after{content:"";position:absolute;inset:-10px 0}
+.progress a.done{background:rgba(226,183,110,.6)}
+.progress a.cur{background:var(--birch)}
+.progress a:focus-visible{outline:2px solid var(--dim);outline-offset:3px}
+
+/* step card */
+.dock{position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;gap:14px;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{pointer-events:auto;width:min(460px,100%);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:4px;padding:14px 16px 14px;display:grid;gap:8px;min-width:0;max-height:min(52vh,460px);overflow:auto}
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.num{font-family:var(--f-mono);font-size:12.5px;color:var(--birch);font-variant-numeric:tabular-nums}
+.sheet{font-family:var(--f-mono);font-size:11.5px;background:var(--ink);color:#1A1511;padding:1px 6px;border-radius:2px}
+.card h1{margin:0;font-family:var(--f-display);font-weight:600;font-size:clamp(24px,3.2vw,30px);line-height:1.02;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance}
+.card p{margin:0;color:#E2D8C8;font-size:14.5px;max-width:62ch}
+.parts{display:grid;gap:4px;margin:2px 0 0;padding:8px 0 0;border-top:1px solid var(--line);list-style:none}
+.parts li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;font-size:13.5px}
+.parts .q{font-family:var(--f-mono);color:var(--birch);font-size:12.5px;min-width:2.4em}
+.parts .d{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.parts .n{min-width:0}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.check i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:5px}
+.check.ok i{background:var(--ok)}
+.check.bad i{background:#E08A5C}
+
+.nav{pointer-events:auto;margin-left:auto;display:flex;gap:8px;align-items:stretch}
+.btn{border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--f-display);font-weight:600;font-size:20px;letter-spacing:.06em;text-transform:uppercase;min-height:64px;padding:0 20px}
+.btn svg{width:22px;height:22px;flex:none}
+.btn.next{background:var(--birch);color:var(--birch-ink);border-color:var(--birch);min-width:150px}
+.btn.next:hover{background:#ECC47F}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.sq{padding:0;width:64px}
+.btn:focus-visible,.tool:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
+
+/* part labels in the scene */
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lab{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:grid;justify-items:center;opacity:0;transition:opacity .35s}
+.lab.on{opacity:1}
+.lab span{background:rgba(20,16,13,.88);border:1px solid rgba(226,183,110,.55);border-radius:3px;padding:3px 8px 4px;white-space:nowrap;display:grid;gap:0;text-align:center}
+.lab b{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+.lab em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--birch)}
+.lab::after{content:"";width:1px;height:var(--stem,18px);background:rgba(226,183,110,.75)}
+
+/* tap-to-measure */
+.tip{position:absolute;pointer-events:none;background:rgba(20,16,13,.92);border:1px solid var(--line);border-radius:3px;padding:6px 9px;font-size:13px;display:grid;gap:1px;transform:translate(14px,14px);max-width:280px}
+.tip b{font-weight:600}
+.tip span{font-family:var(--f-mono);font-size:12.5px;color:var(--birch)}
+
+/* loading */
+.loading{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 60%,#2A2017,#14100D 70%);transition:opacity .6s;z-index:5}
+.loading.gone{opacity:0;pointer-events:none}
+.loading div{display:grid;gap:10px;justify-items:center;text-align:center;padding:0 24px}
+.loading b{font-family:var(--f-display);font-size:34px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.loading span{color:var(--muted);font-size:14px}
+.bar{width:180px;height:3px;background:rgba(243,236,224,.15);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;background:var(--birch);animation:load 1.2s ease-in-out infinite}
+@keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+
+/* info sheet */
+.info{position:absolute;top:70px;right:max(16px,env(safe-area-inset-right,0px));width:min(360px,calc(100% - 32px));background:var(--panel-solid);border:1px solid var(--line);border-radius:4px;padding:14px 16px;display:grid;gap:10px;font-size:13.5px;z-index:3;max-height:calc(100% - 200px);overflow:auto}
+.info h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+.info p{margin:0;color:#E2D8C8}
+.info a{color:var(--birch)}
+.info dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
+.info dt{color:var(--muted)}
+.info dd{margin:0;font-family:var(--f-mono);font-size:12.5px}
+.keys{color:var(--muted);font-size:12.5px}
+
+@media (max-width:760px){
+  .dock{flex-direction:column;align-items:stretch;gap:8px;bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+  .card{width:100%;max-height:38vh;padding:11px 13px;gap:6px}
+  .card h1{font-size:22px}
+  .card p{font-size:13.5px}
+  .nav{margin-left:0}
+  .nav .next{flex:1}
+  .btn{min-height:56px}
+  .btn.sq{width:56px}
+  .brand{padding:7px 10px}
+  .brand .eyebrow{display:none}
+  .brand b{font-size:16px}
+  .tools{flex-wrap:nowrap}
+  .tool .t{display:none}
+  .tool{padding:8px 10px}
+  .btn{font-size:18px;letter-spacing:.04em;white-space:nowrap;padding:0 14px}
+  .lab b{font-size:12.5px}
+  .lab em{font-size:11px}
+}
+@media (max-width:760px) and (max-height:700px){ .parts{display:none} }
+@media (prefers-reduced-motion:reduce){ .bar i{animation:none} .lab{transition:none} }
+</style>
+
+<div id="app">
+  <canvas id="c" tabindex="0" aria-label="3D view of the shop and the bench. Drag to look around, pinch or scroll to zoom. Tap a part to see its size."></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="labels" aria-hidden="true"></div>
+  <div class="tip" id="tip" hidden></div>
+
+  <div class="top">
+    <div class="brand"><span class="eyebrow">Step-by-step build · Rev A</span><b>Kapex 120 Miter Station</b></div>
+    <div class="tools">
+      <button class="tool" id="tLabels" aria-pressed="true" title="Show part names and sizes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4"/></svg><span class="t">Sizes</span></button>
+      <button class="tool" id="tView" title="Return to this step's view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="t">Reset view</span></button>
+      <button class="tool" id="tInfo" aria-pressed="false" aria-controls="info" title="About this build"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span class="t">About</span></button>
+    </div>
+  </div>
+
+  <section class="info" id="info" hidden aria-label="About this build">
+    <h2>About this build</h2>
+    <p>Every part is generated from the same model as the Rev A drawing set, in inches, so what you see here is what the cut list says.</p>
+    <dl>
+      <dt>Overall</dt><dd>96″ L × 26″ D × 36″ H</dd>
+      <dt>Saw bay</dt><dd>30″ clear</dd>
+      <dt>Platform top</dt><dd>31-11/16″</dd>
+      <dt>Stock</dt><dd>½″ Baltic birch, laminated to 1″</dd>
+      <dt>Parts</dt><dd id="iParts">–</dd>
+    </dl>
+    <div class="check" id="iCheck"><i></i><span>Checking every move for collisions…</span></div>
+    <p class="keys">Keys: ← and → step through, R replays the step. Every step has its own link, so you can share the step you are on.</p>
+    <p><a href="https://claude.ai/artifact/6BrpHsHH21HFX6xJZZA9zr" target="_blank" rel="noopener">Open the drawing set</a></p>
+  </section>
+
+  <div class="dock">
+    <article class="card" id="card" aria-live="polite">
+      <div class="meta"><span class="num" id="sNum">Overview</span><span class="sheet" id="sSheet" hidden></span></div>
+      <h1 id="sTitle">Kapex 120 Miter Station</h1>
+      <p id="sText"></p>
+      <ul class="parts" id="sParts" hidden></ul>
+    </article>
+    <div class="nav">
+      <button class="btn sq" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="btn sq" id="bReplay" aria-label="Replay this step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></button>
+      <button class="btn next" id="bNext"><span id="bNextT">Start building</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+  <nav class="progress" id="progress" aria-label="Steps"></nav>
+
+  <div class="loading" id="loading"><div><b>Opening the shop</b><span>Cutting 280 parts from ½″ Baltic birch</span><div class="bar"><i></i></div></div></div>
+</div>
+
+<script>/* Build walkthrough engine: rigid bodies made of boxes and cylinders, an assembly sequence of moves,
+   pose evaluation at any (step, time), and the physics check that proves every move.
+
+   A build file does:
+     const K = Walkthrough.create({units:'in'});
+     const {body, inBody, box, cyl, step, mv, at, HOME, drop, slide, orbit} = K;
+     ... parts, fixtures, steps ...
+     PLAN = K.finish({meta:{...}});
+
+   Coordinates: x along the piece (left to right), y front (0) to back, z up from the floor (z = 0).
+   Units are inches by default ({units:'mm'} for millimetres). Nothing here touches the DOM, so the
+   same file runs in Node (scripts/verify.js) and in the page. */
+(function(root){
+"use strict";
+
+function create(opt){
+opt=opt||{};
+const UNITS=opt.units==='mm'?'mm':'in';
+const U=UNITS==='mm'?25.4:1;          // units per inch
+const EPS=1e-4*U;
+
+/* ---------- parts and bodies ---------- */
+const PARTS=[], BODY={}, BODIES=[], STATIC=[], GROUNDS=[], TABLES=[], PENDANTS=[];
+let uid=0, curBody=null;
+// a body is one rigid thing that moves as a unit; o: {parent, virtual, loose, temp, pivot, sizeText, listAs}
+function body(id,label,o){
+  if(BODY[id])throw new Error('duplicate body id '+id);
+  if(o&&o.parent&&!BODY[o.parent])throw new Error('body '+id+': parent '+o.parent+' is not defined yet');
+  const b=Object.assign({id,label,parent:null,parts:[],events:[],loose:false,children:[]},o||{});
+  BODY[id]=b;BODIES.push(b);if(b.parent)BODY[b.parent].children.push(id);return b;
+}
+function inBody(id,fn){if(!BODY[id])throw new Error('inBody: no body '+id);const prev=curBody;curBody=id;fn();curBody=prev;}
+// a part is an axis-aligned box (min, max) in finished position; o: {mat, color, ply, plyBase, decal, note, profile, tape}
+function box(name,group,a,b,o){
+  if(!curBody)throw new Error('box "'+name+'" is not inside inBody()');
+  for(let i=0;i<3;i++)if(!(b[i]>a[i]))throw new Error('box "'+name+'": max must exceed min on every axis');
+  const p=Object.assign({id:'p'+(uid++),kind:'box',name,group,min:a.slice(),max:b.slice(),mat:'ply',body:curBody},o||{});
+  PARTS.push(p);BODY[p.body].parts.push(p);return p;
+}
+// a cylinder along 'x', 'y' or 'z', centred on c; it is checked as its bounding box
+function cyl(name,group,axis,c,r,len,o){
+  if(!curBody)throw new Error('cyl "'+name+'" is not inside inBody()');
+  const h=len/2,mn=c.slice(),mx=c.slice(),ai={x:0,y:1,z:2}[axis];
+  for(let i=0;i<3;i++){if(i===ai){mn[i]=c[i]-h;mx[i]=c[i]+h}else{mn[i]=c[i]-r;mx[i]=c[i]+r}}
+  const p=Object.assign({id:'p'+(uid++),kind:'cyl',name,group,axis,c,r,len,min:mn,max:mx,mat:'steel',body:curBody},o||{});
+  PARTS.push(p);BODY[p.body].parts.push(p);return p;
+}
+
+/* ---------- the shop: things the moves must avoid ---------- */
+// an assembly table: parts may rest on its top, and nothing may pass through it
+function table(min,max,name){const T={min:min.slice(),max:max.slice(),name:name||'Assembly table',kind:'table'};STATIC.push(T);GROUNDS.push(T);TABLES.push(T);return T;}
+// a pendant light hanging from the ceiling, its shade bottom at z
+function pendant(x,y,z){const r=7*U;const p={x,y,z,min:[x-r,y-r,z],max:[x+r,y+r,z+80*U],name:'Pendant light',kind:'pendant'};STATIC.push(p);PENDANTS.push(p);return p;}
+// any other fixed obstacle (a wall, a post, a machine), drawn as a plain dark block
+function obstacle(min,max,name){const o={min:min.slice(),max:max.slice(),name:name||'Obstacle',kind:'obstacle'};STATIC.push(o);return o;}
+
+/* ---------- helpers ---------- */
+function fmt(v){
+  if(UNITS==='mm')return Math.round(v)+' mm';
+  const s=v<0?'-':'';v=Math.abs(v);let w=Math.floor(v+1e-9),n=Math.round((v-w)*16);if(n===16){w++;n=0}let d=16;while(n&&n%2===0){n/=2;d/=2}
+  const fr={'1/2':'½','1/4':'¼','3/4':'¾','1/8':'⅛','3/8':'⅜','5/8':'⅝','7/8':'⅞'}[n+'/'+d];
+  return s+(n?(w?w+(fr?'':'-'):'')+(fr||n+'/'+d):w)+'″';}
+function bodyBounds(b){const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  const ps=b.virtual?allParts(b):b.parts;
+  ps.forEach(p=>{if(p.decal)return;for(let i=0;i<3;i++){mn[i]=Math.min(mn[i],p.min[i]);mx[i]=Math.max(mx[i],p.max[i]);}});return {min:mn,max:mx};}
+function allParts(b){return b.parts.concat(b.children.flatMap(c=>allParts(BODY[c])));}
+function sizeText(b){
+  if(b.sizeText)return b.sizeText;
+  const bb=bodyBounds(b);return [0,1,2].map(i=>bb.max[i]-bb.min[i]).sort((a,c)=>a-c).map(fmt).join(' × ');}
+
+/* ---------- 3×4 affine matrices ---------- */
+function mMul(a,b){const r=new Array(12);
+  for(let i=0;i<3;i++){for(let j=0;j<3;j++)r[i*4+j]=a[i*4]*b[j]+a[i*4+1]*b[4+j]+a[i*4+2]*b[8+j];
+    r[i*4+3]=a[i*4]*b[3]+a[i*4+1]*b[7]+a[i*4+2]*b[11]+a[i*4+3];}return r;}
+function mApply(m,p){return [m[0]*p[0]+m[1]*p[1]+m[2]*p[2]+m[3],m[4]*p[0]+m[5]*p[1]+m[6]*p[2]+m[7],m[8]*p[0]+m[9]*p[1]+m[10]*p[2]+m[11]];}
+function mRot(axis,deg,pv){const a=deg*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+  const R=axis==='x'?[1,0,0,0, 0,c,-s,0, 0,s,c,0]:axis==='z'?[c,-s,0,0, s,c,0,0, 0,0,1,0]:[c,0,s,0, 0,1,0,0, -s,0,c,0];
+  return mMul([1,0,0,pv[0],0,1,0,pv[1],0,0,1,pv[2]],mMul(R,[1,0,0,-pv[0],0,1,0,-pv[1],0,0,1,-pv[2]]));}
+// a pose is {off:[dx,dy,dz], rot:deg, axis:'x'|'y'|'z'} relative to the body's finished place; rotation is about the body's pivot
+function poseMatrix(b,pose){
+  const o=pose.off||[0,0,0], rot=pose.rot||0;
+  let m=[1,0,0,o[0],0,1,0,o[1],0,0,1,o[2]];
+  if(rot){const pv=b.pivot||centerOf(b);m=mMul(m,mRot(pose.axis||b.axis||'y',rot,pv));}
+  return m;
+}
+function centerOf(b){const bb=bodyBounds(b);return [0,1,2].map(i=>(bb.min[i]+bb.max[i])/2);}
+
+/* ---------- assembly sequence ---------- */
+const STEPS=[];
+let SI=-1;
+// camera preset: look at target from an azimuth (0 = straight in from the front, + = from the right), an elevation and a distance
+function orbit(t,az,el,d){const a=az*Math.PI/180,e=el*Math.PI/180;return {target:t,pos:[t[0]+d*Math.sin(a)*Math.cos(e),t[1]-d*Math.cos(a)*Math.cos(e),t[2]+d*Math.sin(e)]};}
+// a step: {key, title, text, cam, sheet?, intro?}; moves added after it belong to it
+function step(o){if(!o.title||!o.cam)throw new Error('step needs a title and a cam');SI=STEPS.length;o.moves=[];o.idx=SI;STEPS.push(o);return o;}
+const DUR=1.3;
+// move body id along path (poses, last one is where it ends); o: {delay, dur, remove, seg}
+function mv(id,path,o){
+  o=o||{};const b=BODY[id];if(!b)throw new Error('mv: no body '+id);if(SI<0)throw new Error('mv before the first step');
+  const ev={step:SI,path:path.map(p=>Object.assign({off:[0,0,0],rot:0},p)),delay:o.delay||0,dur:o.dur||DUR,remove:!!o.remove,body:id,seg:o.seg};
+  b.events.push(ev);STEPS[SI].moves.push(ev);return ev;
+}
+const at=(x,y,z)=>({off:[x,y,z]});
+const HOME={off:[0,0,0]};
+const drop=(h)=>[at(0,0,h),HOME];
+const slide=(dx,dy,dz)=>[at(dx,dy,dz||0),HOME];
+
+/* ---------- evaluation: where is every body at (step, time) ---------- */
+let LAST=0;
+function ease(t){return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;}
+function lerp(a,b,t){return a+(b-a)*t;}
+function pathPose(ev,u){
+  const P=ev.path; if(P.length===1||u<=0)return P[0]; if(u>=1)return P[P.length-1];
+  const n=P.length-1, w=ev.seg||new Array(n).fill(1/n);
+  let acc=0,i=0;for(;i<n-1;i++){if(u<acc+w[i])break;acc+=w[i];}
+  const t=ease(Math.min(1,(u-acc)/w[i])),a=P[i],b=P[i+1];
+  return {rot:lerp(a.rot||0,b.rot||0,t),axis:b.axis||a.axis,off:[0,1,2].map(j=>lerp(a.off[j],b.off[j],t))};
+}
+// state of one body at step s, seconds into the step (Infinity = finished). Step 0 shows the finished piece.
+function bodyState(b,s,time){
+  if(s===0){s=LAST;time=Infinity;}
+  let ev=null,cur=null;
+  for(const e of b.events){if(e.step<s)ev=e;else if(e.step===s)cur=e;}
+  let pose,op=1,vis=true,moving=false;
+  if(cur){
+    const u=time===Infinity?1:Math.max(0,Math.min(1,(time-cur.delay)/cur.dur));
+    pose=pathPose(cur,u);moving=u<1;
+    const first=b.events[0]===cur;
+    if(first)op=Math.min(1,u/0.12+(time===Infinity?1:0));
+    if(cur.remove){op=u>=1?0:Math.min(op,(1-u)/0.25);if(u>=1)vis=false;}
+    if(first&&u<=0&&time!==Infinity)op=0;
+  }else if(ev){
+    pose=ev.path[ev.path.length-1];if(ev.remove)vis=false;
+  }else if(b.events.length){vis=false;pose=HOME;}
+  else{pose=HOME;}
+  return {vis,op:Math.max(0,Math.min(1,op)),M:poseMatrix(b,pose),moving};
+}
+function evaluate(s,time){
+  const out={};
+  const visit=b=>{const c=bodyState(b,s,time);
+    if(!b.parent){out[b.id]=c;}
+    else{const p=out[b.parent];out[b.id]={vis:p.vis&&c.vis,op:Math.min(p.op,c.op),M:mMul(p.M,c.M),moving:c.moving||p.moving};}
+    b.children.forEach(id=>visit(BODY[id]));};
+  BODIES.forEach(b=>{if(!b.parent)visit(b);});
+  return out;
+}
+
+/* ---------- physics checks ---------- */
+function partAABB(p,M){
+  const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  for(let i=0;i<8;i++){const q=mApply(M,[i&1?p.max[0]:p.min[0],i&2?p.max[1]:p.min[1],i&4?p.max[2]:p.min[2]]);
+    for(let j=0;j<3;j++){if(q[j]<mn[j])mn[j]=q[j];if(q[j]>mx[j])mx[j]=q[j];}}
+  return {min:mn,max:mx};
+}
+function overlap(a,b){let d=1e9;for(let i=0;i<3;i++){const o=Math.min(a.max[i],b.max[i])-Math.max(a.min[i],b.min[i]);if(o<=EPS)return 0;d=Math.min(d,o);}return d;}
+// face contact: touching on one axis, overlapping with positive area on the other two; below = a rests on b
+function touch(a,b){let gapAxis=-1,area=1;
+  for(let i=0;i<3;i++){const o=Math.min(a.max[i],b.max[i])-Math.max(a.min[i],b.min[i]);
+    if(o>EPS){area*=o;continue;} if(o<-EPS)return null; if(gapAxis>=0)return null; gapAxis=i;}
+  if(gapAxis<0)return null;
+  const below=gapAxis===2&&Math.abs(a.min[2]-b.max[2])<=EPS;
+  const dir=Math.abs(a.max[gapAxis]-b.min[gapAxis])<=EPS?1:-1;
+  return {axis:gapAxis,area,below,dir};
+}
+function boxesAt(st){
+  const out={};
+  BODIES.forEach(b=>{if(b.virtual)return;const s=st[b.id];if(!s.vis)return;
+    out[b.id]=b.parts.filter(p=>!p.decal).map(p=>partAABB(p,s.M));});
+  return out;
+}
+function unionBox(list){const mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];list.forEach(a=>{for(let i=0;i<3;i++){mn[i]=Math.min(mn[i],a.min[i]);mx[i]=Math.max(mx[i],a.max[i]);}});return {min:mn,max:mx};}
+const label=id=>{const b=BODY[id];return b.parent?BODY[b.parent].label+' · '+b.label:b.label;};
+const FLOOR={min:[-1e7,-1e7,-1],max:[1e7,1e7,0],name:'Floor'};
+// everything a body touches at rest at the end of step s: [{other, axis, dir}] (dir +1: the other is on the + side)
+function contacts(s,id){
+  const st=evaluate(s,Infinity),bx=boxesAt(st),out=[];if(!bx[id])return out;
+  Object.keys(bx).forEach(o=>{if(o===id)return;for(const a of bx[id])for(const c of bx[o]){const t=touch(a,c);if(t){out.push({other:o,axis:t.axis,dir:t.dir});return;}}});
+  return out;
+}
+
+function verify(o){
+  o=o||{};const N=o.samples||48, issues=[];let checks=0;
+  const grounds=[FLOOR].concat(GROUNDS);
+  // parts of one glued sub-assembly that sit still this step are not tested against each other
+  const sameGroup=(a,b,s)=>{const A=BODY[a],B=BODY[b];return A.parent&&A.parent===B.parent&&!A.events.some(e=>e.step===s)&&!B.events.some(e=>e.step===s);};
+  const leaves=b=>b.virtual?b.children.flatMap(c=>leaves(BODY[c])):[b.id];
+  for(let s=1;s<=LAST;s++){
+    const S=STEPS[s];
+    const movers=new Set();S.moves.forEach(m=>leaves(BODY[m.body]).forEach(id=>movers.add(id)));
+    for(let k=0;k<=N;k++){
+      const t=S.dur*k/N, st=evaluate(s,t), bx=boxesAt(st), ids=Object.keys(bx);
+      const ub={};ids.forEach(id=>ub[id]=unionBox(bx[id]));
+      movers.forEach(m=>{
+        if(!bx[m])return;
+        bx[m].forEach(a=>{checks++;if(a.min[2]<-EPS)issues.push({step:s,t:+t.toFixed(2),kind:'floor',a:label(m)});
+          STATIC.forEach(T=>{if(overlap(a,T))issues.push({step:s,t:+t.toFixed(2),kind:'static',a:label(m),b:T.name});});});
+        ids.forEach(oid=>{
+          if(oid===m||(movers.has(oid)&&oid<m)||sameGroup(m,oid,s))return;
+          if(!overlap(ub[m],ub[oid]))return;
+          for(const a of bx[m])for(const c of bx[oid]){checks++;const d=overlap(a,c);if(d){issues.push({step:s,t:+t.toFixed(2),kind:'collision',a:label(m),b:label(oid),depth:+d.toFixed(4)});return;}}
+        });
+      });
+    }
+    // at rest: every group reaches the floor or a table, every placed body touches something, loose ones sit on something
+    const st=evaluate(s,Infinity), bx=boxesAt(st), ids=Object.keys(bx);
+    const adj={};ids.forEach(i=>adj[i]=new Set());
+    const ub={};ids.forEach(id=>ub[id]=unionBox(bx[id]));
+    for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++){
+      const A=ids[i],B=ids[j];const ua=ub[A],ubb=ub[B];
+      let near=true;for(let q=0;q<3;q++)if(ua.min[q]>ubb.max[q]+EPS||ubb.min[q]>ua.max[q]+EPS)near=false;
+      if(!near)continue;
+      outer:for(const a of bx[A])for(const c of bx[B]){if(touch(a,c)){adj[A].add(B);adj[B].add(A);break outer;}}
+    }
+    const grounded=new Set();
+    ids.forEach(id=>{if(bx[id].some(a=>grounds.some(g=>{const t=touch(a,g);return t&&t.below;})))grounded.add(id);});
+    const seen=new Set(grounded),q=[...grounded];while(q.length){const v=q.pop();adj[v].forEach(w=>{if(!seen.has(w)){seen.add(w);q.push(w);}});}
+    ids.forEach(id=>{if(!seen.has(id))issues.push({step:s,kind:'floating',a:label(id)});});
+    S.moves.forEach(m=>{
+      if(m.remove)return;const b=BODY[m.body];
+      const list=leaves(b);
+      const parts=list.flatMap(c=>bx[c]||[]), others=ids.filter(i=>!list.includes(i)).flatMap(i=>bx[i]).concat(grounds);
+      let any=false,sits=false;
+      parts.forEach(a=>others.forEach(c=>{const t=touch(a,c);if(t){any=true;if(t.below)sits=true;}}));
+      if(!any)issues.push({step:s,kind:'no-contact',a:b.label});
+      if((b.loose||b.virtual)&&!sits)issues.push({step:s,kind:'unsupported',a:b.label});
+    });
+  }
+  // finished piece: no two parts share any volume
+  const st=evaluate(LAST,Infinity),bx=boxesAt(st),ids=Object.keys(bx);
+  for(let i=0;i<ids.length;i++)for(let j=i+1;j<ids.length;j++)
+    for(const a of bx[ids[i]])for(const c of bx[ids[j]]){checks++;const d=overlap(a,c);if(d)issues.push({step:LAST,kind:'final-overlap',a:label(ids[i]),b:label(ids[j]),depth:+d.toFixed(4)});}
+  // every part must be placed by some step
+  BODIES.forEach(b=>{if(b.virtual||b.temp)return;let x=b,placed=false;while(x){if(x.events.length){placed=true;break;}x=x.parent&&BODY[x.parent];}
+    if(!placed)issues.push({step:0,kind:'never-placed',a:label(b.id)});});
+  return {ok:issues.length===0,issues,checks,steps:LAST,parts:PARTS.filter(p=>!p.decal).length,bodies:BODIES.filter(b=>!b.virtual).length};
+}
+
+/* ---------- finish: totals, default shop, the PLAN object the page reads ---------- */
+function finish(f){
+  f=f||{};const meta=Object.assign({title:'Build',eyebrow:'Step-by-step build',thing:'piece',about:[],links:[]},f.meta||{});
+  if(!STEPS.length||!STEPS[0].intro)throw new Error('the first step must be the overview: step({intro:true, ...})');
+  LAST=STEPS.length-1;
+  STEPS.forEach(s=>{s.dur=s.moves.length?Math.max(...s.moves.map(m=>m.delay+m.dur)):0;});
+  // finished bounds (temporary fixtures excluded)
+  const st=evaluate(LAST,Infinity),mn=[1e9,1e9,1e9],mx=[-1e9,-1e9,-1e9];
+  BODIES.forEach(b=>{if(b.virtual||b.temp||!st[b.id].vis)return;b.parts.forEach(p=>{if(p.decal)return;const a=partAABB(p,st[b.id].M);for(let i=0;i<3;i++){mn[i]=Math.min(mn[i],a.min[i]);mx[i]=Math.max(mx[i],a.max[i]);}});});
+  const BOUNDS={min:mn,max:mx};
+  if(!PENDANTS.length&&meta.pendants!==false){
+    // a row of shop lights well above the piece, plus one over each table
+    const z=Math.max(92*U,mx[2]+40*U),cy=(mn[1]+mx[1])/2,n=Math.max(1,Math.round((mx[0]-mn[0])/(32*U)));
+    for(let i=0;i<n;i++)pendant(mn[0]+(i+0.5)*(mx[0]-mn[0])/n,cy,z);
+    TABLES.forEach(T=>pendant((T.min[0]+T.max[0])/2,(T.min[1]+T.max[1])/2,z));
+  }
+  return {UNITS,U,meta,PARTS,BODY,BODIES,STEPS,LAST,STATIC,TABLES,PENDANTS,BOUNDS,
+    evaluate,verify,contacts,fmt,sizeText,bodyBounds,mMul,mApply,poseMatrix,label};
+}
+
+return {UNITS,U,EPS,PARTS,BODY,BODIES,STEPS,body,inBody,box,cyl,table,pendant,obstacle,step,mv,at,HOME,drop,slide,orbit,fmt,
+  bodyBounds,centerOf,mMul,mApply,poseMatrix,finish};
+}
+
+root.Walkthrough={create};
+})(typeof window!=='undefined'?window:globalThis);
+
+/* Kapex 120 Miter Station: the worked example for build-walkthrough-3d.
+   A 96″ mobile bench in ½″ Baltic birch with a Festool Kapex KS 120 dropped into a 30″ bay; 280 parts, 30 steps.
+   Plan coordinates in inches: x along the bench (left to right), y front (0) to back (26), z up from the floor.
+   Part geometry is the drawing set's own model (Rev A), with the T-track grooves, drawer slides,
+   flip-stop arms and temporary shop fixtures added so every part has somewhere real to sit. */
+(function(root){
+"use strict";
+const K=root.Walkthrough.create({units:'in'});
+const {body,inBody,box,cyl,step,mv,at,HOME,drop,slide,orbit,fmt,BODY}=K;
+
+const L=96, D=26, H=36, CAST=4, LAY=0.5, PW=3.5, RW=3, MR=2;
+const TABLE_H=4.33, PT=H-TABLE_H, FY=12, FT=1.5, FH=3.5, REV=1/16;
+
+/* ---------- shop furniture the moves must avoid ---------- */
+const TABLE=K.table([-94,-56,0],[-46,-20,34],'Assembly table');
+[[16,13],[48,13],[80,13],[-70,-38]].forEach(([x,y])=>K.pendant(x,y,92));
+
+/* ---------- cross-frames (B-101) ---------- */
+const FRAMES=[{x0:0,label:'Left end frame',flip:false},{x0:32,label:'Left bay wall',flip:true},
+              {x0:63,label:'Right bay wall',flip:false},{x0:95,label:'Right end frame',flip:true}];
+FRAMES.forEach((f,k)=>{
+  const x0=f.x0, A=f.flip?[x0+LAY,x0+1]:[x0,x0+LAY], B=f.flip?[x0,x0+LAY]:[x0+LAY,x0+1];
+  const zb=CAST, zt=H-1, LIP=0.5, CH=1;
+  f.id='F'+k;
+  body(f.id,f.label,{virtual:true,pivot:[x0+0.5,D/2,(zb+zt)/2],frame:k,loose:true});
+  const pc=(id,label,fn)=>{body(f.id+id,label,{parent:f.id});inBody(f.id+id,fn);};
+  const n=(t)=>f.label+' · '+t;
+  pc('pf','Post, layer 1',()=>box(n('front post, layer 1'),'frame',[A[0],0,zb],[A[1],PW,zt],{ply:0}));
+  pc('pr','Post, layer 1',()=>box(n('rear post, layer 1'),'frame',[A[0],D-PW,zb],[A[1],D,zt],{ply:0}));
+  pc('rt','Short rail, layer 1',()=>box(n('top rail, layer 1'),'frame',[A[0],PW,zt-RW],[A[1],D-PW,zt]));
+  pc('rb','Short rail, layer 1',()=>box(n('bottom rail, layer 1'),'frame',[A[0],PW,zb],[A[1],D-PW,zb+RW]));
+  pc('lt','Long rail with tenons, layer 2',()=>box(n('top rail, layer 2'),'frame',[B[0],CH,zt-RW+LIP],[B[1],D-CH,zt]));
+  pc('lb','Long rail with tenons, layer 2',()=>box(n('bottom rail, layer 2'),'frame',[B[0],CH,zb],[B[1],D-CH,zb+RW-LIP]));
+  pc('sf','Short post, layer 2',()=>box(n('front post, layer 2'),'frame',[B[0],CH,zb+RW-LIP],[B[1],PW-LIP,zt-RW+LIP]));
+  pc('sr','Short post, layer 2',()=>box(n('rear post, layer 2'),'frame',[B[0],D-PW+LIP,zb+RW-LIP],[B[1],D-CH,zt-RW+LIP]));
+  pc('pn','Infill panel',()=>box(n('infill panel'),'panel',[B[0],PW-LIP,zb+RW-LIP],[B[1],D-PW+LIP,zt-RW+LIP]));
+});
+
+/* ---------- long rails and fillers (B-102, B-103) ---------- */
+function longRail(id,label,x0,x1,front,z0,z1){
+  body(id,label);
+  inBody(id,()=>{
+    const ys=front?[[0,LAY],[LAY,1]]:[[D-1,D-LAY],[D-LAY,D]];
+    ys.forEach((y,i)=>box(label+(i===(front?0:1)?' (face layer)':' (back layer)'),'frame',[x0,y[0],z0],[x1,y[1],z1]));
+  });
+}
+const WINGS=[[1,32,'Left wing','L'],[64,95,'Right wing','R']];
+const WING_OPEN=[[27,32],[18,25],[7,16]];
+WINGS.forEach(([a0,b0,n,k])=>{
+  const a=a0-LAY,b=b0+LAY;
+  longRail('W'+k+'ft',n+' front top rail',a,b,true,32,35);
+  longRail('W'+k+'fd2',n+' front divider',a,b,true,25,27);
+  longRail('W'+k+'fd1',n+' front divider',a,b,true,16,18);
+  longRail('W'+k+'fb',n+' front bottom rail',a,b,true,4,7);
+  longRail('W'+k+'rt',n+' rear top rail',a,b,false,32,35);
+  longRail('W'+k+'rb',n+' rear bottom rail',a,b,false,4,7);
+  [[a,a0,'a'],[b0,b,'b']].forEach(([c0,c1,e])=>{
+    [[7,16,'9″','9'],[18,25,'7″','7'],[27,32,'5″','5']].forEach(([z0,z1,t,s])=>{
+      const id='W'+k+'f'+s+e; body(id,'Filler for the '+t+' opening');
+      inBody(id,()=>box(n+' front filler, '+t+' opening','frame',[c0,0,z0],[c1,1,z1],{ply:0}));
+    });
+    const id='W'+k+'rf'+e; body(id,'Rear filler, 25″');
+    inBody(id,()=>box(n+' rear filler, 25″','frame',[c0,D-1,7],[c1,D,32],{ply:0}));
+  });
+});
+const PR=[PT-1-MR,PT-1];
+longRail('Bfp','Saw bay front platform rail',33,63,true,PR[0],PR[1]);
+longRail('Bfd','Saw bay front divider',33,63,true,16,18);
+longRail('Bfb','Saw bay front bottom rail',33,63,true,4,7);
+longRail('Brp','Saw bay rear platform rail',33,63,false,PR[0],PR[1]);
+longRail('Brb','Saw bay rear bottom rail',33,63,false,4,7);
+const BAY_OPEN=[[18,PR[0]],[7,16]];
+
+/* ---------- platform and tops (B-103, B-104) ---------- */
+body('PL','Saw platform, two layers glued',{loose:true});
+inBody('PL',()=>{
+  box('Saw platform (lower layer)','platform',[33,0,PT-1],[63,D,PT-LAY]);
+  box('Saw platform (upper layer)','platform',[33,0,PT-LAY],[63,D,PT]);
+});
+const TRACK_Y=[3.5,8,19.5], TW=0.75, TD=0.375;
+[[0,33,'Left wing top','L'],[63,96,'Right wing top','R']].forEach(([a,b,n,k])=>{
+  body('T'+k+'1',n+', lower layer',{loose:true});
+  inBody('T'+k+'1',()=>box(n+' (lower layer)','top',[a,0,H-1],[b,D,H-LAY]));
+  body('T'+k+'2',n+', upper layer, routed for track',{loose:true});
+  inBody('T'+k+'2',()=>{
+    // upper layer with three ¾″ × ⅜″ grooves for the T-track
+    box(n+' (upper layer, under the grooves)','top',[a,0,H-LAY],[b,D,H-TD],{plyBase:H-LAY,skin:true});
+    let y=0;
+    TRACK_Y.forEach(yc=>{box(n+' (upper layer)','top',[a,y,H-TD],[b,yc-TW/2,H],{plyBase:H-LAY});y=yc+TW/2;});
+    box(n+' (upper layer)','top',[a,y,H-TD],[b,D,H],{plyBase:H-LAY});
+  });
+  TRACK_Y.forEach((yc,i)=>{
+    body('T'+k+'t'+i,'T-track, '+fmt(yc)+' from the front');
+    inBody('T'+k+'t'+i,()=>box(n+' T-track at '+fmt(yc)+' from front','track',[a,yc-TW/2,H-TD],[b,yc+TW/2,H+0.02],{mat:'steel',profile:'ttrack'}));
+  });
+});
+
+/* ---------- drawers, slides and faces (B-106) ---------- */
+const DRAWERS=[];
+const SLIDE_H=1.75;
+function drawer(x0,x1,z0,z1,name,k){
+  const id='D'+k; DRAWERS.push({id,name,x0,x1,z0,z1});
+  const bx0=x0+0.5,bx1=x1-0.5,bz0=z0+0.5,bz1=z1-0.75,by0=1.0,by1=23;
+  const zc=(bz0+bz1)/2;
+  body(id+'sa',name+' slide, left',{});
+  inBody(id+'sa',()=>box(name+' slide, left','slide',[x0,by0,zc-SLIDE_H/2],[bx0,by1,zc+SLIDE_H/2],{mat:'zinc'}));
+  body(id+'sb',name+' slide, right',{});
+  inBody(id+'sb',()=>box(name+' slide, right','slide',[bx1,by0,zc-SLIDE_H/2],[x1,by1,zc+SLIDE_H/2],{mat:'zinc'}));
+  body(id+'b',name+' box',{});
+  inBody(id+'b',()=>{
+    box(name+' box side L','box',[bx0,by0,bz0],[bx0+LAY,by1,bz1]);
+    box(name+' box side R','box',[bx1-LAY,by0,bz0],[bx1,by1,bz1]);
+    box(name+' box front','box',[bx0+LAY,by0,bz0],[bx1-LAY,by0+LAY,bz1]);
+    box(name+' box back','box',[bx0+LAY,by1-LAY,bz0],[bx1-LAY,by1,bz1]);
+    box(name+' box bottom','box',[bx0+LAY,by0+LAY,bz0],[bx1-LAY,by1-LAY,bz0+LAY]);
+  });
+  body(id+'f',name+' face',{});
+  inBody(id+'f',()=>{
+    box(name+' face (outer layer)','face',[x0+REV,0,z0+REV],[x1-REV,LAY,z1-REV]);
+    box(name+' face (inner layer)','face',[x0+REV,LAY,z0+REV],[x1-REV,1,z1-REV]);
+    const cx=(x0+x1)/2;
+    box(name+' finger pull','decal',[cx-2.5,-0.012,z1-REV-1.1],[cx+2.5,-0.002,z1-REV-0.25],{decal:true,note:'Finger pull, 5″ wide'});
+  });
+}
+let dk=0;
+WINGS.forEach(([a,b,n])=>WING_OPEN.forEach(([z0,z1],i)=>drawer(a,b,z0,z1,n+' drawer '+(i+1),dk++)));
+BAY_OPEN.forEach(([z0,z1],i)=>drawer(33,63,z0,z1,'Saw bay drawer '+(i+1),dk++));
+
+/* ---------- fences, track, tapes, flip stops (B-105) ---------- */
+const FG0=FY+0.65, FG1=FY+1.4, FGZ=H+FH-0.375;   // fence track groove
+[[0,32.75,'Left fence',[6,16,26],'L'],[63.25,96,'Right fence',[70,80,90],'R']].forEach(([a,b,n,stops,k])=>{
+  body('FN'+k,n+', three layers glued',{loose:true});
+  inBody('FN'+k,()=>{
+    box(n+' (layer 1 of 3)','fence',[a,FY,H],[b,FY+LAY,H+FH]);
+    box(n+' (layer 2 of 3)','fence',[a,FY+LAY,H],[b,FY+2*LAY,FGZ],{plyBase:FY+LAY});
+    box(n+' (layer 2 of 3, beside the groove)','fence',[a,FY+LAY,FGZ],[b,FG0,H+FH],{plyBase:FY+LAY});
+    box(n+' (layer 3 of 3)','fence',[a,FY+2*LAY,H],[b,FY+3*LAY,FGZ],{plyBase:FY+2*LAY});
+    box(n+' (layer 3 of 3, beside the groove)','fence',[a,FG1,FGZ],[b,FY+3*LAY,H+FH],{plyBase:FY+2*LAY});
+  });
+  body('FT'+k,n+' T-track',{});
+  inBody('FT'+k,()=>box(n+' T-track','track',[a,FG0,FGZ],[b,FG1,H+FH+0.03],{mat:'steel',profile:'ttrack'}));
+  body('FM'+k,n+' tape measure',{});
+  inBody('FM'+k,()=>box(n+' tape measure, reads out from the blade','tape',[a,FY+0.05,H+FH],[b,FY+0.55,H+FH+0.02],{mat:'steel',tape:{zero:48}}));
+  stops.forEach((x,i)=>{
+    body('FS'+k+i,'Flip stop',{loose:true});
+    inBody('FS'+k+i,()=>{
+      box(n+' flip stop '+(i+1)+' body','stops',[x-0.8,FY-0.4,H+FH+0.03],[x+0.8,FY+FT+0.2,H+FH+0.9],{mat:'paint',color:'#B8352B'});
+      box(n+' flip stop '+(i+1)+' paddle','stops',[x-0.6,FY-0.4,H+1],[x+0.6,FY-0.05,H+FH+0.03],{mat:'paint',color:'#B8352B'});
+    });
+  });
+});
+
+/* ---------- castors (B-107) ---------- */
+const CASTORS=[[2.5,2.5],[93.5,2.5],[2.5,23.5],[93.5,23.5],[35,13],[61,13]];
+CASTORS.forEach(([x,y],i)=>{
+  const bid='CB'+i; body(bid,'Castor block, three layers');
+  inBody(bid,()=>{
+    if(i<4){const bx=x<48?[1,4.5]:[91.5,95], by=y<13?[1,4.5]:[21.5,25];
+      box('Castor mounting block '+(i+1)+' (3 layers)','frame',[bx[0],by[0],CAST],[bx[1],by[1],CAST+1.5]);}
+    else box('Castor mounting block '+(i+1)+' (3 layers)','frame',[x-2,y-2,CAST],[x+2,y+2,CAST+1.5]);
+  });
+  const cid='CA'+i; body(cid,'Leveling castor',{loose:true,sizeText:'4″ tall to the plate'});
+  inBody(cid,()=>{
+    const n='Leveling castor '+(i+1);
+    box(n+' plate','castor',[x-1.6,y-1.6,CAST-0.2],[x+1.6,y+1.6,CAST],{mat:'steel'});
+    box(n+' housing','castor',[x-1.1,y-1.3,1.6],[x+1.1,y+1.3,CAST-0.2],{mat:'steel'});
+    cyl(n+' wheel','castorWheel','x',[x,y-0.4,1.2],1.2,0.9,{mat:'rubber'});
+    cyl(n+' leveling pad','castorPad','z',[x,y+0.9,0.25],1.0,0.5,{mat:'rubber'});
+  });
+});
+
+/* ---------- Kapex KS 120 (simplified volume, from the drawing set) ---------- */
+const kx=48;
+body('KX','Festool Kapex KS 120',{loose:true,sizeText:'713 × 500 mm footprint'});
+inBody('KX',()=>{
+  const kp=g=>Object.assign({note:'Festool KS 120 (simplified volume)'},
+    {kapex:{mat:'paint',color:'#73A83F'},kapexDark:{mat:'paint',color:'#2C3034'},alu:{mat:'alu'},blade:{mat:'blade'}}[g]);
+  box('Kapex base','kapexDark',[37,3,PT],[59,19,H-0.7],kp('kapexDark'));
+  box('Kapex left table','alu',[34.1,5,H-0.7],[43,19,H],kp('alu'));
+  box('Kapex right table','alu',[53,5,H-0.7],[61.9,19,H],kp('alu'));
+  cyl('Kapex turntable','alu','z',[kx,10.5,H-0.35],5.8,0.7,kp('alu'));
+  box('Kapex miter handle','kapex',[46.6,1,H-1],[49.4,4.7,H],kp('kapex'));
+  box('Kapex fence, left half','alu',[36,FY,H],[47.2,FY+0.8,H+FH],kp('alu'));
+  box('Kapex fence, right half','alu',[48.8,FY,H],[60,FY+0.8,H+FH],kp('alu'));
+  box('Kapex tilt column','kapex',[45,17.5,H],[51,20.7,H+9.5],kp('kapex'));
+  box('Kapex head and rail housing','kapex',[44.5,6,H+9.5],[51.5,20.7,H+12.5],kp('kapex'));
+  cyl('Kapex motor','kapexDark','x',[54.2,12.5,H+10.2],2.3,5.6,kp('kapexDark'));
+  cyl('Kapex blade, 260 mm','blade','x',[kx,10.5,H+6.2],5.1,0.12,kp('blade'));
+  box('Kapex upper guard','kapex',[46.9,4.8,H+6.2],[49.1,16.2,H+11.6],kp('kapex'));
+  box('Kapex handle','kapexDark',[45.2,2.6,H+11],[50.8,5.2,H+14.1],kp('kapexDark'));
+});
+
+/* ---------- temporary shop fixtures: build stands and a brace ---------- */
+const STAND_Y=[[5,9],[17,21]];
+FRAMES.forEach((f,k)=>{
+  STAND_Y.forEach(([y0,y1],j)=>{
+    const s='S'+k+j;
+    body(s+'b','Build stand block, 4″ tall',{loose:true,temp:true});
+    inBody(s+'b',()=>box('Build stand block','temp',[f.x0,y0,0],[f.x0+1,y1,CAST],{mat:'pine'}));
+    body(s+'o','Stand cheek',{loose:true,temp:true});
+    inBody(s+'o',()=>box('Stand cheek','temp',[f.x0-1.5,y0,0],[f.x0,y1,7],{mat:'pine'}));
+    body(s+'i','Stand cheek',{loose:true,temp:true});
+    inBody(s+'i',()=>box('Stand cheek','temp',[f.x0+1,y0,0],[f.x0+2.5,y1,7],{mat:'pine'}));
+  });
+});
+body('BR','Temporary brace, 2×4',{loose:true,temp:true});
+inBody('BR',()=>box('Temporary brace','temp',[-2,11.25,H-1],[98,14.75,H+0.5],{mat:'pine'}));
+
+/* ---------- assembly sequence ---------- */
+/* frames lie flat on the assembly table, layer 1 down; stacked one on another */
+const TBL_C=[(TABLE.min[0]+TABLE.max[0])/2,(TABLE.min[1]+TABLE.max[1])/2,TABLE.max[2]];
+function flatPose(k,level){
+  const f=FRAMES[k],b=BODY[f.id],c=b.pivot,rot=f.flip?90:-90;
+  return {rot,off:[TBL_C[0]-c[0],TBL_C[1]-c[1],TBL_C[2]+0.5+level-c[2]]};
+}
+// a world-space offset for a part of a frame lying flat, expressed in the frame's own coordinates
+function frameLocal(k,w){const a=(FRAMES[k].flip?90:-90)*Math.PI/180,c=Math.cos(-a),s=Math.sin(-a);return [c*w[0]+s*w[2],w[1],-s*w[0]+c*w[2]];}
+const fdrop=(k,h)=>[{off:frameLocal(k,[0,0,h])},HOME];
+
+const LIFT_C=62;
+function standPath(k){
+  const f=FRAMES[k],c=BODY[f.id].pivot,fp=flatPose(k,k);
+  const up={rot:fp.rot,off:[fp.off[0],fp.off[1],LIFT_C-c[2]]};
+  return [fp,up,{rot:0,off:[0,0,LIFT_C-c[2]]},HOME];
+}
+
+step({key:'start',title:'Your miter station',
+  text:'A 96″ mobile bench in ½″ Baltic birch with the Festool Kapex KS 120 dropped into a 30″ bay, so its table lands flush with 33″ wings at 36″. Every part below is cut to the drawing set.',
+  cam:orbit([48,13,20],-30,18,128),intro:true});
+
+step({key:'layer-1-posts',title:'Lay out the layer 1 posts',sheet:'B-101',
+  text:'Start the left end frame flat on the assembly table. The two layer 1 posts run the full 31″ height, 22½″ apart so the rails fit between them.',
+  cam:orbit([-70,-38,35],-25,42,82)});
+mv('F0',[flatPose(0,0)]);
+mv('F0pf',fdrop(0,10));mv('F0pr',fdrop(0,10),{delay:0.25});
+
+step({key:'layer-1-rails',title:'Fit the layer 1 rails between them',sheet:'B-101',
+  text:'The 3″ top and bottom rails sit between the posts. Square the frame across its diagonals before you glue on layer 2.',
+  cam:orbit([-70,-38,35],-25,42,82)});
+mv('F0rt',fdrop(0,10));mv('F0rb',fdrop(0,10),{delay:0.25});
+
+step({key:'layer-2-rails',title:'Glue on the layer 2 rails',sheet:'B-101',
+  text:'The layer 2 rails run 24″, past the layer 1 posts, so each end becomes a ½″ × 2½″ × 3½″ tenon. They stop 1″ shy of the front and back edges to leave the channel the long rails sit in.',
+  cam:orbit([-70,-38,35],-25,42,82)});
+mv('F0lt',fdrop(0,10));mv('F0lb',fdrop(0,10),{delay:0.25});
+
+step({key:'layer-2-posts',title:'Glue on the short layer 2 posts',sheet:'B-101',
+  text:'The layer 2 posts stop short at each end, so the layers cross at every corner and lock into a mortise and tenon. Each is 2″ wide, leaving a ½″ ledge of layer 1 showing round the opening.',
+  cam:orbit([-70,-38,35],-25,42,82)});
+mv('F0sf',fdrop(0,10));mv('F0sr',fdrop(0,10),{delay:0.25});
+
+step({key:'infill-panel',title:'Drop the infill panel onto the ledge',sheet:'B-101',
+  text:'The 20″ × 26″ panel rests on the ½″ ledge all round and finishes flush with layer 2. It cannot push through. Clamp or brad-nail the layers until the glue sets.',
+  cam:orbit([-70,-38,35],-25,42,82)});
+mv('F0pn',fdrop(0,10));
+
+step({key:'four-frames',title:'Make three more frames the same way',sheet:'B-101',
+  text:'All four cross-frames are identical: two ends and two saw bay walls. Two of them get turned round when they stand up, so the flat layer 2 face always points at the drawers.',
+  cam:orbit([-70,-38,37],-30,35,115)});
+[1,2,3].forEach((k,i)=>mv('F'+k,[{rot:flatPose(k,k).rot,off:flatPose(k,k).off.map((v,j)=>j===2?v+16:v)},flatPose(k,k)],{delay:i*0.55}));
+
+step({key:'build-stands',title:'Set out the build stands',sheet:'Shop',
+  text:'Eight 4″ blocks hold the frames at their finished height, the same as the castors will. A pine cheek either side of each block keeps the frame upright. Space them at 0, 32, 63 and 95″.',
+  cam:orbit([48,13,4],-15,30,150)});
+FRAMES.forEach((f,k)=>STAND_Y.forEach((_,j)=>{const d=(k*2+j)*0.12;
+  mv('S'+k+j+'b',drop(10),{delay:d});mv('S'+k+j+'o',drop(10),{delay:d+0.05});mv('S'+k+j+'i',drop(10),{delay:d+0.1});}));
+
+step({key:'stand-frames',title:'Stand the frames in their stands',sheet:'B-102',
+  text:'Lift each frame off the stack, turn it upright and lower it between the cheeks. The right end goes first and the left end, which is at the bottom of the stack, goes last.',
+  cam:orbit([14,-10,24],-8,18,235)});
+[3,2,1,0].forEach((k,i)=>mv('F'+k,standPath(k),{delay:i*2.1,dur:2.6,seg:[0.22,0.5,0.28]}));
+
+step({key:'brace',title:'Screw a temporary brace across the tops',sheet:'Shop',
+  text:'A straight 2×4 holds the four frames plumb and at the right spacing until the rails tie them together. It comes off again once the top rails are in.',
+  cam:orbit([48,13,24],-20,26,165)});
+mv('BR',drop(14));
+
+step({key:'bottom-rails',title:'Slide in the bottom rails',sheet:'B-102',
+  text:'Each wing rail is 32″: 31″ between the frames plus ½″ into the channel at each end. The front rails slide in from the front and the rear rails from the back. The 30″ saw bay rails butt the bay walls on Dominos.',
+  cam:orbit([48,13,10],-25,18,150)});
+['WLfb','WRfb','Bfb'].forEach((id,i)=>mv(id,slide(0,-30,0),{delay:i*0.3}));
+['WLrb','WRrb','Brb'].forEach((id,i)=>mv(id,slide(0,30,0),{delay:0.9+i*0.3}));
+
+step({key:'nine-inch',title:'Set the 9″ fillers and the first divider',sheet:'B-102',
+  text:'The fillers sit in the channel on top of the bottom rail and set the drawer opening, so there is nothing to measure. The 2″ divider sits on top of them.',
+  cam:orbit([40,10,14],-30,15,130)});
+['WLf9a','WLf9b','WRf9a','WRf9b'].forEach((id,i)=>mv(id,slide(0,-18,0),{delay:i*0.15}));
+['WLfd1','WRfd1','Bfd'].forEach((id,i)=>mv(id,slide(0,-30,0),{delay:0.8+i*0.25}));
+
+step({key:'seven-inch',title:'Set the 7″ fillers and the second divider',sheet:'B-102',
+  text:'Same again: 7″ fillers on the divider, then the next 2″ divider on top of them. Front faces finish flush.',
+  cam:orbit([40,10,20],-30,15,130)});
+['WLf7a','WLf7b','WRf7a','WRf7b'].forEach((id,i)=>mv(id,slide(0,-18,0),{delay:i*0.15}));
+['WLfd2','WRfd2'].forEach((id,i)=>mv(id,slide(0,-30,0),{delay:0.8+i*0.25}));
+
+step({key:'five-inch',title:'Finish the front with the 5″ fillers and top rails',sheet:'B-102',
+  text:'The 5″ fillers go in, then the 3″ top rails. Fix every rail end through post A with a Domino or two screws, and check each opening for square before the glue sets.',
+  cam:orbit([40,10,26],-30,16,130)});
+['WLf5a','WLf5b','WRf5a','WRf5b'].forEach((id,i)=>mv(id,slide(0,-18,0),{delay:i*0.15}));
+['WLft','WRft'].forEach((id,i)=>mv(id,slide(0,-30,0),{delay:0.8+i*0.25}));
+
+step({key:'rear-rails',title:'Close in the back of the wings',sheet:'B-102',
+  text:'At the back, one 25″ filler stands in each channel and the 3″ top rail sits on it.',
+  cam:orbit([48,13,20],135,32,125)});
+['WLrfa','WLrfb','WRrfa','WRrfb'].forEach((id,i)=>mv(id,slide(0,18,0),{delay:i*0.15}));
+['WLrt','WRrt'].forEach((id,i)=>mv(id,slide(0,30,0),{delay:0.8+i*0.25}));
+
+step({key:'platform-rails',title:'Fit the saw bay platform rails',sheet:'B-103',
+  text:'The 2″ platform rails go in front and back with their tops 30-11/16″ off the floor, 1″ below the platform top line.',
+  cam:orbit([48,13,24],-15,30,120)});
+mv('Bfp',slide(0,-30,0));mv('Brp',slide(0,30,0),{delay:0.3});
+
+step({key:'remove-brace',title:'Take off the brace and the stand cheeks',sheet:'Shop',
+  text:'With the rails glued in, the carcass holds itself square. The brace lifts off and the cheeks come up and out through the open top.',
+  cam:orbit([48,13,20],-20,30,160)});
+mv('BR',[HOME,at(0,0,18)],{remove:true});
+FRAMES.forEach((f,k)=>STAND_Y.forEach((_,j)=>{const d=0.4+(k*2+j)*0.08;
+  mv('S'+k+j+'o',[HOME,at(0,0,44)],{remove:true,delay:d});mv('S'+k+j+'i',[HOME,at(0,0,44)],{remove:true,delay:d+0.04});}));
+
+step({key:'castor-blocks',title:'Glue in the castor blocks',sheet:'B-107',
+  text:'Each block is three ½″ layers, 1½″ thick, glued into a corner or inside a bay wall. They go in from the open top and sit flush with the underside of the frame.',
+  cam:orbit([36,13,5],-30,52,95)});
+['CB0','CB1','CB2','CB3','CB4','CB5'].forEach((id,i)=>mv(id,drop(30),{delay:i*0.18}));
+
+step({key:'castors',title:'Roll the leveling castors under the blocks',sheet:'B-107',
+  text:'Each castor is 4″ to the top of its plate, the same height as the build stands, so it slides straight in under its block. Through-bolt the plates.',
+  cam:orbit([22,13,5],-40,10,122)});
+['CA0','CA1','CA4','CA5'].forEach((id,i)=>mv(id,slide(0,-26,0),{delay:i*0.2}));
+['CA2','CA3'].forEach((id,i)=>mv(id,slide(0,26,0),{delay:0.9+i*0.2}));
+
+step({key:'pull-stands',title:'Knock out the stand blocks',sheet:'B-107',
+  text:'The bench now stands on its six castors. The end blocks slide out sideways and the bay wall blocks slide out front and back.',
+  cam:orbit([48,13,4],-20,12,145)});
+[['S00b',-14,0],['S01b',-14,0],['S30b',14,0],['S31b',14,0],['S10b',0,-22],['S11b',0,22],['S20b',0,-22],['S21b',0,22]]
+  .forEach(([id,dx,dy],i)=>mv(id,[HOME,at(dx,dy,0)],{remove:true,delay:i*0.12}));
+
+step({key:'platform',title:'Drop in the saw platform',sheet:'B-103',
+  text:'Two ½″ layers glued flat, 30″ × 26″. It rests loose on the platform rails with its top at 31-11/16″. It gets shimmed flush once the saw is on.',
+  cam:orbit([48,13,28],-10,40,120)});
+mv('PL',drop(26));
+
+step({key:'tops-lower',title:'Lay the lower layer of each wing top',sheet:'B-104',
+  text:'33″ × 26″ each, resting on the frame tops and the top rails. Screw up from below through the top rails so the tops can be replaced.',
+  cam:orbit([48,13,32],-15,38,150)});
+mv('TL1',drop(20));mv('TR1',drop(20),{delay:0.3});
+
+step({key:'tops-upper',title:'Add the upper layer, routed for track',sheet:'B-104',
+  text:'The upper layer has three ¾″ × ⅜″ grooves at 3½″, 8″ and 19½″ from the front. Rout them before you glue the layer down.',
+  cam:orbit([48,13,32],-15,38,150)});
+mv('TL2',drop(20));mv('TR2',drop(20),{delay:0.3});
+
+step({key:'top-track',title:'Set the T-track into the tops',sheet:'B-104',
+  text:'Three runs per wing, full length, seated on the bottom of the groove and flush with the surface.',
+  cam:orbit([20,12,36],-35,35,90)});
+['TLt0','TLt1','TLt2','TRt0','TRt1','TRt2'].forEach((id,i)=>mv(id,drop(10),{delay:i*0.15}));
+
+step({key:'slides',title:'Mount the drawer slides',sheet:'B-106',
+  text:'22″ full-extension side-mount slides screw straight to the frame. Inside the wings the posts, rails and panels are flush, so no packers are needed.',
+  cam:orbit([30,13,18],-30,20,110)});
+DRAWERS.forEach((d,i)=>{mv(d.id+'sa',slide(0,-30,0),{delay:i*0.1});mv(d.id+'sb',slide(0,-30,0),{delay:i*0.1+0.05});});
+
+step({key:'drawer-boxes',title:'Hang the eight drawer boxes',sheet:'B-106',
+  text:'½″ boxes, 22″ deep, ½″ narrower than the opening each side for the slides. They ride ½″ above the opening and stop 1″ back from the front.',
+  cam:orbit([48,13,18],25,18,150)});
+DRAWERS.forEach((d,i)=>mv(d.id+'b',slide(0,-30,0),{delay:i*0.15}));
+
+step({key:'drawer-faces',title:'Fit the drawer faces',sheet:'B-106',
+  text:'Each face is two ½″ layers, inset with a 1/16″ reveal so it finishes flush with the 1″ frame. The finger pull is cut into the top edge.',
+  cam:orbit([48,13,18],22,15,150)});
+DRAWERS.forEach((d,i)=>mv(d.id+'f',slide(0,-16,0),{delay:i*0.15}));
+
+step({key:'fences',title:'Set the fences on the wings',sheet:'B-105',
+  text:'Each fence is three ½″ layers, 1½″ thick and 3½″ tall, with its face 12″ back from the front edge. Slotted holes let you true it to the Kapex fence with a straightedge.',
+  cam:orbit([40,12,38],-30,30,110)});
+mv('FNL',drop(14));mv('FNR',drop(14),{delay:0.3});
+
+step({key:'fence-track',title:'Add the fence track and tapes',sheet:'B-105',
+  text:'The T-track drops into a groove in the top of the fence. The stick-on tapes read out from the blade, so a reading on either side is the length of the part.',
+  cam:orbit([20,12,39],-20,40,62)});
+mv('FTL',drop(8));mv('FTR',drop(8),{delay:0.2});mv('FML',drop(6),{delay:0.6});mv('FMR',drop(6),{delay:0.8});
+
+step({key:'flip-stops',title:'Slide on the flip stops',sheet:'B-105',
+  text:'Three per side, riding in the fence track. Each one flips up out of the way, so they can share the track.',
+  cam:orbit([22,12,39],-30,30,72)});
+['FSL0','FSL1','FSL2','FSR0','FSR1','FSR2'].forEach((id,i)=>mv(id,drop(8),{delay:i*0.18}));
+
+step({key:'kapex',title:'Set the Kapex in the bay',sheet:'B-103',
+  text:'Bolt the saw through the platform at its four base holes. The KS 120 table sits 110 mm above its base, so on a 31-11/16″ platform it lands flush with the wings at 36″. Shim under the platform if your saw measures differently.',
+  cam:orbit([48,12,38],25,26,112)});
+mv('KX',drop(24),{dur:1.8});
+
+
+root.PLAN=K.finish({meta:{
+  title:'Kapex 120 Miter Station',
+  eyebrow:'Step-by-step build · Rev A',
+  thing:'bench',
+  loading:'Cutting 280 parts from ½″ Baltic birch',
+  intro:'Every part is generated from the same model as the Rev A drawing set, in inches, so what you see here is what the cut list says.',
+  about:[['Overall','96″ L × 26″ D × 36″ H'],['Saw bay','30″ clear'],['Platform top','31-11/16″'],['Stock','½″ Baltic birch, laminated to 1″']],
+  links:[['Open the drawing set','https://claude.ai/artifact/6BrpHsHH21HFX6xJZZA9zr']],
+  sheetLabel:'Sheet',
+  listStrip:'^(Left|Right) (wing |fence |)'   // the step card lists left and right pairs as one line
+}});
+})(typeof window!=='undefined'?window:globalThis);
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {GTAOPass} from 'three/addons/postprocessing/GTAOPass.js';
+import {OutputPass} from 'three/addons/postprocessing/OutputPass.js';
+
+/* Build walkthrough viewer: renders window.PLAN (assets/engine.js + the build file) in a lit shop,
+   steps through the assembly, labels new parts, and re-runs the physics check in the viewer's browser.
+   Nothing in here is specific to one build: sizes, the room, lights and text all come from PLAN. */
+const P=window.PLAN, U=P.U, IN=0.0254/U, $=id=>document.getElementById(id);
+const META=P.meta, B=P.BOUNDS;
+// the shop is laid out in inches around the finished piece; Bi is the piece's bounds in inches
+const Bi={min:B.min.map(v=>v/U),max:B.max.map(v=>v/U)};
+const CXi=(Bi.min[0]+Bi.max[0])/2, CYi=(Bi.min[1]+Bi.max[1])/2;
+const CX=CXi*U, CY=CYi*U;
+const reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- renderer, camera, controls ---------------- */
+const canvas=$('c');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
+const small=Math.min(innerWidth,innerHeight)<700;
+renderer.setPixelRatio(Math.min(devicePixelRatio,small?2:1.75));
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=0.86;
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const MAXANISO=renderer.capabilities.getMaxAnisotropy();
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color('#15110E');
+/* ---------------- the room, sized to the piece and the assembly tables (inches) ---------------- */
+const TBi=P.TABLES.map(T=>({min:T.min.map(v=>v/U),max:T.max.map(v=>v/U),name:T.name}));
+const tMin=k=>Math.min(...TBi.map(T=>T.min[k]),1e9), tMax=k=>Math.max(...TBi.map(T=>T.max[k]),-1e9);
+const PZi=Math.max(...P.PENDANTS.map(p=>p.z/U),0);
+const ROOM={x0:Math.min(Bi.min[0]-150,tMin(0)-56),x1:Math.max(Bi.max[0]+144,tMax(0)+60),
+  y0:Math.min(Bi.min[1]-170,tMin(1)-114),y1:Bi.max[1]+70,h:Math.max(120,PZi+28,Bi.max[2]+40)};
+// everything that depends on how big the scene is scales from the 96″ bench the viewer was tuned on
+const KS=Math.max(1,Math.hypot(ROOM.x1-ROOM.x0,ROOM.y1-ROOM.y0)/472);
+const SS=Math.max(1,Math.max(Bi.max[0]-Bi.min[0],Bi.max[1]-Bi.min[1],Bi.max[2]-Bi.min[2])/96);
+scene.fog=new THREE.Fog('#15110E',11*KS,26*KS);
+const pmrem=new THREE.PMREMGenerator(renderer);
+scene.environment=pmrem.fromScene(new RoomEnvironment(renderer),0.04).texture;
+
+const camera=new THREE.PerspectiveCamera(40,1,0.05,60*KS);
+const controls=new OrbitControls(camera,canvas);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.maxPolarAngle=Math.PI*0.49;controls.minDistance=0.35;controls.maxDistance=7.5*KS;
+controls.rotateSpeed=0.7;controls.zoomSpeed=0.9;
+
+// plan units (x right, y to the back, z up) to world metres, the piece centred on the origin
+const W=(x,y,z)=>new THREE.Vector3((x-CX)*IN,z*IN,(CY-y)*IN);
+const Wi=(x,y,z)=>W(x*U,y*U,z*U);
+const root=new THREE.Group();
+root.rotation.x=-Math.PI/2;root.scale.setScalar(IN);root.position.set(-CX*IN,0,CY*IN);
+scene.add(root);
+
+/* ---------------- procedural textures ---------------- */
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function canvasTex(w,h,draw,o){
+  o=o||{};const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,w,h);
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=MAXANISO;
+  if(o.srgb!==false)t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+function noise(g,w,h,amt,r){const d=g.getImageData(0,0,w,h),a=d.data;for(let i=0;i<a.length;i+=4){const n=(r()-.5)*amt;a[i]+=n;a[i+1]+=n;a[i+2]+=n*.8;}g.putImageData(d,0,0);}
+function grain(g,w,h,r,o){
+  // long wavy fibres running along u
+  for(let i=0;i<o.lines;i++){
+    const y0=r()*h,amp=r()*o.wave,f=(0.002+r()*0.006),ph=r()*6.3,a=o.a0+r()*o.a1;
+    g.strokeStyle=`rgba(${o.col[0]},${o.col[1]},${o.col[2]},${a})`;g.lineWidth=o.w0+r()*o.w1;g.beginPath();
+    for(let x=-8;x<=w+8;x+=12){const y=y0+amp*Math.sin(x*f+ph)+amp*.35*Math.sin(x*f*3.1+ph*2);x<0?g.moveTo(x,y):g.lineTo(x,y);}
+    g.stroke();
+    if(y0<o.wave*2){g.save();g.translate(0,h);g.stroke();g.restore();}
+  }
+}
+function woodFace(seed,base,light,dark,fibre,o){
+  o=o||{};
+  return canvasTex(1024,1024,(g,w,h)=>{
+    const r=rng(seed);
+    g.fillStyle=base;g.fillRect(0,0,w,h);
+    // broad rotary-cut figure: soft bands along the grain
+    for(let i=0;i<(o.bands||16);i++){const y=r()*h,bh=30+r()*150,col=r()<.5?light:dark,a=.05+r()*.1;
+      for(const dy of [-h,0,h]){const gr=g.createLinearGradient(0,y+dy-bh,0,y+dy+bh);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.5,col.replace('A',a));gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,y+dy-bh,w,bh*2);}}
+    for(let i=0;i<50;i++){const x=r()*w,y=r()*h,rx=60+r()*260,ry=6+r()*30,col=r()<.5?light:dark;g.fillStyle=col.replace('A',.04+r()*.05);
+      for(const dx of [-w,0,w])for(const dy of [-h,0,h]){g.beginPath();g.ellipse(x+dx,y+dy,rx,ry,0,0,Math.PI*2);g.fill();}}
+    grain(g,w,h,r,{lines:o.lines||1000,wave:o.wave||4,col:fibre,a0:.025,a1:o.fa||.09,w0:.5,w1:1.6});
+    if(o.knots)for(let k=0;k<o.knots;k++){const x=r()*w,y=r()*h;for(let i=8;i>0;i--){g.strokeStyle=`rgba(${fibre[0]-30},${fibre[1]-30},${fibre[2]-20},${.08+i*.02})`;g.lineWidth=2;g.beginPath();g.ellipse(x,y,i*4.5,i*2.2,0,0,Math.PI*2);g.stroke();}
+      g.fillStyle='rgba(80,45,20,.55)';g.beginPath();g.ellipse(x,y,7,4,0,0,Math.PI*2);g.fill();}
+    noise(g,w,h,o.noise||9,r);
+  });
+}
+// ½″ Baltic birch edge: 9 plies, alternating long grain and cross grain, with dark glue lines
+function plyEdge(seed){
+  return canvasTex(512,144,(g,w,h)=>{
+    const r=rng(seed),n=9,ph=h/n;
+    for(let k=0;k<n;k++){
+      const y=k*ph,cross=k%2===1;
+      g.fillStyle=cross?'#D7B987':'#E8D2A8';g.fillRect(0,y,w,ph+1);
+      if(cross){for(let i=0;i<900;i++){g.fillStyle=`rgba(120,82,40,${.08+r()*.14})`;g.fillRect(r()*w,y+r()*ph,1+r()*1.5,1+r()*2.5);}}
+      else{for(let i=0;i<26;i++){g.strokeStyle=`rgba(140,98,52,${.06+r()*.12})`;g.lineWidth=.6+r();const yy=y+r()*ph;g.beginPath();g.moveTo(0,yy);g.lineTo(w,yy+(r()-.5)*2);g.stroke();}}
+      g.fillStyle='rgba(78,52,24,.55)';g.fillRect(0,y,w,1.2);
+    }
+    noise(g,w,h,10,r);
+  });
+}
+const FACE_TEX=[11,23,37].map(s=>woodFace(s,'#DEC295','rgba(250,232,196,A)','rgba(196,152,96,A)',[150,106,56]));
+const EDGE_TEX=plyEdge(5);
+const PINE_TEX=woodFace(71,'#DDB57C','rgba(246,214,160,A)','rgba(176,118,56,A)',[150,90,36],{lines:700,wave:9,fa:.16,knots:2,bands:22});
+const OAK_TEX=woodFace(91,'#B98D5E','rgba(220,180,130,A)','rgba(120,80,45,A)',[90,56,28],{lines:900,wave:5,fa:.14});
+const MAPLE_TEX=woodFace(97,'#D9B98C','rgba(240,214,170,A)','rgba(170,120,70,A)',[130,90,50],{lines:800,wave:3,fa:.08});
+
+const FLOOR_TEX=canvasTex(2048,2048,(g,w,h)=>{
+  const r=rng(3),ppi=w/96,rowH=6*ppi;
+  for(let row=0;row<16;row++){
+    let x=-r()*60*ppi;const y=row*rowH;
+    while(x<w){const len=(34+r()*60)*ppi,t=r();
+      const c=[118+t*36-r()*14,80+t*22-r()*8,50+t*14-r()*6];
+      g.fillStyle=`rgb(${c[0]|0},${c[1]|0},${c[2]|0})`;
+      for(const dx of [0,w]){g.fillRect(x-dx,y,len,rowH);}
+      g.save();g.beginPath();g.rect(x,y,len,rowH);g.rect(x-w,y,len,rowH);g.clip();
+      const rr=rng((row*97+x)|0);
+      grain(g,w,h,rr,{lines:28,wave:3,col:[70,40,18],a0:.05,a1:.18,w0:.6,w1:2});
+      for(let i=0;i<4;i++){const yy=y+rr()*rowH;const gr=g.createLinearGradient(0,yy-14,0,yy+14);gr.addColorStop(0,'rgba(0,0,0,0)');gr.addColorStop(.5,`rgba(${rr()<.5?'255,220,170':'60,30,10'},.08)`);gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(x,yy-14,len,28);}
+      g.restore();
+      g.fillStyle='rgba(28,16,8,.85)';g.fillRect(x,y,2.5,rowH);g.fillRect(x-w,y,2.5,rowH);
+      x+=len;}
+    g.fillStyle='rgba(28,16,8,.9)';g.fillRect(0,y,w,2.5);g.fillStyle='rgba(255,230,190,.08)';g.fillRect(0,y+2.5,w,1.5);
+  }
+  noise(g,w,h,8,r);
+});
+const WALL_TEX=canvasTex(1024,1024,(g,w,h)=>{
+  const r=rng(8),bh=h/8;
+  for(let i=0;i<8;i++){const t=r();g.fillStyle=`rgb(${58+t*6|0},${73+t*6|0},${66+t*5|0})`;g.fillRect(0,i*bh,w,bh);
+    for(let k=0;k<60;k++){g.fillStyle=`rgba(${r()<.5?'255,255,255':'0,0,0'},.025)`;g.fillRect(r()*w,i*bh+r()*bh,40+r()*240,1+r()*2);}
+    g.fillStyle='rgba(8,12,10,.85)';g.fillRect(0,i*bh+bh-4,w,4);g.fillStyle='rgba(255,255,255,.07)';g.fillRect(0,i*bh,w,2);}
+  noise(g,w,h,6,r);
+});
+const PEG_TEX=canvasTex(512,512,(g,w,h)=>{
+  const r=rng(12);g.fillStyle='#8E6B48';g.fillRect(0,0,w,h);noise(g,w,h,14,r);
+  for(let x=16;x<w;x+=32)for(let y=16;y<h;y+=32){g.fillStyle='#2B1D12';g.beginPath();g.arc(x,y,4.2,0,7);g.fill();g.fillStyle='rgba(255,230,190,.12)';g.beginPath();g.arc(x+.8,y+1.2,4.2,0,3.2);g.fill();}
+});
+const SKY_TEX=canvasTex(1024,512,(g,w,h)=>{
+  const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#7FA9CF');gr.addColorStop(.55,'#E9D3AE');gr.addColorStop(1,'#F6D9A6');g.fillStyle=gr;g.fillRect(0,0,w,h);
+  const sg=g.createRadialGradient(w*.7,h*.32,4,w*.7,h*.32,300);sg.addColorStop(0,'rgba(255,248,225,1)');sg.addColorStop(.25,'rgba(255,226,170,.55)');sg.addColorStop(1,'rgba(255,220,160,0)');g.fillStyle=sg;g.fillRect(0,0,w,h);
+  const r=rng(4);g.filter='blur(5px)';
+  for(let i=0;i<70;i++){const x=r()*w,y=h*.62+r()*h*.18,rad=30+r()*70;g.fillStyle=`rgba(${48+r()*30|0},${72+r()*30|0},${44+r()*20|0},.9)`;g.beginPath();g.arc(x,y,rad,0,7);g.fill();}
+  g.fillStyle='#4B5E3A';g.fillRect(0,h*.78,w,h*.22);
+  g.filter='blur(14px)';g.fillStyle='rgba(255,236,200,.35)';g.fillRect(0,h*.5,w,h*.12);
+},{});
+const TRACK_TEX=canvasTex(64,96,(g,w,h)=>{
+  g.fillStyle='#3B4046';g.fillRect(0,0,w,h);g.fillStyle='#16191C';g.fillRect(0,h*.32,w,h*.36);
+  g.fillStyle='rgba(255,255,255,.18)';g.fillRect(0,h*.3,w,2);g.fillRect(0,h*.68,w,2);g.fillStyle='rgba(255,255,255,.08)';g.fillRect(0,2,w,2);
+});
+// a stick-on tape for a part from a to b (inches) that reads out from zero in both directions
+function tapeTex(a,b,zero){
+  const ppi=96,w=Math.min(8192,Math.round((b-a)*ppi)),h=48;
+  return canvasTex(w,h,(g)=>{
+    g.fillStyle='#E7C230';g.fillRect(0,0,w,h);
+    g.fillStyle='#16130F';g.font='600 17px "IBM Plex Mono",monospace';g.textAlign='center';g.textBaseline='top';
+    const left=(a+b)/2<zero;for(let s=0;s<=Math.ceil(Math.max(Math.abs(a-zero),Math.abs(b-zero)))*16;s++){const rd=s/16,x=left?zero-rd:zero+rd,px=(x-a)*w/(b-a);if(px<-2||px>w+2)continue;
+      const L=s%16===0?.62:s%8===0?.46:s%4===0?.34:s%2===0?.24:.15;
+      g.fillRect(px-0.8,h-h*L,1.6,h*L);
+      if(s%16===0&&rd>0){g.fillStyle=rd%12===0?'#B5261B':'#16130F';g.fillText(String(rd),px+(left?-11:11),3);g.fillStyle='#16130F';}}
+  });
+}
+
+/* ---------------- materials ---------------- */
+const std=(o)=>new THREE.MeshStandardMaterial(Object.assign({envMapIntensity:.45},o));
+const M={
+  face:FACE_TEX.map(t=>std({map:t,roughness:.6})),
+  edge:std({map:EDGE_TEX,roughness:.72}),
+  pine:std({map:PINE_TEX,roughness:.66}),
+  track:std({color:'#3A3F45',metalness:.7,roughness:.38}),
+  trackTop:std({map:TRACK_TEX,metalness:.65,roughness:.4}),
+  tape:std({color:'#E7C230',roughness:.5}),
+  stops:std({color:'#B8352B',metalness:.25,roughness:.42}),
+  slide:std({color:'#B9BDC2',metalness:.9,roughness:.32}),
+  steel:std({color:'#3B3F44',metalness:.6,roughness:.45}),
+  rubber:std({color:'#1E1F21',roughness:.85}),
+  zinc:std({color:'#B9BDC2',metalness:.9,roughness:.32}),
+  brass:std({color:'#B48A3C',metalness:.8,roughness:.35}),
+  black:std({color:'#1E2124',roughness:.5}),
+  alu:std({color:'#B9BFC5',metalness:.85,roughness:.32}),
+  blade:std({color:'#D7DADD',metalness:1,roughness:.22}),
+  pull:std({color:'#3D2C1B',roughness:.9}),
+  invisible:new THREE.MeshBasicMaterial({visible:false})
+};
+const WALNUT_TEX=woodFace(83,'#6B4A33','rgba(150,110,80,A)','rgba(60,38,24,A)',[50,30,18],{lines:900,wave:5,fa:.16});
+const CHERRY_TEX=woodFace(87,'#B5714A','rgba(220,150,110,A)','rgba(130,70,40,A)',[110,55,30],{lines:900,wave:4,fa:.12});
+const MDF_TEX=canvasTex(256,256,(g,w,h)=>{const r=rng(17);g.fillStyle='#A88462';g.fillRect(0,0,w,h);noise(g,w,h,18,r);});
+const WOOD={pine:PINE_TEX,oak:OAK_TEX,maple:MAPLE_TEX,walnut:WALNUT_TEX,cherry:CHERRY_TEX,mdf:MDF_TEX};
+const woodMats={},paintMats={},tapeMats={};
+function woodMat(name,color){const k=name+(color||'');return woodMats[k]||(woodMats[k]=std({map:WOOD[name],color:color||'#ffffff',roughness:name==='mdf'?.85:.62}));}
+// metals and plastics by name, or any colour as a painted finish
+function hardMat(p){
+  if(p.color&&(!p.mat||p.mat==='paint'||!M[p.mat])){const k=p.color+(p.metal?'m':'');return paintMats[k]||(paintMats[k]=std({color:p.color,roughness:p.metal?.35:.5,metalness:p.metal?.8:0}));}
+  return M[p.mat]||M.steel;
+}
+
+/* ---------------- box geometry with real-size UVs ---------------- */
+// faces in order +x,-x,+y,-y,+z,-z (plan axes); each face is its own material group
+function boxGeo(mn,mx,uvFn){
+  const pos=[],nor=[],uv=[],idx=[];let vi=0;const geo=new THREE.BufferGeometry();
+  for(let fi=0;fi<6;fi++){
+    const n=fi>>1,s=fi%2?-1:1,a=(n+1)%3,b=(n+2)%3;
+    const vs=[[0,0],[1,0],[1,1],[0,1]].map(([i,j])=>{const v=[0,0,0];v[n]=s>0?mx[n]:mn[n];v[a]=i?mx[a]:mn[a];v[b]=j?mx[b]:mn[b];return v;});
+    vs.forEach(v=>{pos.push(v[0],v[1],v[2]);const nn=[0,0,0];nn[n]=s;nor.push(...nn);const t=uvFn(n,v);uv.push(t[0],t[1]);});
+    (s>0?[0,1,2,0,2,3]:[0,2,1,0,3,2]).forEach(o=>idx.push(vi+o));
+    geo.addGroup(fi*6,6,fi);vi+=4;
+  }
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(nor,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+  geo.setIndex(idx);return geo;
+}
+const sizes=(mn,mx)=>[0,1,2].map(i=>mx[i]-mn[i]);
+const LAYER=0.5*U;   // sheet-goods ply stripes repeat every ½″ of thickness
+let uvSeed=rng(99);
+// Baltic birch: face grain along the longest side, ply stripes across the thickness on every edge
+function birch(p){
+  const s=sizes(p.min,p.max);let t=0;for(let i=1;i<3;i++)if(s[i]<s[t]-1e-9)t=i;
+  const base=p.plyBase!==undefined?p.plyBase:p.min[t];
+  const o=[0,1,2].filter(i=>i!==t),lg=s[o[0]]>=s[o[1]]?o[0]:o[1],sh=lg===o[0]?o[1]:o[0];
+  const ou=uvSeed()*10,ov=uvSeed()*10;
+  const geo=boxGeo(p.min,p.max,(n,v)=>n===t?[v[lg]/(24*U)+ou,v[sh]/(24*U)+ov]:[v[n===lg?sh:lg]/(12*U)+ou,(v[t]-base)/LAYER]);
+  const fm=M.face[Math.floor(uvSeed()*3)];
+  return {geo,mats:[0,1,2,3,4,5].map(fi=>(fi>>1)===t?fm:M.edge)};
+}
+function solidWood(mn,mx,mat,tile){
+  tile=tile||24*U;const s=sizes(mn,mx);const lg=s.indexOf(Math.max(...s));const ou=uvSeed()*10,ov=uvSeed()*10;
+  return boxGeo(mn,mx,(n,v)=>{const o=[0,1,2].filter(i=>i!==n);const u=o.includes(lg)?lg:o[0],w=o.find(i=>i!==u);return [v[u]/tile+ou,v[w]/tile+ov];});
+}
+
+/* ---------------- the piece: one THREE.Group per rigid body ---------------- */
+const VIS={};      // body id -> {group, mats:Set, meshes:[]}
+const pickables=[];
+function partMesh(p){
+  let geo,mats;
+  if(p.kind==='cyl'){
+    geo=new THREE.CylinderGeometry(p.r,p.r,p.len,p.r>3*U?64:28);
+    if(p.axis==='x')geo.rotateZ(Math.PI/2);else if(p.axis==='z')geo.rotateX(Math.PI/2);
+    geo.translate(p.c[0],p.c[1],p.c[2]);
+    mats=WOOD[p.mat]?woodMat(p.mat,p.color):hardMat(p);
+  }
+  else if(p.mat==='ply'||p.mat==='bb'){({geo,mats}=birch(p));if(p.color){const t=std({color:p.color,roughness:.55});mats=mats.map(()=>t);}}
+  else if(WOOD[p.mat]){geo=solidWood(p.min,p.max);mats=woodMat(p.mat,p.color);}
+  else if(p.decal){geo=solidWood(p.min,p.max);mats=p.color?hardMat(p):M.pull;}
+  else if(p.profile==='ttrack'){const ax=sizes(p.min,p.max)[0]>=sizes(p.min,p.max)[1]?0:1;geo=boxGeo(p.min,p.max,(n,v)=>ax===0?[v[0]/(2*U),(v[1]-p.min[1])/(p.max[1]-p.min[1])]:[v[1]/(2*U),(v[0]-p.min[0])/(p.max[0]-p.min[0])]);mats=[M.track,M.track,M.track,M.track,M.trackTop,M.track];}
+  else if(p.tape){
+    const k=p.min[0]+'|'+p.max[0]+'|'+p.tape.zero;
+    tapeMats[k]=tapeMats[k]||std({map:tapeTex(p.min[0]/U,p.max[0]/U,p.tape.zero/U),roughness:.5});
+    geo=boxGeo(p.min,p.max,(n,v)=>[(v[0]-p.min[0])/(p.max[0]-p.min[0]),(v[1]-p.min[1])/(p.max[1]-p.min[1])]);mats=[M.tape,M.tape,M.tape,M.tape,tapeMats[k],M.tape];}
+  else{
+    const s=sizes(p.min,p.max),r=Math.min(0.3*U,Math.min(...s)*0.3);
+    geo=new RoundedBoxGeometry(s[0],s[1],s[2],2,r);geo.translate((p.min[0]+p.max[0])/2,(p.min[1]+p.max[1])/2,(p.min[2]+p.max[2])/2);
+    mats=hardMat(p);
+  }
+  return new THREE.Mesh(geo,mats);
+}
+P.BODIES.forEach(b=>{
+  if(b.virtual)return;
+  const g=new THREE.Group();g.matrixAutoUpdate=false;root.add(g);
+  const v={group:g,meshes:[],mats:new Map(),body:b};VIS[b.id]=v;
+  const clone=m=>{if(!v.mats.has(m)){const c=m.clone();c.userData.base=m;v.mats.set(m,c);}return v.mats.get(m);};
+  b.parts.forEach(p=>{
+    const mesh=partMesh(p);
+    mesh.material=Array.isArray(mesh.material)?mesh.material.map(clone):clone(mesh.material);
+    mesh.castShadow=!p.decal;mesh.receiveShadow=true;mesh.userData={part:p,body:b};
+    g.add(mesh);v.meshes.push(mesh);pickables.push(mesh);
+  });
+});
+const m4=new THREE.Matrix4();
+function applyState(st,hiStep,hiT){
+  for(const id in VIS){
+    const v=VIS[id],s=st[id];
+    const show=s.vis&&s.op>0.002;v.group.visible=show;if(!show)continue;
+    const m=s.M;m4.set(m[0],m[1],m[2],m[3],m[4],m[5],m[6],m[7],m[8],m[9],m[10],m[11],0,0,0,1);
+    v.group.matrix.copy(m4);v.group.matrixWorldNeedsUpdate=true;
+    const op=s.op,tr=op<0.999;
+    const glow=hiStep!==null?highlight(v.body,hiStep,hiT):0;
+    v.mats.forEach(mat=>{
+      if(mat.transparent!==tr){mat.transparent=tr;mat.needsUpdate=true;}
+      mat.opacity=op;mat.depthWrite=op>0.5;
+      mat.emissive.setRGB(0.55*glow,0.33*glow,0.08*glow);
+    });
+  }
+}
+// new parts glow amber while they move in and for a moment after they land
+function highlight(b,s,t){
+  const ev=b.events.find(e=>e.step===s)||(b.parent&&P.BODY[b.parent].events.find(e=>e.step===s));
+  if(!ev||ev.remove)return 0;
+  const end=ev.delay+ev.dur;
+  if(t<ev.delay)return 0;if(t<end)return 0.55;return Math.max(0,0.55*(1-(t-end)/1.4));
+}
+
+/* ---------------- the shop ---------------- */
+// laid out in inches whatever the plan's units; the shop group scales inches to plan units
+const shop=new THREE.Group();shop.scale.setScalar(U);root.add(shop);
+let target=shop;
+function add(geo,mats,o){o=o||{};const m=new THREE.Mesh(geo,mats);m.castShadow=o.cast!==false;m.receiveShadow=true;(o.parent||target).add(m);return m;}
+// shop dressing is drawn for the reference room R0 and moved with whichever wall or corner it belongs to
+const R0={x0:-150,x1:240,y0:-170,y1:96};
+function inGroup(dx,dy,fn){const g=new THREE.Group();g.position.set(dx,dy,0);shop.add(g);const prev=target;target=g;fn();target=prev;}
+function wood(mn,mx,mat,o){return add(solidWood(mn,mx,mat,o&&o.tile),mat,o);}
+function rbox(mn,mx,mat,r,o){const s=sizes(mn,mx);const g=new RoundedBoxGeometry(s[0],s[1],s[2],2,Math.min(r,Math.min(...s)/2.01));g.translate((mn[0]+mx[0])/2,(mn[1]+mx[1])/2,(mn[2]+mx[2])/2);return add(g,mat,o);}
+function cylZ(x,y,z0,z1,r,mat,o){const g=new THREE.CylinderGeometry(o&&o.r2!==undefined?o.r2:r,r,z1-z0,o&&o.seg||24,1,o&&o.open);g.rotateX(Math.PI/2);g.translate(x,y,(z0+z1)/2);return add(g,mat,o);}
+function cylAxis(c,axis,r,len,mat,o){const g=new THREE.CylinderGeometry(r,r,len,o&&o.seg||20);if(axis==='x')g.rotateZ(Math.PI/2);if(axis==='z')g.rotateX(Math.PI/2);g.translate(...c);return add(g,mat,o);}
+
+// floor
+{const g=new THREE.PlaneGeometry(ROOM.x1-ROOM.x0,ROOM.y1-ROOM.y0);g.translate((ROOM.x0+ROOM.x1)/2,(ROOM.y0+ROOM.y1)/2,0);
+  const uv=g.attributes.uv;for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*(ROOM.x1-ROOM.x0)/96,uv.getY(i)*(ROOM.y1-ROOM.y0)/96);
+  add(g,std({map:FLOOR_TEX,roughness:.5,envMapIntensity:.35}),{cast:false});}
+// walls: only the inside faces render, so the camera can look in from outside the room
+const wallMat=std({map:WALL_TEX,roughness:.85,envMapIntensity:.2});
+function wall(mn,mx,inner,reveal){
+  const g=boxGeo(mn,mx,(n,v)=>{const o=[0,1,2].filter(i=>i!==n);const u=o[0]===2?o[1]:o[0];return [v[u]/48,v[2]/48];});
+  const mats=[0,1,2,3,4,5].map(fi=>fi===inner||(reveal&&reveal.includes(fi))?wallMat:M.invisible);
+  return add(g,mats);
+}
+const WIN={x0:CXi-44,x1:CXi+44,z0:46,z1:104};
+wall([ROOM.x0,ROOM.y1,0],[WIN.x0,ROOM.y1+4,ROOM.h],3,[0]);
+wall([WIN.x1,ROOM.y1,0],[ROOM.x1,ROOM.y1+4,ROOM.h],3,[1]);
+wall([WIN.x0,ROOM.y1,0],[WIN.x1,ROOM.y1+4,WIN.z0],3,[4]);
+wall([WIN.x0,ROOM.y1,WIN.z1],[WIN.x1,ROOM.y1+4,ROOM.h],3,[5]);
+wall([ROOM.x0-4,ROOM.y0,0],[ROOM.x0,ROOM.y1,ROOM.h],0);
+wall([ROOM.x1,ROOM.y0,0],[ROOM.x1+4,ROOM.y1,ROOM.h],1);
+// baseboards
+const trimMat=std({color:'#2A3330',roughness:.6});
+wood([ROOM.x0,ROOM.y1-0.75,0],[ROOM.x1,ROOM.y1,5],trimMat);
+wood([ROOM.x0,ROOM.y0,0],[ROOM.x0+0.75,ROOM.y1,5],trimMat);
+wood([ROOM.x1-0.75,ROOM.y0,0],[ROOM.x1,ROOM.y1,5],trimMat);
+// steel window, glass, sill, and the garden beyond
+const black=std({color:'#1B1D1F',metalness:.55,roughness:.45});
+inGroup(CXi-48,ROOM.y1-R0.y1,()=>{const ROOM=R0,WIN={x0:4,x1:92,z0:46,z1:104};
+[4,26,48,70,92].forEach(x=>rbox([x-0.9,ROOM.y1+0.5,WIN.z0],[x+0.9,ROOM.y1+2.5,WIN.z1],black,.15));
+[WIN.z0,75,WIN.z1].forEach(z=>rbox([WIN.x0,ROOM.y1+0.5,z-0.9],[WIN.x1,ROOM.y1+2.5,z+0.9],black,.15));
+{const g=new THREE.PlaneGeometry(WIN.x1-WIN.x0,WIN.z1-WIN.z0);g.rotateX(Math.PI/2);g.translate((WIN.x0+WIN.x1)/2,ROOM.y1+1.6,(WIN.z0+WIN.z1)/2);
+  add(g,new THREE.MeshPhysicalMaterial({color:'#dfeaf0',transparent:true,opacity:.08,roughness:.04,metalness:0,envMapIntensity:1}),{cast:false});}
+wood([WIN.x0-3,ROOM.y1-5,WIN.z0-1.5],[WIN.x1+3,ROOM.y1,WIN.z0],std({map:OAK_TEX,roughness:.5}));
+{const g=new THREE.PlaneGeometry(520,300);g.rotateX(Math.PI/2);g.translate(60,ROOM.y1+120,80);
+  const m=new THREE.MeshBasicMaterial({map:SKY_TEX,fog:false});const s=add(g,m,{cast:false});s.receiveShadow=false;}
+// plant on the sill
+{const pot=std({color:'#B4643E',roughness:.8});cylZ(80,ROOM.y1-2.5,WIN.z0,WIN.z0+5,2.4,pot,{r2:2.9});
+  const leaf=std({color:'#3F6B35',roughness:.6});const r=rng(6);
+  for(let i=0;i<9;i++){const g=new THREE.SphereGeometry(1,12,8);g.scale(1.1,0.45,2.6);g.rotateX(-0.6+r()*.4);g.rotateZ(r()*6.3);g.translate(80+(r()-.5)*4,ROOM.y1-2.5+(r()-.5)*3,WIN.z0+7+r()*4);add(g,leaf);}}
+});
+
+// assembly tables (sub-assemblies are laid up on them)
+TBi.forEach(T=>{const top=std({map:OAK_TEX,color:'#8E6A4C',roughness:.5}),leg=std({map:OAK_TEX,roughness:.6});
+  wood([T.min[0],T.min[1],T.max[2]-1.5],[T.max[0],T.max[1],T.max[2]],top);
+  [[T.min[0]+2,T.min[1]+2],[T.max[0]-5,T.min[1]+2],[T.min[0]+2,T.max[1]-5],[T.max[0]-5,T.max[1]-5]].forEach(([x,y])=>wood([x,y,0],[x+3,y+3,T.max[2]-1.5],leg));
+  wood([T.min[0]+2,T.min[1]+2.5,24],[T.max[0]-2,T.min[1]+4.5,28.5],leg);wood([T.min[0]+2,T.max[1]-4.5,24],[T.max[0]-2,T.max[1]-2.5,28.5],leg);
+  wood([T.min[0]+3,T.min[1]+3,8],[T.max[0]-3,T.max[1]-3,8.75],top);
+  // a few offcuts and a glue bottle on the shelf
+  const r=rng(31);for(let i=0;i<4;i++){const x=T.min[0]+6+r()*20,y=T.min[1]+6+i*6;wood([x,y,8.75],[x+10+r()*12,y+3+r()*2,9.25],M.face[i%3]);}
+  cylZ(T.max[0]-10,T.min[1]+12,8.75,15,1.4,std({color:'#E8E2D2',roughness:.5}));cylZ(T.max[0]-10,T.min[1]+12,15,16.5,0.6,std({color:'#C9472E',roughness:.5}));});
+// other fixed obstacles from the plan
+P.STATIC.filter(o=>o.kind==='obstacle').forEach(o=>rbox(o.min.map(v=>v/U),o.max.map(v=>v/U),std({color:'#3A3F44',roughness:.6}),.3));
+
+// traditional workbench, pegboard and shelf on the left wall
+inGroup(ROOM.x0-R0.x0,ROOM.y0-R0.y0,()=>{const ROOM=R0;const top=std({map:MAPLE_TEX,roughness:.5}),leg=std({map:OAK_TEX,roughness:.6}),x0=ROOM.x0+1,y0=-136,y1=-36;
+  wood([x0,y0,31],[x0+24,y1,35],top,{tile:30});
+  [[x0+2,y0+4],[x0+17,y0+4],[x0+2,y1-8],[x0+17,y1-8]].forEach(([x,y])=>wood([x,y,0],[x+4,y+4,31],leg));
+  wood([x0+2,y0+5,6],[x0+21,y0+7,10],leg);wood([x0+2,y1-7,6],[x0+21,y1-5,10],leg);wood([x0+4,y0+8,6],[x0+19,y1-8,7],leg);
+  wood([x0+24,y0+2,8],[x0+26.5,y0+12,35],top);cylAxis([x0+27.5,y0+7,26],'x',0.6,8,M.steel);
+  // hand plane, mallet and square on the bench
+  rbox([x0+10,-80,35],[x0+12.4,-70,36.6],M.steel,.3);cylAxis([x0+11.2,-76,38],'y',0.5,3,std({color:'#7A3F1D',roughness:.5}));
+  rbox([x0+10.6,-73,36.6],[x0+11.8,-71.5,38.6],std({color:'#7A3F1D',roughness:.5}),.3);
+  cylAxis([x0+15,-58,36.2],'y',0.55,11,leg);rbox([x0+12.5,-63.5,35],[x0+17.5,-60.5,37.6],std({map:MAPLE_TEX,roughness:.5}),.4);
+  const peg=std({map:PEG_TEX,roughness:.8});
+  const pg=boxGeo([ROOM.x0,-136,42],[ROOM.x0+0.4,-36,90],(n,v)=>[v[1]/16,v[2]/16]);add(pg,[peg,peg,peg,peg,peg,peg]);
+  // chisels
+  const handle=std({color:'#8A4B22',roughness:.45});
+  [0,1,2,3,4].forEach(i=>{const y=-128+i*2.6;cylZ(ROOM.x0+1.4,y,70,75,0.42,handle);rbox([ROOM.x0+1.2,y-0.3+i*0.02,62],[ROOM.x0+1.6,y+0.3-i*0.02,70],M.blade,.05);});
+  // backsaw
+  rbox([ROOM.x0+1,-112,58],[ROOM.x0+1.1,-98,63],M.blade,.02);rbox([ROOM.x0+0.8,-98.5,57],[ROOM.x0+1.6,-94,64.5],handle,.4);rbox([ROOM.x0+0.9,-112,62.6],[ROOM.x0+1.3,-98,63.2],std({color:'#B48A3C',metalness:.8,roughness:.35}),.05);
+  // squares and a hammer
+  rbox([ROOM.x0+0.8,-88,72],[ROOM.x0+1.4,-87,84],M.alu,.05);rbox([ROOM.x0+0.8,-88,83],[ROOM.x0+1.4,-80,84],M.alu,.05);
+  rbox([ROOM.x0+0.8,-74,58],[ROOM.x0+1.6,-73,72],handle,.3);rbox([ROOM.x0+0.6,-75.5,71],[ROOM.x0+1.8,-71.5,73],M.steel,.3);
+  // marking gauge and pencils
+  rbox([ROOM.x0+0.8,-62,64],[ROOM.x0+1.4,-61.2,74],handle,.2);rbox([ROOM.x0+0.6,-63.6,69],[ROOM.x0+2.2,-59.6,71.2],handle,.3);
+  // shelf with jars
+  wood([ROOM.x0,-136,93],[ROOM.x0+9,-36,94],std({map:OAK_TEX,roughness:.55}));
+  const glass=new THREE.MeshPhysicalMaterial({color:'#e8efe9',transparent:true,opacity:.35,roughness:.08,envMapIntensity:1});
+  const lid=std({color:'#C1912F',metalness:.8,roughness:.35});
+  for(let i=0;i<7;i++){const y=-128+i*6.2,hh=4.5+(i%3)*1.5;cylZ(ROOM.x0+4.5,y,94,94+hh,2,glass,{cast:false});cylZ(ROOM.x0+4.5,y,94+hh,94+hh+0.6,2.05,lid);
+    cylZ(ROOM.x0+4.5,y,94.05,94+hh*0.6,1.75,std({color:['#7A5332','#9A9C9E','#C8A46A'][i%3],roughness:.8}),{cast:false});}
+  // stool
+  const st=std({map:OAK_TEX,roughness:.55});cylZ(-104,-92,24,25.6,7,st,{seg:40});
+  [[0,1],[2.1,1],[4.2,1]].forEach(([a])=>{const g=new THREE.CylinderGeometry(0.65,0.8,25,12);g.rotateX(Math.PI/2);g.rotateY(0.12);g.rotateZ(a);g.translate(-104+Math.cos(a)*4.6,-92+Math.sin(a)*4.6,12);add(g,st);});
+});
+
+// right wall: Baltic birch sheets leaning against it and a rack of hardwood boards
+inGroup(ROOM.x1-R0.x1,ROOM.y0-R0.y0,()=>{const ROOM=R0;
+{const sheetsG=new THREE.Group();target.add(sheetsG);
+  for(let i=0;i<5;i++){const g=new THREE.Group();sheetsG.add(g);
+    const t=i===4?0.75:0.5,y0=-58+i*0.2,p={min:[0,y0,0],max:[t,y0+60,60]};
+    const {geo,mats}=birch(p);const m=add(geo,mats,{parent:g});
+    g.position.set(ROOM.x1-4.6-i*0.62,0,0);g.rotation.y=-0.075;}
+  const arm=std({color:'#24282C',metalness:.6,roughness:.5});
+  const boards=[['#6B4A33',[1,1.0]],['#A0603E',[1,1.0]],['#C59A63',[1,1.0]],['#6B4A33',[1,1]],['#B98D5E',[1,1]]];
+  [60,74,88].forEach((z,k)=>{
+    [-140,-104,-68].forEach(y=>rbox([ROOM.x1-16,y,z-2],[ROOM.x1,y+1.5,z],arm,.2));
+    for(let i=0;i<3;i++){const c=boards[(k*2+i)%boards.length][0],w=5+((i*7+k*3)%4);
+      wood([ROOM.x1-15+i*(w+0.4),-146,z],[ROOM.x1-15+i*(w+0.4)+w,-60,z+1+(i%2)*0.75],std({map:OAK_TEX,color:c,roughness:.6}),{tile:40});}});
+}
+});
+// clamp rack and a pinned drawing on the back wall, right of the window
+inGroup(ROOM.x1-R0.x1,ROOM.y1-R0.y1,()=>{const ROOM=R0;
+{const rail=std({color:'#24282C',metalness:.6,roughness:.5});
+  wood([148,ROOM.y1-3,72],[232,ROOM.y1,75],std({map:OAK_TEX,roughness:.55}));
+  for(let i=0;i<9;i++){const x=152+i*8.8,bar=34+(i%3)*8;
+    rbox([x,ROOM.y1-5,74-bar+3],[x+0.6,ROOM.y1-3.4,76],M.slide,.05);
+    rbox([x-1.2,ROOM.y1-6.5,72],[x+1.8,ROOM.y1-1.8,78],std({color:i%2?'#C33B2C':'#1E2124',roughness:.45}),.4);
+    rbox([x-1.2,ROOM.y1-6.5,74-bar+1],[x+1.8,ROOM.y1-1.8,74-bar+7],std({color:'#1E2124',roughness:.45}),.4);}
+  const sheet=canvasTex(768,544,(g,w,h)=>{
+    g.fillStyle='#F2EFE6';g.fillRect(0,0,w,h);g.strokeStyle='#1B2630';g.lineWidth=3;g.strokeRect(14,14,w-28,h-28);
+    g.fillStyle='#1B2630';g.font='700 34px "Barlow Condensed",sans-serif';g.fillText(META.title.toUpperCase().slice(0,40),34,62);
+    g.font='500 20px "IBM Plex Mono",monospace';g.fillText('FRONT ELEVATION'+(META.rev?'  ·  REV '+META.rev:''),34,92);
+    // a front elevation of the finished piece: every part's outline, seen from the front
+    const ox=60,oy=130,bw=w-120,bh=h-210,sx=Bi.max[0]-Bi.min[0],sz=Bi.max[2]-Bi.min[2],k=Math.min(bw/sx,bh/sz);
+    const fst=P.evaluate(P.LAST,Infinity);g.strokeStyle='#2D5B98';g.lineWidth=1.2;
+    P.BODIES.forEach(b=>{if(b.virtual||b.temp||!fst[b.id].vis)return;b.parts.forEach(pt=>{if(pt.decal)return;
+      const a=P.mApply(fst[b.id].M,pt.min),c=P.mApply(fst[b.id].M,pt.max);
+      const x0=Math.min(a[0],c[0])/U-Bi.min[0],x1=Math.max(a[0],c[0])/U-Bi.min[0],z0=Math.min(a[2],c[2])/U-Bi.min[2],z1=Math.max(a[2],c[2])/U-Bi.min[2];
+      g.strokeRect(ox+x0*k,oy+bh-z1*k,(x1-x0)*k,(z1-z0)*k);});});
+    g.fillStyle='#2D5B98';g.font='18px "IBM Plex Mono",monospace';g.textAlign='center';
+    g.fillText(P.fmt(sx*U)+' OVERALL',ox+sx*k/2,oy+bh+34);
+  });
+  const sg=new THREE.PlaneGeometry(30,21.25);sg.rotateX(Math.PI/2);sg.rotateZ(Math.PI);sg.translate(116,ROOM.y1-0.3,70);
+  add(sg,std({map:sheet,roughness:.9,envMapIntensity:.15}),{cast:false});
+  cylAxis([116,ROOM.y1-0.6,80.2],'y',0.45,0.6,std({color:'#C33B2C',roughness:.4}));}
+
+});
+// cabinet table saw, front right
+inGroup(ROOM.x1-R0.x1,ROOM.y0-R0.y0,()=>{
+{const cx=176,cy=-84,dark=std({color:'#2C3135',roughness:.55,metalness:.2}),iron=std({color:'#9EA4AA',metalness:.85,roughness:.38});
+  rbox([cx-10.5,cy-10.5,4],[cx+10.5,cy+10.5,34],dark,.5);rbox([cx-12,cy-12,0],[cx+12,cy+12,4],std({color:'#1C1F22',roughness:.6}),.3);
+  rbox([cx-20,cy-14,34],[cx+20,cy+13.5,35.5],iron,.15);
+  rbox([cx+20,cy-14,34.2],[cx+40,cy+13.5,35.5],std({color:'#303539',roughness:.5}),.15);
+  rbox([cx-22,cy-16.5,32.5],[cx+42,cy-14,34.5],M.steel,.3);
+  rbox([cx+12,cy-16,35.5],[cx+15,cy+13.5,38.5],std({color:'#1E2124',roughness:.45}),.4);
+  const bl=new THREE.CylinderGeometry(5,5,0.12,64);bl.rotateZ(Math.PI/2);bl.translate(cx-2,cy-1,32.4);add(bl,M.blade);
+  rbox([cx-2.6,cy-1.5,35.4],[cx-1.4,cy+6,37.6],std({color:'#C33B2C',roughness:.45}),.3);
+  cylAxis([cx-2,cy-11,26],'y',3,1.2,M.blade);}
+// dust extractor beside it
+{const x=140,y=-112,body=std({color:'#3E4247',roughness:.5}),lid=std({color:'#6FA33D',roughness:.5});
+  rbox([x-8,y-12,1.5],[x+8,y+12,17],body,1.2);rbox([x-8.2,y-12.2,17],[x+8.2,y+12.2,21],lid,1);
+  [[-6,-9],[6,-9],[-6,9],[6,9]].forEach(([a,b])=>cylAxis([x+a,y+b,1.5],'x',1.5,1.2,M.rubber));
+  const tor=new THREE.TorusGeometry(5,1.1,12,40);tor.rotateY(Math.PI/2);tor.translate(x,y+4,27);add(tor,std({color:'#1F2225',roughness:.7}));}
+});
+
+// pendant lights
+const bulbMat=new THREE.MeshStandardMaterial({color:'#fff2d6',emissive:'#ffcf8a',emissiveIntensity:6});
+const shadeMat=std({color:'#1E2A26',metalness:.4,roughness:.45,side:THREE.DoubleSide});
+P.PENDANTS.forEach(q=>{const p={x:q.x/U,y:q.y/U,z:q.z/U};
+  cylZ(p.x,p.y,p.z+6,ROOM.h,0.15,std({color:'#111'}),{cast:false});
+  const g=new THREE.CylinderGeometry(1.4,7,7,40,1,true);g.rotateX(Math.PI/2);g.translate(p.x,p.y,p.z+3.5);add(g,shadeMat,{cast:false});
+  const b=new THREE.SphereGeometry(1.7,20,14);b.translate(p.x,p.y,p.z+2.4);add(b,bulbMat,{cast:false});
+  const L=new THREE.PointLight('#ffc98a',(small?5:6)*Math.min(4,1+(p.z-92)/60),0,2);L.position.copy(Wi(p.x,p.y,p.z+1));scene.add(L);
+});
+
+/* ---------------- light ---------------- */
+scene.add(new THREE.HemisphereLight('#ffe8c8','#4a3424',0.3));
+const sun=new THREE.DirectionalLight('#ffd3a0',3.0);
+sun.position.copy(Wi(CXi+122*SS,CYi+417*SS,330*SS));sun.target.position.copy(Wi(CXi-8*SS,CYi-13,0));scene.add(sun,sun.target);
+sun.castShadow=true;sun.shadow.mapSize.set(small?2048:4096,small?2048:4096);
+Object.assign(sun.shadow.camera,{left:-7*KS,right:7*KS,top:7*KS,bottom:-7*KS,near:1,far:30*KS});
+sun.shadow.bias=-0.0003;sun.shadow.normalBias=0.02;sun.shadow.radius=3;
+const key=new THREE.SpotLight('#fff0dc',small?70:80,0,0.62,0.9,2);
+key.position.copy(Wi(CXi-108*SS,CYi-183*SS,190*SS));key.target.position.copy(Wi(CXi-8*SS,CYi-3,18*SS));scene.add(key,key.target);
+key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.bias=-0.0002;key.shadow.normalBias=0.02;key.shadow.radius=4;key.shadow.camera.near=1;key.shadow.camera.far=16*KS;
+
+/* ---------------- post-processing ---------------- */
+let composer=null,gtao=null;
+function setupComposer(){
+  if(small)return;
+  try{
+    composer=new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene,camera));
+    gtao=new GTAOPass(scene,camera,innerWidth,innerHeight);
+    gtao.output=GTAOPass.OUTPUT.Default;
+    gtao.blendIntensity=0.85;
+    gtao.updateGtaoMaterial({radius:0.22,distanceExponent:1.4,thickness:1,scale:1,samples:16});
+    gtao.updatePdMaterial({lumaPhi:10,depthPhi:2,normalPhi:3,radius:6,rings:2,samples:16});
+    composer.addPass(gtao);composer.addPass(new OutputPass());
+  }catch(e){composer=null;}
+}
+setupComposer();
+
+/* ---------------- sizing and camera framing ---------------- */
+let viewOffsetY=0;
+function resize(){
+  const w=innerWidth,h=innerHeight;renderer.setSize(w,h,false);
+  camera.aspect=w/h;camera.fov=w/h<0.8?58:w/h<1.2?48:40;
+  // keep the subject centred in the part of the screen the step card leaves clear
+  const card=document.querySelector('.dock').getBoundingClientRect();
+  const top=70,bottom=w<760?card.top:h-24;
+  viewOffsetY=Math.round(h/2-(top+bottom)/2);
+  camera.setViewOffset(w,h,0,viewOffsetY,w,h);
+  camera.updateProjectionMatrix();
+  if(composer){composer.setSize(w,h);}
+  dirty=true;
+}
+// a camera preset is written for a 40° landscape view; narrower screens step back to keep the same width in frame
+function framed(c){
+  const pos=W(...c.pos),tgt=W(...c.target);
+  const vf=camera.fov*Math.PI/360,hf=Math.atan(Math.tan(vf)*camera.aspect),want=Math.atan(Math.tan(20*Math.PI/180)*1.6);
+  const k=Math.max(1,Math.tan(want)/Math.tan(hf))*1*(Math.tan(20*Math.PI/180)/Math.tan(vf));
+  return {pos:tgt.clone().add(pos.sub(tgt).multiplyScalar(Math.max(0.75,k))),tgt};
+}
+
+/* ---------------- steps, URL and UI ---------------- */
+const STEPS=P.STEPS,LAST=P.LAST;
+let cur=-1,t=0,playing=false,tween=null,dirty=true,showLabels=true;
+const prog=$('progress');
+STEPS.forEach((s,i)=>{const a=document.createElement('a');a.href=i?'#step-'+i:'#overview';a.title=(i?'Step '+i+': ':'')+s.title;a.setAttribute('aria-label',a.title);prog.appendChild(a);});
+function hashStep(){const m=location.hash.match(/^#step-(\d+)$/);if(m)return Math.max(0,Math.min(LAST,+m[1]));return 0;}
+
+// the parts a step adds, grouped by what the card calls them (body.listAs, or its label without left/right) and size
+const STRIP=new RegExp(META.listStrip||'^(Left|Right) ');
+const sideless=l=>l.replace(STRIP,'').replace(/,? (left|right)$/i,'');
+function partsOf(s){
+  const groups=new Map();
+  s.moves.forEach(m=>{
+    if(m.remove)return;const b=P.BODY[m.body];
+    // a sub-assembly whose parts arrive in this same step is listed part by part; one already glued up is listed whole
+    if(b.virtual&&s.moves.some(o=>P.BODY[o.body].parent===b.id))return;
+    const size=P.sizeText(b),name=b.listAs||sideless(b.label),key=name+'|'+size;
+    const g=groups.get(key)||{label:name.replace(/^./,c=>c.toUpperCase()),size,n:0,ids:[]};g.n++;g.ids.push(b.id);groups.set(key,g);
+  });
+  return [...groups.values()];
+}
+const removedOf=s=>s.moves.filter(m=>m.remove).length;
+function renderCard(){
+  const s=STEPS[cur];
+  $('sNum').textContent=cur?'Step '+cur+' of '+LAST:'Overview · '+LAST+' steps';
+  const sh=$('sSheet');sh.hidden=!s.sheet;sh.textContent=s.sheet?(s.sheet==='Shop'?'Shop fixture':(META.sheetLabel?META.sheetLabel+' ':'')+s.sheet):'';
+  $('sTitle').textContent=s.title;$('sText').textContent=s.text;
+  const ul=$('sParts');ul.innerHTML='';
+  const groups=cur?partsOf(s):[];
+  groups.forEach(g=>{const li=document.createElement('li');li.innerHTML='<span class="q">'+g.n+'×</span><span class="n"></span><span class="d"></span>';li.children[1].textContent=g.label;li.children[2].textContent=g.size;ul.appendChild(li);});
+  if(cur&&removedOf(s)){const li=document.createElement('li');li.innerHTML='<span class="q">−'+removedOf(s)+'</span><span class="n">Temporary pieces come off</span><span class="d"></span>';ul.appendChild(li);}
+  ul.hidden=!ul.children.length;
+  [...prog.children].forEach((a,i)=>{a.className=i<cur?'done':i===cur?'cur':'';if(i===cur)a.setAttribute('aria-current','step');else a.removeAttribute('aria-current');});
+  $('bPrev').disabled=cur===0;
+  $('bNextT').textContent=cur===0?'Start building':cur===LAST?'Finished '+META.thing:'Next';
+  $('bNext').setAttribute('aria-label',cur===0?'Start building':cur===LAST?'Show the finished '+META.thing:'Next step');
+  document.title=(cur?'Step '+cur+' · ':'')+META.title;
+}
+function go(i,o){
+  o=o||{};i=Math.max(0,Math.min(LAST,i));
+  const changed=i!==cur;cur=i;
+  t=reduceMotion||cur===0?Infinity:-0.35;playing=t!==Infinity;
+  if(changed||o.recam)flyTo(STEPS[cur].cam,o.instant);
+  controls.autoRotate=cur===0&&!reduceMotion;controls.autoRotateSpeed=0.35;
+  renderCard();resize();clearLabels();dirty=true;
+  const h=cur?'#step-'+cur:'#overview';if(location.hash!==h&&!(cur===0&&!location.hash))history.replaceState(null,'',h);
+}
+function flyTo(c,instant){
+  const f=framed(c);
+  if(instant||reduceMotion){camera.position.copy(f.pos);controls.target.copy(f.tgt);tween=null;controls.update();return;}
+  tween={p0:camera.position.clone(),t0:controls.target.clone(),p1:f.pos,t1:f.tgt,u:0};
+}
+$('bNext').onclick=()=>go(cur===LAST?0:cur+1);
+$('bPrev').onclick=()=>go(cur-1);
+$('bReplay').onclick=()=>{go(cur,{recam:true});};
+$('tView').onclick=()=>flyTo(STEPS[cur].cam);
+$('tLabels').onclick=e=>{showLabels=!showLabels;e.currentTarget.setAttribute('aria-pressed',String(showLabels));clearLabels();dirty=true;};
+$('tInfo').onclick=e=>{const on=$('info').hidden;$('info').hidden=!on;e.currentTarget.setAttribute('aria-pressed',String(on));};
+addEventListener('hashchange',()=>{const i=hashStep();if(i!==cur)go(i);});
+addEventListener('keydown',e=>{
+  if(e.target.closest&&e.target.closest('input,textarea'))return;
+  if(e.key==='ArrowRight'||e.key==='PageDown'){go(cur+1);e.preventDefault();}
+  else if(e.key==='ArrowLeft'||e.key==='PageUp'){go(cur-1);e.preventDefault();}
+  else if(e.key==='Home'){go(0);}else if(e.key==='End'){go(LAST);}
+  else if(e.key==='r'||e.key==='R'){go(cur,{recam:true});}
+});
+controls.addEventListener('start',()=>{tween=null;controls.autoRotate=false;$('tip').hidden=true;});
+controls.addEventListener('change',()=>{dirty=true;});
+addEventListener('resize',resize);
+
+/* ---------------- labels for the parts added in a step ---------------- */
+const labelsEl=$('labels'),labelPool=[];
+function clearLabels(){labelPool.forEach(l=>l.el.classList.remove('on'));}
+function labelTargets(){
+  if(!cur||!showLabels)return [];
+  const out=[];
+  partsOf(STEPS[cur]).slice(0,innerWidth<760?3:6).forEach(g=>{
+    const id=g.ids[0],b=P.BODY[id];
+    const bb=P.bodyBounds(b),c=[(bb.min[0]+bb.max[0])/2,(bb.min[1]+bb.max[1])/2,bb.max[2]];
+    out.push({id,text:g.label,size:(g.n>1?g.n+' × ':'')+g.size,c});
+  });
+  return out;
+}
+const v3=new THREE.Vector3();
+function updateLabels(st,done){
+  const L=done?labelTargets():[];
+  while(labelPool.length<L.length){const el=document.createElement('div');el.className='lab';el.innerHTML='<span><b></b><em></em></span>';labelsEl.appendChild(el);labelPool.push({el});}
+  // project each anchor, then nudge labels up so none sit on top of another
+  const placed=[];
+  L.forEach((d,i)=>{
+    const s=st[d.id]||st[P.BODY[d.id].parent];const p=P.mApply(s.M,d.c);
+    v3.set((p[0]-CX)*IN,(p[2]+0.6*U)*IN,(CY-p[1])*IN).project(camera);
+    d.x=(v3.x*.5+.5)*innerWidth;d.y=(-v3.y*.5+.5)*innerHeight;d.off=0;d.hide=v3.z>1;d.w=Math.max(d.text.length*7.6,d.size.length*7.4)+20;
+    // keep the whole label on screen, even when its part is near the edge
+    d.x=Math.max(d.w/2+6,Math.min(innerWidth-d.w/2-6,d.x));
+  });
+  L.filter(d=>!d.hide).sort((a,b)=>b.y-a.y).forEach(d=>{
+    for(let k=0;k<8;k++){const top=d.y-d.off;const hit=placed.find(q=>Math.abs(q.x-d.x)<(q.w+d.w)/2+4&&Math.abs((q.y-q.off)-top)<44);if(!hit)break;d.off+=(top-(hit.y-hit.off))+46;}
+    placed.push(d);
+  });
+  labelPool.forEach((l,i)=>{
+    const d=L[i];if(!d||d.hide){l.el.classList.remove('on');return;}
+    if(l.el.firstChild.firstChild.textContent!==d.text||l.el.firstChild.lastChild.textContent!==d.size){l.el.firstChild.firstChild.textContent=d.text;l.el.firstChild.lastChild.textContent=d.size;}
+    l.el.style.setProperty('--stem',(18+d.off)+'px');
+    l.el.style.transform=`translate(${d.x.toFixed(1)}px,${d.y.toFixed(1)}px) translate(-50%,-100%)`;l.el.classList.add('on');
+  });
+}
+
+/* ---------------- tap a part to measure it ---------------- */
+const ray=new THREE.Raycaster(),ndc=new THREE.Vector2();let down=null;
+canvas.addEventListener('pointerdown',e=>{down={x:e.clientX,y:e.clientY};});
+canvas.addEventListener('pointerup',e=>{
+  if(!down||Math.hypot(e.clientX-down.x,e.clientY-down.y)>6){down=null;return;}down=null;
+  const r=canvas.getBoundingClientRect();ndc.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);
+  ray.setFromCamera(ndc,camera);
+  const hit=ray.intersectObjects(pickables.filter(m=>m.parent.visible),false)[0];
+  const tip=$('tip');
+  if(!hit){tip.hidden=true;return;}
+  const {part,body}=hit.object.userData;
+  const d=[0,1,2].map(i=>part.max[i]-part.min[i]).sort((a,b)=>a-b);
+  const nm=body.parent?P.BODY[body.parent].label+' · '+body.label:body.label;
+  tip.innerHTML='<b></b><span></span>';tip.firstChild.textContent=nm;
+  tip.lastChild.textContent=part.note||d.map(P.fmt).join(' × ');
+  const x=Math.min(e.clientX,innerWidth-300);tip.style.left=x+'px';tip.style.top=e.clientY+'px';tip.hidden=false;
+});
+
+/* ---------------- loop ---------------- */
+const clock=new THREE.Clock();
+let lastSt=null;
+function frame(){
+  requestAnimationFrame(frame);
+  const dt=Math.min(clock.getDelta(),0.05);
+  if(tween){tween.u=Math.min(1,tween.u+dt/1.3);const k=tween.u<.5?4*tween.u**3:1-(-2*tween.u+2)**3/2;
+    camera.position.lerpVectors(tween.p0,tween.p1,k);controls.target.lerpVectors(tween.t0,tween.t1,k);if(tween.u>=1)tween=null;dirty=true;}
+  if(playing){t+=dt;const D=STEPS[cur].dur;if(t>D+1.6)playing=false;dirty=true;}
+  const moved=controls.update();
+  if(!dirty&&!moved&&!controls.autoRotate)return;
+  dirty=false;
+  const st=P.evaluate(cur,playing?Math.max(0,t):(t===Infinity?Infinity:t));
+  applyState(st,cur>0?cur:null,t===Infinity?99:t);
+  lastSt=st;
+  updateLabels(st,cur>0&&(t===Infinity||t>STEPS[cur].dur+0.15));
+  if(composer)composer.render();else renderer.render(scene,camera);
+}
+
+/* ---------------- start ---------------- */
+$('iParts').textContent=P.PARTS.filter(p=>!p.decal&&!P.BODY[p.body].temp).length+' pieces in '+P.BODIES.filter(b=>!b.virtual&&!b.temp).length+' assemblies';
+const first=hashStep();
+cur=-1;go(first,{instant:true});
+if(first>0){t=-0.6;}
+resize();
+requestAnimationFrame(()=>{frame();setTimeout(()=>$('loading').classList.add('gone'),250);});
+// re-run the physics check in the viewer's own browser
+setTimeout(()=>{
+  const r=P.verify({samples:24});const el=$('iCheck');
+  el.className='check '+(r.ok?'ok':'bad');
+  el.lastChild.textContent=r.ok?'Checked just now in this browser: across all '+r.steps+' steps no part passes through another while it moves, every part lands on or against something already there, and the finished '+META.thing+' has no overlapping parts.'
+    :'The physics check found '+r.issues.length+' problems, starting at step '+r.issues[0].step+': '+r.issues[0].kind+', '+r.issues[0].a+'.';
+},1200);
+window.__view={settle(x){t=x===undefined?Infinity:x;playing=false;tween=null;controls.autoRotate=false;dirty=true;},go,get step(){return cur},camera,controls,renderer,scene,ready:true};
+</script>
+</body></html>

@@ -6,6 +6,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 | Skill | What it does |
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
+| [build-walkthrough-3d](#build-walkthrough-3d) | Turn a build plan into an interactive 3D step-by-step assembly walkthrough in a lit shop, with every move physics-checked. |
 | [motion-video](#motion-video) | Make a short promo or explainer motion video for any product: real screens, 3D objects that assemble and get measured, captions, sound, voiceover, in 16:9 and 9:16. |
 | [plan-to-photo](#plan-to-photo) | Turn a furniture plan and a description of a room into a photorealistic render of the piece in that room, built from the plan's exact geometry. |
 | [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
@@ -19,6 +20,7 @@ Clone the repo and symlink (or copy) the skills you want into `~/.claude/skills/
 git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
+ln -s ~/src/skills/build-walkthrough-3d ~/.claude/skills/build-walkthrough-3d
 ln -s ~/src/skills/motion-video ~/.claude/skills/motion-video
 ln -s ~/src/skills/plan-to-photo ~/.claude/skills/plan-to-photo
 ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
@@ -122,6 +124,90 @@ For Rails apps whose flows need fixtures or sign-in helpers, the Capybara adapte
 frames from inside a system test.
 
 Full workflow, storyboard reference, theming and pitfalls: [annotated-demo-video/SKILL.md](annotated-demo-video/SKILL.md).
+
+---
+
+## build-walkthrough-3d
+
+Turns a woodworking or shop plan into the page you keep open in the shop: the piece in a lit 3D
+workshop, one step at a time, each new part sliding or dropping into place, glowing, and labelled with
+its name and size. Tap any part to measure it. Every step has its own link, so "you're on step 14"
+is a URL. It pairs with [woodworking-plans](#woodworking-plans): that skill designs the piece, this one
+shows how to put it together.
+
+The model is the walkthrough. Claude writes one `build.js`: parts as boxes in their finished place,
+grouped into rigid bodies (a glued-up frame moves as one), then steps that move bodies in along paths.
+
+**What you get**
+
+- A single HTML page: three.js scene with Baltic birch ply edges, solid woods, hardware, an assembly
+  table, shop lights and a room sized to the piece; a step card with the parts each step adds and their
+  sizes; progress bar, keyboard controls, phone layout.
+- Sub-assemblies glued up flat on the table, then stood up; temporary fixtures (build stands, braces)
+  that go on and come off again.
+- A contact sheet of every step and a phone screenshot, which Claude reads before showing you.
+
+**Why it is a guardrail**
+
+- A physics check runs on every build: each move is sampled along its path and no part may pass
+  through another, the floor, the table or a light; at the end of each step every part must touch
+  something and every loose part must sit on something; the finished piece may have no overlaps.
+- `mutate.js` breaks moves in the build on purpose (a part pushed ¼″ into its neighbour, a top lifted
+  ⅛″) and fails unless the check catches every one.
+- The page re-runs the check in the viewer's own browser and says so in its About panel.
+- Writing the moves finds order problems a written plan hides: a rail that cannot get past a post, a
+  block that cannot go in once the top is on.
+
+### Demo
+
+A Festool Kapex KS 120 miter station: 272 parts, 30 steps, from cross-frames glued up flat to the saw
+dropping into its bay, in [build-walkthrough-3d/examples/miter-station/](build-walkthrough-3d/examples/miter-station/):
+
+[![Every step of the miter station walkthrough](build-walkthrough-3d/examples/miter-station/sheet.jpg)](build-walkthrough-3d/examples/miter-station/walkthrough.html)
+
+- 🌐 Walkthrough: [walkthrough.html](build-walkthrough-3d/examples/miter-station/walkthrough.html) (download and open)
+- 🧱 Model and sequence: [build.js](build-walkthrough-3d/examples/miter-station/build.js)
+- 📚 Starter: [skeleton/build.js](build-walkthrough-3d/examples/skeleton/build.js), a 6-step plywood bookcase
+
+### Usage
+
+**Prerequisites:** Node 18+. `render_check.js` uses Playwright with Chromium. The page loads three.js
+0.160.0 from jsDelivr; offline, `npm i three@0.160.0` and pass `--libs node_modules`.
+
+**Self-test:**
+
+```bash
+export BW=~/.claude/skills/build-walkthrough-3d
+node $BW/scripts/verify.js $BW/examples/miter-station/build.js
+node $BW/scripts/mutate.js $BW/examples/miter-station/build.js
+```
+
+**Ask Claude** for a walkthrough, with the plan attached or already in the conversation:
+
+> Make a 3D step-by-step build guide for this miter station plan, so I can follow it in the shop.
+
+> Show me how to assemble the bookcase from my woodworking plan, one step at a time.
+
+> Animate the assembly of this workbench: frames first, then rails, then the top.
+
+> What order should I glue this cabinet up in? Show it in 3D.
+
+> The fence goes on before the T-track in my shop, swap those steps.
+
+Claude copies sizes from the plan, writes the sequence the way you would work, proves it, looks at
+every step, and publishes the page.
+
+**Or drive it by hand:**
+
+```bash
+cp $BW/examples/skeleton/build.js .
+node $BW/scripts/verify.js build.js                       # physics check
+node $BW/scripts/mutate.js build.js                       # the check catches broken moves
+node $BW/scripts/render_check.js build.js --out check     # every step, contact sheet, phone view
+node $BW/scripts/build.js build.js walkthrough.html --standalone
+```
+
+Full workflow, API and sequencing rules: [build-walkthrough-3d/SKILL.md](build-walkthrough-3d/SKILL.md).
 
 ---
 
