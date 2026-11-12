@@ -1,0 +1,176 @@
+<title>{{TITLE}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the shop fills the screen; a drawing-set step card and big shop-floor buttons sit over it like a clipboard on the bench.
+   Deliberately one look in both themes: a dark walnut HUD over a lit scene. */
+:root{
+  --ink:#F3ECE0; --muted:#BDB09C; --panel:rgba(24,19,15,.82); --panel-solid:#1A1511; --line:rgba(243,236,224,.16);
+  --birch:#E2B76E; --birch-ink:#2A1D0E; --dim:#8FB3E6; --ok:#9CC98A;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:#14100D;color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5;overflow:hidden;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+#app{position:relative;height:100%;width:100%;overflow:hidden;background:#14100D}
+#c{position:absolute;inset:0;}
+.vignette{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 75% 70% at 50% 45%,rgba(0,0,0,0) 55%,rgba(10,7,5,.45) 100%)}
+#c{width:100%;height:100%;display:block;touch-action:none;outline:none}
+
+/* top bar */
+.top{position:absolute;top:0;left:0;right:0;display:flex;align-items:flex-start;gap:12px;pointer-events:none;
+  padding-top:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.brand{pointer-events:auto;display:grid;gap:2px;background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:3px;padding:8px 12px 9px;min-width:0}
+.eyebrow{font-family:var(--f-display);font-weight:600;font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brand b{font-family:var(--f-display);font-weight:700;font-size:21px;letter-spacing:.02em;text-transform:uppercase;line-height:1}
+.tools{pointer-events:auto;margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tool{background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:3px;padding:8px 11px;font-size:13px;font-weight:500;cursor:pointer;min-height:38px;display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:var(--ink)}
+.tool:hover{border-color:rgba(243,236,224,.45)}
+.tool[aria-pressed="true"]{background:var(--birch);color:var(--birch-ink);border-color:var(--birch)}
+.tool svg{width:16px;height:16px;flex:none}
+
+/* progress */
+.progress{position:absolute;left:0;right:0;bottom:0;display:flex;gap:3px;height:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));margin-bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+.progress a{flex:1;display:block;background:rgba(243,236,224,.18);border-radius:1px;position:relative}
+.progress a::after{content:"";position:absolute;inset:-10px 0}
+.progress a.done{background:rgba(226,183,110,.6)}
+.progress a.cur{background:var(--birch)}
+.progress a:focus-visible{outline:2px solid var(--dim);outline-offset:3px}
+
+/* step card */
+.dock{position:absolute;left:0;right:0;bottom:calc(26px + env(safe-area-inset-bottom,0px));display:flex;align-items:flex-end;gap:14px;pointer-events:none;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{pointer-events:auto;width:min(460px,100%);background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);border-radius:4px;padding:14px 16px 14px;display:grid;gap:8px;min-width:0;max-height:min(52vh,460px);overflow:auto}
+.meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.num{font-family:var(--f-mono);font-size:12.5px;color:var(--birch);font-variant-numeric:tabular-nums}
+.sheet{font-family:var(--f-mono);font-size:11.5px;background:var(--ink);color:#1A1511;padding:1px 6px;border-radius:2px}
+.card h1{margin:0;font-family:var(--f-display);font-weight:600;font-size:clamp(24px,3.2vw,30px);line-height:1.02;letter-spacing:.01em;text-transform:uppercase;text-wrap:balance}
+.card p{margin:0;color:#E2D8C8;font-size:14.5px;max-width:62ch}
+.parts{display:grid;gap:4px;margin:2px 0 0;padding:8px 0 0;border-top:1px solid var(--line);list-style:none}
+.parts li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:baseline;font-size:13.5px}
+.parts .q{font-family:var(--f-mono);color:var(--birch);font-size:12.5px;min-width:2.4em}
+.parts .d{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums}
+.parts .n{min-width:0}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line);padding-top:8px}
+.check i{flex:none;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-top:5px}
+.check.ok i{background:var(--ok)}
+.check.bad i{background:#E08A5C}
+
+.nav{pointer-events:auto;margin-left:auto;display:flex;gap:8px;align-items:stretch}
+.btn{border:1px solid var(--line);background:var(--panel);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-radius:4px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-family:var(--f-display);font-weight:600;font-size:20px;letter-spacing:.06em;text-transform:uppercase;min-height:64px;padding:0 20px}
+.btn svg{width:22px;height:22px;flex:none}
+.btn.next{background:var(--birch);color:var(--birch-ink);border-color:var(--birch);min-width:150px}
+.btn.next:hover{background:#ECC47F}
+.btn:disabled{opacity:.35;cursor:default}
+.btn.sq{padding:0;width:64px}
+.btn:focus-visible,.tool:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
+
+/* part labels in the scene */
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lab{position:absolute;left:0;top:0;transform:translate(-50%,-100%);display:grid;justify-items:center;opacity:0;transition:opacity .35s}
+.lab.on{opacity:1}
+.lab span{background:rgba(20,16,13,.88);border:1px solid rgba(226,183,110,.55);border-radius:3px;padding:3px 8px 4px;white-space:nowrap;display:grid;gap:0;text-align:center}
+.lab b{font-family:var(--f-display);font-weight:600;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
+.lab em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--birch)}
+.lab::after{content:"";width:1px;height:var(--stem,18px);background:rgba(226,183,110,.75)}
+
+/* tap-to-measure */
+.tip{position:absolute;pointer-events:none;background:rgba(20,16,13,.92);border:1px solid var(--line);border-radius:3px;padding:6px 9px;font-size:13px;display:grid;gap:1px;transform:translate(14px,14px);max-width:280px}
+.tip b{font-weight:600}
+.tip span{font-family:var(--f-mono);font-size:12.5px;color:var(--birch)}
+
+/* loading */
+.loading{position:absolute;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 60%,#2A2017,#14100D 70%);transition:opacity .6s;z-index:5}
+.loading.gone{opacity:0;pointer-events:none}
+.loading div{display:grid;gap:10px;justify-items:center;text-align:center;padding:0 24px}
+.loading b{font-family:var(--f-display);font-size:34px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.loading span{color:var(--muted);font-size:14px}
+.bar{width:180px;height:3px;background:rgba(243,236,224,.15);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;width:40%;background:var(--birch);animation:load 1.2s ease-in-out infinite}
+@keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+
+/* info sheet */
+.info{position:absolute;top:70px;right:max(16px,env(safe-area-inset-right,0px));width:min(360px,calc(100% - 32px));background:var(--panel-solid);border:1px solid var(--line);border-radius:4px;padding:14px 16px;display:grid;gap:10px;font-size:13.5px;z-index:3;max-height:calc(100% - 200px);overflow:auto}
+.info h2{margin:0;font-family:var(--f-display);font-weight:600;font-size:20px;text-transform:uppercase;letter-spacing:.03em}
+.info p{margin:0;color:#E2D8C8}
+.info a{color:var(--birch)}
+.info dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:0;font-size:13px}
+.info dt{color:var(--muted)}
+.info dd{margin:0;font-family:var(--f-mono);font-size:12.5px}
+.keys{color:var(--muted);font-size:12.5px}
+
+@media (max-width:760px){
+  .dock{flex-direction:column;align-items:stretch;gap:8px;bottom:calc(22px + env(safe-area-inset-bottom,0px))}
+  .card{width:100%;max-height:38vh;padding:11px 13px;gap:6px}
+  .card h1{font-size:22px}
+  .card p{font-size:13.5px}
+  .nav{margin-left:0}
+  .nav .next{flex:1}
+  .btn{min-height:56px}
+  .btn.sq{width:56px}
+  .brand{padding:7px 10px}
+  .brand .eyebrow{display:none}
+  .brand b{font-size:16px}
+  .tools{flex-wrap:nowrap}
+  .tool .t{display:none}
+  .tool{padding:8px 10px}
+  .btn{font-size:18px;letter-spacing:.04em;white-space:nowrap;padding:0 14px}
+  .lab b{font-size:12.5px}
+  .lab em{font-size:11px}
+}
+@media (max-width:760px) and (max-height:700px){ .parts{display:none} }
+@media (prefers-reduced-motion:reduce){ .bar i{animation:none} .lab{transition:none} }
+</style>
+
+<div id="app">
+  <canvas id="c" tabindex="0" aria-label="3D view of the shop and the {{THING}}. Drag to look around, pinch or scroll to zoom. Tap a part to see its size."></canvas>
+  <div class="vignette" aria-hidden="true"></div>
+  <div id="labels" aria-hidden="true"></div>
+  <div class="tip" id="tip" hidden></div>
+
+  <div class="top">
+    <div class="brand"><span class="eyebrow">{{EYEBROW}}</span><b>{{TITLE}}</b></div>
+    <div class="tools">
+      <button class="tool" id="tLabels" aria-pressed="true" title="Show part names and sizes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.4"/></svg><span class="t">Sizes</span></button>
+      <button class="tool" id="tView" title="Return to this step's view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg><span class="t">Reset view</span></button>
+      <button class="tool" id="tInfo" aria-pressed="false" aria-controls="info" title="About this build"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span class="t">About</span></button>
+    </div>
+  </div>
+
+  <section class="info" id="info" hidden aria-label="About this build">
+    <h2>About this build</h2>
+    <p>{{INTRO}}</p>
+    <dl>
+{{ABOUT}}      <dt>Parts</dt><dd id="iParts">–</dd>
+    </dl>
+    <div class="check" id="iCheck"><i></i><span>Checking every move for collisions…</span></div>
+    <p class="keys">Keys: ← and → step through, R replays the step. Every step has its own link, so you can share the step you are on.</p>
+{{LINKS}}  </section>
+
+  <div class="dock">
+    <article class="card" id="card" aria-live="polite">
+      <div class="meta"><span class="num" id="sNum">Overview</span><span class="sheet" id="sSheet" hidden></span></div>
+      <h1 id="sTitle">{{TITLE}}</h1>
+      <p id="sText"></p>
+      <ul class="parts" id="sParts" hidden></ul>
+    </article>
+    <div class="nav">
+      <button class="btn sq" id="bPrev" aria-label="Previous step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="btn sq" id="bReplay" aria-label="Replay this step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v5h5"/></svg></button>
+      <button class="btn next" id="bNext"><span id="bNextT">Start building</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+  </div>
+  <nav class="progress" id="progress" aria-label="Steps"></nav>
+
+  <div class="loading" id="loading"><div><b>Opening the shop</b><span>{{LOADING}}</span><div class="bar"><i></i></div></div></div>
+</div>
+
+<script>/*PLAN_JS*/</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">/*APP_JS*/</script>
