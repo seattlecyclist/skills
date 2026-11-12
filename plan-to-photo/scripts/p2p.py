@@ -691,6 +691,26 @@ def creases(o, seed=11, depth=0.009):
     o.modifiers.new('sub', 'SUBSURF').levels = 1; smooth(o)
 
 
+def wrinkle(o, seed=7, depth=0.018, folds=90, lump=0.007):
+    """Fine folds and lumps on a simulated sheet (duvet, throw, tablecloth). A cloth sim over a
+    mattress settles into a few big smooth drapes; real bedding also carries dozens of small
+    compression folds and filling lumps, and without them it reads as rubber (walnut bed r00).
+    Subdivides once, then pushes vertices along their normals."""
+    np = _np(); rng = np.random.default_rng(seed)
+    o.modifiers.new('wsub', 'SUBSURF').levels = 1; apply_mods(o, {'SUBSURF'})
+    P = getv(o); o.data.update(); N = np.zeros(P.size); o.data.vertex_normals.foreach_get('vector', N); N = N.reshape(-1, 3)
+    off = np.zeros(len(P))
+    for _ in range(folds):
+        c = P[rng.integers(len(P))]; a = rng.uniform(0, math.pi); d = np.array([math.cos(a), math.sin(a), 0.0])
+        r = P - c; t = r @ d; s = np.linalg.norm(r - t[:, None] * d, axis=1)
+        ln = rng.uniform(0.12, 0.5); w = rng.uniform(0.012, 0.03)
+        off += rng.choice([1.0, 1.0, -0.6]) * rng.uniform(0.4, 1.0) * np.exp(-(s / w) ** 2) * np.exp(-(t / ln) ** 2)
+    ph = rng.uniform(0, 2 * math.pi, 4)
+    lumps = (np.sin(11 * P[:, 0] + ph[0]) * np.sin(13 * P[:, 1] + ph[1]) + 0.5 * np.sin(23 * P[:, 0] + 17 * P[:, 1] + ph[2])) / 1.5
+    setv(o, P + N * (depth * off + lump * lumps)[:, None])
+    print('WRINKLE %s %d verts, deepest fold %.1f mm' % (o.name, len(P), 1000 * depth * float(np.abs(off).max())))
+
+
 def pillow(name, sx, sy, sz, mat, n=48, seed=0):
     """A pillow or cushion: a filled case sx by sy (half sizes) and sz thick, centred at the origin,
     lying in XY. Follow with creases(), then rotate and place, then lean_on/rest_on/press_into."""
@@ -729,7 +749,7 @@ def lamp(name, x, y, z0, base_mat, shade_mat, rod_mat, watts=18, color=(1.0, 0.7
     r = lathe(name + '_Rod', [(0.006, 0.33), (0.006, 0.52)], 24, rod_mat); r.location = (x, y, z0)
     s = lathe(name + '_Shade', [(0.16, 0.36), (0.13, 0.56)], 96, shade_mat, cap_bottom=False, cap_top=False); s.location = (x, y, z0)
     s.modifiers.new('sol', 'SOLIDIFY').thickness = 0.002; smooth(s)
-    ld = bpy.data.lights.new(name + '_Bulb', 'POINT'); ld.energy = watts; ld.shadow_soft_size = 0.03; ld.color = color
+    ld = bpy.data.lights.new(name + '_Bulb', 'POINT'); ld.energy = watts; ld.shadow_soft_size = 0.065; ld.color = color
     lo = bpy.data.objects.new(name + '_Bulb', ld); lo.location = (x, y, z0 + 0.46); col().objects.link(lo)
     return [b, r, s, lo]
 
