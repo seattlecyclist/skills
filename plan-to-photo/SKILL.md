@@ -26,7 +26,7 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | `scripts/render.py` | HDRI with matched sun, window portals, camera, Cycles on the GPU, AgX. `--preview`, `--border`. |
 | `scripts/review.py` | Review sheet: the frame plus 100% crops of the places renders give themselves away. |
 | `references/drawings.md` | Reading a PDF or image plan into `takeoff.json` and `model.json`. **Read before modelling from drawings.** |
-| `references/realism.md` | The rules, each from a real miss. **Read before the first preview.** |
+| `references/realism.md` | The rules, each from a real miss; what was tried and rejected; where renders still fail; untested advice from the research. **Read before the first preview.** |
 | `references/settings.md` | Room recipes: bedroom, kitchen, living, dining, office, bathroom, patio, workshop. |
 | `references/scene-spec.md` | Every field of `scene.json` and how dress scripts work. |
 | `examples/walnut-bed/` | The worked example: plan, shop plan, scene, dress script, final render, and the original scripts. Also the same bed from its PDF: `Castle-Leg-Bed-rev-A.pdf`, `takeoff.json`, `model.json`, `run_pdf.sh`. |
@@ -136,3 +136,8 @@ one line. Record the camera and light flags in the spec's `render` block.
   (walnut bed v5). Keep f/5.6 and let the outside be slightly soft and bright.
 - Scans are raw wood; finish them (`gamma`, `tone`). Raw walnut veneer renders milk-chocolate.
 - Don't ship procedural fallbacks: `build_scene.py` prints `fallback` for every missing set.
+- Fine cloth detail as geometry or texture reads as a pattern: crinkle bumps, 3 mm creases, quilting,
+  hundreds of small folds and a twice-subdivided sim all lost blind tests. Keep `wrinkle`'s 1 to 3 cm
+  folds and put finer creases in the `fabric` shader (`realism.md`, Tried and rejected).
+- Expect close viewers to still spot the render. Bedding, the walnut veneer, the rug, lamp glow and
+  spotless props are the open giveaways; say so if the user asks whether it will pass as a photo.
