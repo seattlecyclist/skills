@@ -206,7 +206,9 @@ Full workflow, beat sheet, principles, voiceover paths and pitfalls: [motion-vid
 ## plan-to-photo
 
 Takes a plan and a description of a setting (a bedroom, a kitchen, a living room) and makes a
-photorealistic picture of the piece in that room. The plan's geometry is imported exactly, so the
+photorealistic picture of the piece in that room. The plan can be a woodworking-plans `plan.js`, a
+plan PDF, or images of its pages (scans, phone photos, screenshots): Claude reads the drawings into a
+model of every part and checks it against the parts list and overall size before rendering. The plan's geometry is imported exactly, so the
 joinery, tapers and proportions in the picture are the ones that will be built; AI image generators
 redraw the piece and lose them, so this is done the archviz way, in Blender Cycles.
 
@@ -252,6 +254,12 @@ The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching 
 - 🧾 Scene: [scene.json](plan-to-photo/examples/walnut-bed/scene.json) and
   [walnut_bed.py](plan-to-photo/examples/walnut-bed/walnut_bed.py) (rebuilt legs and curved headboard,
   the nightstands)
+- 📄 The same bed from its PDF shop plan: [Castle-Leg-Bed-rev-A.pdf](plan-to-photo/examples/walnut-bed/Castle-Leg-Bed-rev-A.pdf)
+  read into [takeoff.json](plan-to-photo/examples/walnut-bed/takeoff.json) and
+  [model.json](plan-to-photo/examples/walnut-bed/model.json); `run_pdf.sh` renders it with the same scene as
+  [walnut-bed-from-pdf.jpg](plan-to-photo/examples/walnut-bed/walnut-bed-from-pdf.jpg) (Blender 5.3, Metal). The plan.js
+  path renders a pixel-identical image on the same machine; it differs slightly from the v6 image
+  above (camera, cloth drape, sun patch) because renders vary between Blender versions
 - 📜 How it got there, v1 to v6: [original/](plan-to-photo/examples/walnut-bed/original/)
 - 🧭 3D: [viewer/](plan-to-photo/examples/walnut-bed/viewer/) has the orbit page with its baked GLB
   and the 360 page with its pano. Download the folder, run `python3 -m http.server` in it and open
@@ -260,8 +268,8 @@ The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching 
 ### Usage
 
 **Prerequisites:** Blender 4.2+ (`blender` on PATH, or `pip install bpy`), Node 18+ for plan.js
-export, Python 3 with Pillow. A GPU for the final: about 15 minutes at 3000x2000 on an Apple M2 Max,
-hours on a CPU. Network access to polyhaven.com and ambientcg.com for the scans.
+export, Python 3 with Pillow, poppler or PyMuPDF for PDF plans. A GPU for the final: about 15
+minutes at 3000x2000 on an Apple M2 Max, hours on a CPU. Network access to polyhaven.com and ambientcg.com for the scans.
 
 **Self-test** (exports the plan, fetches the scans, builds, renders a quarter-size preview):
 
@@ -277,6 +285,12 @@ $P2P/examples/walnut-bed/run.sh /tmp/walnut-bed --preview
 
 > Put this walnut sideboard in a mid-century living room with a dark green wall, a wool rug and late
 > afternoon sun. Shoot it straight on at eye height.
+
+> Here's the PDF of my castle leg bed plan. Render it in a warm bedroom with a window on the left,
+> walnut nightstands and linen bedding.
+
+> I took photos of the plan pages for this bookcase (attached). Show it in a home office with a
+> green wall and afternoon light.
 
 > Here is my kitchen island model (island.glb). Show it in a bright kitchen with a white quartz
 > counter, brass pulls, two pendant lights and a bowl of lemons.
@@ -304,6 +318,11 @@ blender -b -P $P2P/scripts/render.py -- scene.blend v1.png --hdri assets/hdri/bo
 python3 $P2P/scripts/review.py v1.png
 blender -b -P $P2P/scripts/render.py -- scene.blend v1.png [same flags] --mode pano,viewer
 cd viewer && python3 -m http.server 8000      # open http://localhost:8000/
+
+# from a PDF or images instead of plan.js: render the pages, read them into takeoff.json and
+# model.json (references/drawings.md), then build and check the model
+python3 $P2P/scripts/read_drawings.py plan.pdf drawings/
+node $P2P/scripts/build_model.js model.json bed.obj --takeoff takeoff.json
 ```
 
 Full workflow, scene spec, room recipes and realism rules: [plan-to-photo/SKILL.md](plan-to-photo/SKILL.md).

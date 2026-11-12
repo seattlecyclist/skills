@@ -1,0 +1,32 @@
+{
+  "about": "Read from Castle-Leg-Bed-rev-A.pdf (a printed shop plan, no text layer). Every number here is copied off a page; the page is given so it can be checked.",
+  "units": "in",
+  "overall": {"w": 66, "d": 88.25, "h": 44, "from": "p1 What You'll Need; p6 front view; p7 side view"},
+  "parts": [
+    {"id": "1",  "name": "Legs",                  "qty": 4,  "t": 3,    "w": 3,     "l": 13,     "material": "Walnut, rift",        "from": "p3"},
+    {"id": "2",  "name": "Side Rails",            "qty": 2,  "t": 1,    "w": 4,     "l": 86,     "material": "Walnut, quartersawn", "from": "p3, p12"},
+    {"id": "3",  "name": "End Rails",             "qty": 2,  "t": 1,    "w": 4,     "l": 66,     "material": "Walnut, quartersawn", "from": "p3, p12"},
+    {"id": "4",  "name": "Side Cleats",           "qty": 2,  "t": 1,    "w": 1,     "l": 80,     "material": "Walnut, quartersawn", "from": "p3"},
+    {"id": "5",  "name": "End Cleats",            "qty": 2,  "t": 1,    "w": 1,     "l": 60,     "material": "Walnut, quartersawn", "from": "p3"},
+    {"id": "6",  "name": "Slat Supports",         "qty": 2,  "t": 1,    "w": 1,     "l": 80,     "material": "Hard maple",          "from": "p3"},
+    {"id": "7",  "name": "U Brackets",            "qty": 2,  "t": 1,    "w": 1.75,  "l": 4,      "material": "Hard maple",          "from": "p3, p13"},
+    {"id": "8",  "name": "Center Rail",           "qty": 1,  "t": 0.75, "w": 2,     "l": 81.875, "material": "Hard maple",          "from": "p3"},
+    {"id": "9",  "name": "Center Posts",          "qty": 3,  "t": 2,    "w": 2,     "l": 10,     "material": "Walnut",              "from": "p3"},
+    {"id": "10", "name": "Slats",                 "qty": 16, "t": 0.75, "w": 2,     "l": 61.875, "material": "Hard maple",          "from": "p3"},
+    {"id": "11", "name": "Spacer Blocks",         "qty": 2,  "t": 1,    "w": 3,     "l": 3,      "material": "Walnut",              "from": "p5"},
+    {"id": "12", "name": "Headboard Lower Board", "qty": 1,  "t": 1,    "w": 22.25, "l": 66,     "material": "Walnut, quartersawn", "from": "p5"},
+    {"id": "13", "name": "Headboard Top Board",   "qty": 1,  "t": 1,    "w": 14,    "l": 66,     "material": "Walnut, quartersawn", "from": "p5"},
+    {"id": "14", "name": "Headboard Braces",      "qty": 2,  "t": 1.25, "w": 3,     "l": 33,     "material": "Walnut",              "from": "p5"}
+  ],
+  "positions": [
+    "Legs: 3 x 3 at the four outside corners; leg faces 60 x 80 apart (p23 Mattress fit). Two 1 x 4 slots cross in each top, centred: 1 / 1 / 1 (p11).",
+    "Rails: 1 thick, centred in the leg slots (x or y 1 to 2 from the outside), tops flush with the leg tops, so 9 to 13 high (p11, p12). Side rail notched from the top, end rail from the bottom, 2 deep, 1 in from each end (p12).",
+    "Cleats: 1 x 1 outside each rail, flush with the rail top and the leg faces (p3), between the legs.",
+    "Slats: top 1-1/2 below the rail tops, so 11-1/2 (p24 Paperwork). 16 at 2-13/16 gaps, first at 5-13/16 (p23 J9). 1/16 clear of each side rail face (p23).",
+    "Slat supports: 1 x 1 under the slats on the inside face of each side rail (p10 Section B-B).",
+    "U brackets: on the inside face of each end rail at x 31 to 35 (p23 J11), bottom flush with the rail bottom; 2 x 3/4 notch carries the centre rail flat (p3).",
+    "Centre rail: 3/4 x 2 flat, top at the slat bottom (10-3/4), 1/16 short of each end rail (p3). Posts 10 tall, floor to rail (p23: 10-3/4 - 3/4), at the quarter points of the 80 between the legs (p7 side view).",
+    "Headboard: 1 boards behind the head legs (y 86 to 87); lower board from the rail bottom (9) up to 29-3/4 at the ends, 31-1/4 at the centre; 1/4 gap; top board 30 at the ends (31-1/2 centre) to 44 (42-1/2 centre), 3/4 radius top corners (p5, p23).",
+    "Spacer blocks: 3 x 3 x 1 glued to the back of the head rail under the end cleat (p5), behind the braces. Braces 1-1/4 x 3 x 33 behind the boards, 9 to 42 high, centred 4-1/2 from each side (p23 J11: cap nuts at 4-1/2)."
+  ]
+}
