@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild and render the walnut bed example as the realism gauntlet left it (wrinkled duvet, soft lamp bulbs, camera grain).
+# Rebuild and render the walnut bed example as the realism gauntlets left it (wrinkled duvet, soft lamp bulbs, camera grain, creased cloth shader).
 #   ./run_gauntlet.sh [workdir] [--preview]
 # Needs Node 18+, Blender 4.2+ on PATH (or BLENDER=/path/to/blender), and network access for the
 # CC0 assets on first run. Without the assets it still runs, with procedural fallback materials.
