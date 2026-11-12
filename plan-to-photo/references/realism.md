@@ -24,6 +24,11 @@ render the way a viewer does. Check each one on the review sheet before calling 
   (`creases`).
 - **Drape cloth with a sim, never by hand.** Duvet, throw, tablecloth, curtains hang from cloth
   simulation over collision objects (`run_cloth`), then get thickness and subdivision.
+- **A settled sim is too smooth; add the small folds.** A duvet sim over a mattress settles into a
+  few big drapes and reads as rubber (gauntlet r00: six of six critics named it). `wrinkle` adds
+  dozens of 1 to 3 cm compression folds and filling lumps along the normals after the sim; five of
+  five critics preferred it. Don't go finer: 3 mm creases and crinkle bump maps read as pockmarks
+  or a pasted pattern (r02, r03), and quilt puffs as blobs (r07).
 
 ## Light
 
@@ -38,6 +43,9 @@ render the way a viewer does. Check each one on the review sheet before calling 
 - **Watch blown highlights.** A sun patch on a pale rug clips to white. Lower `--sun-gain` (0.7 to
   0.85) or `--exposure` a little; AgX keeps the rest.
 - **Practical lamps on.** Warm (about 2700 K) lamps in a daylit room are what make a room feel lived in.
+- **Lamp bulbs are big.** A 3 cm point bulb throws a hard-edged cone up the wall that critics call a
+  CG spotlight; a 6.5 cm bulb (a real A19) softens the cone's edge (gauntlet r05, four of five
+  preferred). Don't switch lamps off to hide it: the room goes dark (r13).
 
 ## Materials
 
@@ -59,6 +67,11 @@ render the way a viewer does. Check each one on the review sheet before calling 
 - f/5.6 with focus on the hero: the background softens a little, as a real photo would. Stopping
   down to f/8 to sharpen the window view (v5) made the garden look like a photo pasted in; Mike
   preferred v4's soft view. A window view should be slightly soft and brighter than the room.
+- **A little grain.** A denoised render is cleaner than any camera; faint shot-noise grain
+  (`--grain 0.007`, scaled with width, no stronger than the walls in real photos) won five of five
+  (gauntlet r06). Stronger reads as added noise, and at 3000 px wide even this was called render
+  noise by some critics, so keep it faint.
+- Keep the exposure moody rather than lifted: opening up half a stop read as hazy render GI (r11).
 - 3:2 at 3000x2000 for the final. Previews at a quarter size and 64 samples.
 
 ## Process

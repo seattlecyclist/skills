@@ -64,6 +64,7 @@ def duvet_fn(u, v):
 nu = max(40, int(DW / 0.024)); nv = max(60, int(Lt / 0.024))
 duvet = grid('Duvet', nu, nv, duvet_fn, BM['duvet'])
 run_cloth(duvet, 55, mass=0.5, bend=1.5, tension=10, dist=0.008, selfd=0.009)
+wrinkle(duvet, seed=B.get('wrinkle_seed', 7))
 duvet.modifiers.new('sol', 'SOLIDIFY').thickness = 0.014
 duvet.modifiers.new('sub', 'SUBSURF').render_levels = 2; smooth(duvet)
 

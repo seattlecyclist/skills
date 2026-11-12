@@ -44,6 +44,7 @@ ap.add_argument('--look', default='AgX - Medium High Contrast')
 ap.add_argument('--border', default=None)
 ap.add_argument('--backplate', default=None); ap.add_argument('--haze', type=float, default=0.12)
 ap.add_argument('--bp-gain', type=float, default=1.0)
+ap.add_argument('--grain', type=float, default=0.007, help='sensor noise, shot-noise scaled, as it reads at 2000 px wide (scaled with width); 0 = off')
 ap.add_argument('--suncheck', action='store_true'); ap.add_argument('--device', default='auto')
 A = ap.parse_args(argv)
 V = lambda s: Vector(tuple(map(float, s.split(','))))
@@ -178,4 +179,14 @@ try: vs.use_white_balance = True; vs.white_balance_temperature = A.wb
 except Exception as e: print('WB not available:', e)
 sc.render.image_settings.file_format = 'PNG'; sc.render.filepath = os.path.abspath(A.out)
 bpy.ops.render.render(write_still=True)
+if A.grain > 0 and not A.preview:
+    import numpy as np
+    im = bpy.data.images.load(os.path.abspath(A.out)); w, h = im.size
+    px = np.empty(w * h * 4, dtype=np.float32); im.pixels.foreach_get(px); px = px.reshape(h, w, 4)
+    rng = np.random.default_rng(7); v = px[..., :3]
+    lum = rng.standard_normal((h, w, 1)).astype(np.float32); chroma = 0.25 * rng.standard_normal((h, w, 3)).astype(np.float32)
+    nz = lum + chroma; nz = (nz + np.roll(nz, 1, 0) + np.roll(nz, 1, 1) + np.roll(np.roll(nz, 1, 0), 1, 1)) / 2.0
+    px[..., :3] = np.clip(v + A.grain * w / 2000 * np.sqrt(np.maximum(v, 0.004)) * nz, 0, 1)
+    im.pixels.foreach_set(px.reshape(-1)); im.filepath_raw = os.path.abspath(A.out); im.file_format = 'PNG'; im.save()
+    print('GRAIN', A.grain)
 print('RENDERED', A.out, '%dx%d' % (rx, ry), c.samples, 'spp')
