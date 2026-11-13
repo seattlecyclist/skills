@@ -6,7 +6,7 @@ image for scripts/nano_banana.py: the model is drawn exactly, from the camera yo
 
   python3 scripts/line_drawing.py bed.obj bed-lines.jpg --cam=-1.35,-1.75,1.45 --target=0.85,1.05,0.42 --fov 50
 
-Write negative coordinates as --cam=-1,2,3 (with =). The OBJ is in meters, Z up (what export_obj.js and build_model.js write). --fov is horizontal, in degrees.
+Write negative coordinates as --cam=-1,2,3 (with =). The OBJ is in meters, Z up (what export_obj.js, build_model.js and skp_import.py write). --fov is horizontal, in degrees.
 """
 import argparse
 import numpy as np
@@ -22,14 +22,21 @@ a = ap.parse_args()
 W, H = map(int, a.res.split("x"))
 cam = np.array([float(t) for t in a.cam.split(",")]); tgt = np.array([float(t) for t in a.target.split(",")])
 
-V, F, oid = [], [], -1
+# Vertex normals (vn), when the OBJ has them, are interpolated so smooth surfaces (a SketchUp arc
+# with soft edges, a turned leg) draw without a line at every facet.
+V, VN, F, oid = [], [], [], -1
 for l in open(a.obj):
     if l.startswith("o "): oid += 1
     elif l.startswith("v "): V.append([float(t) for t in l.split()[1:4]])
+    elif l.startswith("vn "): VN.append([float(t) for t in l.split()[1:4]])
     elif l.startswith("f "):
-        idx = [int(t.split("/")[0]) - 1 for t in l.split()[1:]]
-        for k in range(1, len(idx) - 1): F.append(((idx[0], idx[k], idx[k + 1]), max(oid, 0)))
-V = np.array(V)
+        tok = [t.split("/") for t in l.split()[1:]]
+        idx = [int(t[0]) - 1 for t in tok]
+        nidx = [int(t[2]) - 1 for t in tok] if all(len(t) > 2 and t[2] for t in tok) else None
+        for k in range(1, len(idx) - 1):
+            F.append(((idx[0], idx[k], idx[k + 1]), max(oid, 0),
+                      (nidx[0], nidx[k], nidx[k + 1]) if nidx else None))
+V = np.array(V); VN = np.array(VN) if VN else np.zeros((0, 3))
 
 fwd = tgt - cam; fwd /= np.linalg.norm(fwd)
 right = np.cross(fwd, [0, 0, 1]); right /= np.linalg.norm(right); up = np.cross(right, fwd)
@@ -38,7 +45,7 @@ f = (W / 2) / np.tan(np.radians(a.fov / 2)); px = W / 2 + f * x / z; py = H / 2 
 
 zb = np.full((H, W), np.inf); idb = np.full((H, W), -1); nb = np.zeros((H, W, 3)); shade = np.ones((H, W))
 L = np.array([-0.4, -0.6, 0.7]); L /= np.linalg.norm(L)
-for (i, j, k), o in F:
+for (i, j, k), o, ns in F:
     if min(z[i], z[j], z[k]) <= 0.01: continue
     n = np.cross(V[j] - V[i], V[k] - V[i]); nn = np.linalg.norm(n)
     if nn == 0: continue
@@ -56,8 +63,13 @@ for (i, j, k), o in F:
     m = (w0 >= -1e-6) & (w1 >= -1e-6) & (w2 >= -1e-6)
     zz = 1 / (w0 / zs[0] + w1 / zs[1] + w2 / zs[2])
     sub = zb[y0:y1 + 1, x0:x1 + 1]; m &= zz < sub
-    sub[m] = zz[m]; idb[y0:y1 + 1, x0:x1 + 1][m] = o; nb[y0:y1 + 1, x0:x1 + 1][m] = n
-    shade[y0:y1 + 1, x0:x1 + 1][m] = 0.80 + 0.20 * abs(n @ L)
+    sub[m] = zz[m]; idb[y0:y1 + 1, x0:x1 + 1][m] = o
+    if ns is None:
+        nb[y0:y1 + 1, x0:x1 + 1][m] = n; shade[y0:y1 + 1, x0:x1 + 1][m] = 0.80 + 0.20 * abs(n @ L)
+    else:
+        npx = w0[m, None] * VN[ns[0]] + w1[m, None] * VN[ns[1]] + w2[m, None] * VN[ns[2]]
+        npx /= np.maximum(np.linalg.norm(npx, axis=1, keepdims=True), 1e-9)
+        nb[y0:y1 + 1, x0:x1 + 1][m] = npx; shade[y0:y1 + 1, x0:x1 + 1][m] = 0.80 + 0.20 * np.abs(npx @ L)
 
 # Edges: a change of part, a crease (normals differ), or a depth jump.
 e = np.zeros((H, W), bool)

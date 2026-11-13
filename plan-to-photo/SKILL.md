@@ -1,6 +1,6 @@
 ---
 name: plan-to-photo
-description: Turn a furniture or woodworking plan (a woodworking-plans plan.js or plan.html, a plan PDF, images of plan pages such as scans, phone photos or screenshots, an OBJ/GLB/STL/FBX model, or dimensioned drawings) plus a description of a setting (a bedroom, kitchen, living room, dining room, office, patio) into a photorealistic render of the piece in that room, built in Blender Cycles from the plan's exact geometry with scanned CC0 materials, cloth-simulated soft goods, an HDRI sky with a matched sun, and a review pass for the giveaways (floating pillows, light leaks, plastic wood, blown highlights). Use whenever the user wants to see a plan "for real" (including when they attach a plan PDF or picture), asks for a photoreal or realistic render, a lifestyle or catalogue shot, a "what would it look like in my bedroom/kitchen", or says "render my plan", "make a photo of this", "put this bed in a bedroom".
+description: Turn a furniture or woodworking plan (a woodworking-plans plan.js or plan.html, a SketchUp .skp file, a plan PDF, images of plan pages such as scans, phone photos or screenshots, an OBJ/GLB/STL/FBX model, or dimensioned drawings) plus a description of a setting (a bedroom, kitchen, living room, dining room, office, patio) into a photorealistic render of the piece in that room, built in Blender Cycles from the plan's exact geometry with scanned CC0 materials, cloth-simulated soft goods, an HDRI sky with a matched sun, and a review pass for the giveaways (floating pillows, light leaks, plastic wood, blown highlights). Use whenever the user wants to see a plan "for real" (including when they attach a plan PDF or picture), asks for a photoreal or realistic render, a lifestyle or catalogue shot, a "what would it look like in my bedroom/kitchen", or says "render my plan", "make a photo of this", "put this bed in a bedroom".
 ---
 
 # Plan to photo
@@ -19,6 +19,9 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | `scripts/export_obj.js` | woodworking-plans `plan.js` → OBJ in meters, a material group per wood. |
 | `scripts/read_drawings.py` | Plan PDF or images → one PNG per page, the text layer if any, a contact sheet and a page index; `--tile` for small text. |
 | `scripts/build_model.js` | `model.json` (parts read off a PDF or images) → the same OBJ, checked against the takeoff, the overall size, overlaps and floating parts. |
+| `scripts/sketchup/export_for_p2p.rb` | Runs inside SketchUp: the model as OBJ (meters, a part per object, smooth normals), `parts.json` and every scene's camera. |
+| `scripts/skp_import.py` | That export → `model.obj` with extras dropped (exploded views, people), cameras for `line_drawing.py`, `materials.md`. |
+| `scripts/frame_camera.py` | A `line_drawing.py` camera from the model's bounding box, by azimuth and elevation. |
 | `scripts/fetch_assets.py` | Download CC0 scans and HDRIs from Poly Haven and ambientCG; `--list <setting>` for a starter set. |
 | `scripts/build_scene.py` | `scene.json` → `scene.blend`: model, materials, room, props, dress scripts. |
 | `scripts/p2p.py` | The helper library every script uses (geometry, scanned materials, cloth, contact, props, room). |
@@ -28,6 +31,7 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | `scripts/line_drawing.py` | OBJ → hidden-line drawing from a given camera (numpy + Pillow, no Blender). The guide image for Nano Banana. |
 | `scripts/nano_banana.py` | Line drawing + piece spec + room brief → photo from Google's Nano Banana Pro (`GEMINI_API_KEY`). |
 | `references/drawings.md` | Reading a PDF or image plan into `takeoff.json` and `model.json`. **Read before modelling from drawings.** |
+| `references/sketchup.md` | SketchUp plans: exporting inside SketchUp, cleaning up, cameras, materials. **Read before using a .skp.** |
 | `references/realism.md` | The rules, each from a real miss. **Read before the first preview.** |
 | `references/settings.md` | Room recipes: bedroom, kitchen, living, dining, office, bathroom, patio, workshop. |
 | `references/scene-spec.md` | Every field of `scene.json` and how dress scripts work. |
@@ -44,7 +48,8 @@ If `scripts/` is missing, the full skill is in `plan-to-photo/` of https://githu
 ## 1. Brief
 
 Get, or ask once for only what you cannot infer:
-- **The plan.** A `plan.js` from woodworking-plans (best: exact parts and materials), a PDF or images
+- **The plan.** A `plan.js` from woodworking-plans (best: exact parts and materials), a SketchUp
+  `.skp` (the author's exact model; exported inside SketchUp, `references/sketchup.md`), a PDF or images
   of a plan (a shop plan PDF, scans, phone photos, screenshots, a dimensioned sketch), or a 3D model
   file. For a PDF or images, ask once for any page that is missing (no parts list, no side view)
   rather than guessing a whole dimension.
@@ -59,6 +64,18 @@ Get, or ask once for only what you cannot infer:
 node scripts/export_obj.js plan.js model.obj              # prints the material groups and part ids
 node scripts/export_obj.js plan.js model.obj --skip 1,12  # drop parts you will rebuild
 ```
+
+**From SketchUp (.skp)**, export inside SketchUp and clean up here (`references/sketchup.md`):
+
+```ruby
+load "/path/to/plan-to-photo/scripts/sketchup/export_for_p2p.rb"; P2P.export("/path/to/export")   # SketchUp's Ruby Console
+```
+```bash
+python3 scripts/skp_import.py export/ out/   # model.obj, cameras.txt (the author's scenes), materials.md
+```
+
+Nothing outside SketchUp reads .skp, so don't model a SketchUp plan from its PDF when the user can
+run the export: the exported model is exact. If they only have SketchUp's web version, use the PDF.
 
 **From a PDF or images**, read the drawings into a model first (`references/drawings.md`):
 
@@ -135,6 +152,7 @@ The plan's geometry stays the truth: the model only ever sees a drawing of it.
 ```bash
 node scripts/build_model.js model.json bed.obj --takeoff takeoff.json        # or export_obj.js plan.js
 python3 scripts/line_drawing.py bed.obj lines.jpg --cam=-1.35,-1.75,1.45 --target=0.85,1.05,0.42 --fov 50
+# no camera yet? python3 scripts/frame_camera.py bed.obj --az 35 --el 18   (a .skp export has cameras.txt)
 GEMINI_API_KEY=... python3 scripts/nano_banana.py lines.jpg spec.md room.md photo.jpg --takes 2
 ```
 
