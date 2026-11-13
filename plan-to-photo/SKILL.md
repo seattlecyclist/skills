@@ -25,6 +25,8 @@ brief → geometry → scene spec → build → preview + review → fix → fin
 | `scripts/dress/bed.py` | Dress a bed frame: mattress, duvet, pillows, lumbar, throw. |
 | `scripts/render.py` | HDRI with matched sun, window portals, camera, Cycles on the GPU, AgX. `--preview`, `--border`. |
 | `scripts/review.py` | Review sheet: the frame plus 100% crops of the places renders give themselves away. |
+| `scripts/line_drawing.py` | OBJ → hidden-line drawing from a given camera (numpy + Pillow, no Blender). The guide image for Nano Banana. |
+| `scripts/nano_banana.py` | Line drawing + piece spec + room brief → photo from Google's Nano Banana Pro (`GEMINI_API_KEY`). |
 | `references/drawings.md` | Reading a PDF or image plan into `takeoff.json` and `model.json`. **Read before modelling from drawings.** |
 | `references/realism.md` | The rules, each from a real miss. **Read before the first preview.** |
 | `references/settings.md` | Room recipes: bedroom, kitchen, living, dining, office, bathroom, patio, workshop. |
@@ -123,6 +125,25 @@ Show the user the render (and the review sheet if something is still open, sayin
 they ask for becomes the next version: copy the spec, change only that, same camera, render `v2`, and
 put the versions side by side. Keep every version's spec and .blend so "go back to v4's window" is
 one line. Record the camera and light flags in the spec's `render` block.
+
+## Fast alternative: Nano Banana from a line drawing
+
+When Blender or a GPU is not at hand, or the room matters more than an exact scan-based render, make
+the photo with Google's Nano Banana Pro (`gemini-3-pro-image`), about $0.14 per 2K image, in about 30 s.
+The plan's geometry stays the truth: the model only ever sees a drawing of it.
+
+```bash
+node scripts/build_model.js model.json bed.obj --takeoff takeoff.json        # or export_obj.js plan.js
+python3 scripts/line_drawing.py bed.obj lines.jpg --cam=-1.35,-1.75,1.45 --target=0.85,1.05,0.42 --fov 50
+GEMINI_API_KEY=... python3 scripts/nano_banana.py lines.jpg spec.md room.md photo.jpg --takes 2
+```
+
+`spec.md` names, in words, every part the model might reinvent (for the bed: exactly two headboard
+boards, concave top, one curved gap, no posts) plus the wood, finish and dressing. `room.md` is the
+setting. `examples/walnut-bed/run_nano_banana.sh` does all three steps. What was tried and failed
+(walnut bed, 2026-11): plan pages plus text added headboard posts or a third board and changed the
+wood to oak; editing the Blender render kept the bed but hardly added realism. Check every take
+against the drawing by eye; keep the one whose piece matches.
 
 ## Pitfalls
 
