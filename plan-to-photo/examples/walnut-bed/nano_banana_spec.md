@@ -1,0 +1,4 @@
+- The headboard is exactly two wide boards with a gentle concave top edge, small rounded top corners and one thin curved gap between them. There are no posts, uprights, extra boards or trim.
+- There are four short square legs, tapering toward the floor, at the corners. The thin flat rails are flush with the leg tops, with the rail end grain showing in the leg tops. The frame sits low and there is no footboard.
+- Material: dark American black walnut, quartersawn, with straight grain and a satin hand-rubbed oil finish.
+- Add a queen mattress sitting down inside the frame on the slats, then dress it with stonewashed linen bedding in warm white and oatmeal, two sleeping pillows and a lumbar, and a textured wool throw folded across the foot. Keep the bedding tucked enough that the rails, legs, corner joints and full headboard stay visible.
