@@ -6,6 +6,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 | Skill | What it does |
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
+| [end-grain-boards](#end-grain-boards) | Design end-grain cutting boards with 3D cubes, stars or any geometric pattern: a checked cut list, glue-up and re-cut sequence, diagrams and a photoreal render. |
 | [motion-video](#motion-video) | Make a short promo or explainer motion video for any product: real screens, 3D objects that assemble and get measured, captions, sound, voiceover, in 16:9 and 9:16. |
 | [plan-to-photo](#plan-to-photo) | Turn a furniture plan and a description of a room into a photorealistic render of the piece in that room, built from the plan's exact geometry. |
 | [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
@@ -19,6 +20,7 @@ Clone the repo and symlink (or copy) the skills you want into `~/.claude/skills/
 git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
+ln -s ~/src/skills/end-grain-boards ~/.claude/skills/end-grain-boards
 ln -s ~/src/skills/motion-video ~/.claude/skills/motion-video
 ln -s ~/src/skills/plan-to-photo ~/.claude/skills/plan-to-photo
 ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
@@ -122,6 +124,87 @@ For Rails apps whose flows need fixtures or sign-in helpers, the Capybara adapte
 frames from inside a system test.
 
 Full workflow, storyboard reference, theming and pitfalls: [annotated-demo-video/SKILL.md](annotated-demo-video/SKILL.md).
+
+---
+
+## end-grain-boards
+
+Takes a pattern in words ("repeating 3D cubes", "six-point stars", "an eight-point quilt star") and the
+woods, and makes the plan to build that end-grain cutting board, plus a photo of it. Every board is
+built the same way: rip long bars with the pattern's cross-sections (bevelled on the table saw for
+the angles), glue bars into units and units into logs, crosscut the logs into slices, turn or flip
+slices as marked, glue them into the board, trim and flatten. The board face is modelled as exact
+polygons, so every number in the plan comes from the geometry.
+
+**What you get**
+
+- A self-contained HTML shop plan: the photo, the finished face with dimensions, a material list in
+  board feet per species, a cut list (each bar's cross-section, blank thickness, blade tilt, count
+  and lengths), and eight build steps with diagrams: bar sections and rip setups, unit glue-ups,
+  each log in end and side view with its crosscuts, and the numbered slice layout with trim lines.
+- Patterns: tumbling blocks (3D cubes), six-point stars, LeMoyne eight-point stars, checkerboard,
+  brick, and any custom pattern of convex pieces.
+- A colour-coded guide drawing of the board and a photo made from it by plan-to-photo's Nano Banana
+  path; `board.obj` for the Blender path.
+
+**Why it is a guardrail**
+
+- The pieces are proven to tile the finished board with no gaps or overlaps before anything is drawn.
+- Every bar must be convex with bevels a table saw can cut (45 degrees or less); woods are checked
+  for hardness, open pores and food safety (red oak and spalted wood are refused), and pairs that
+  move differently are flagged.
+- Identical slices and units are matched by shape (turned or flipped), so the plan makes the fewest
+  logs and says exactly which slices to turn.
+- `scripts/selftest.py` proves the checks catch an overlap, a gap, a bevel past 45 degrees, a
+  concave piece and a bad wood.
+
+### Demo
+
+Tumbling blocks in maple, cherry and walnut, 11-29/32" x 16-1/4" x 1-1/2": one bar shape (a
+60-degree rhombus, blade at 30 degrees), 18 bars, 6 cube units, one 19" row log, 9 slices.
+
+![Tumbling blocks end-grain board on a kitchen counter](end-grain-boards/examples/tumbling-blocks/photo.jpg)
+
+| | |
+|---|---|
+| ![LeMoyne star board](end-grain-boards/examples/lemoyne-stars/photo.jpg) | ![Six-point star board](end-grain-boards/examples/six-point-stars/photo.jpg) |
+| LeMoyne stars: padauk and purpleheart points on maple, 20 blocks from one block log | Walnut six-point stars on maple, every piece the same 60-degree rhombus |
+
+- 🌐 Plans: [tumbling-blocks](end-grain-boards/examples/tumbling-blocks/plan.html),
+  [lemoyne-stars](end-grain-boards/examples/lemoyne-stars/plan.html),
+  [six-point-stars](end-grain-boards/examples/six-point-stars/plan.html),
+  [checkerboard](end-grain-boards/examples/checkerboard/plan.html) (download and open)
+- 📐 Guide drawings the photos were made from: `examples/*/guide.jpg`
+
+### Usage
+
+**Prerequisites:** Python 3 with numpy and Pillow. For the photo, the plan-to-photo skill and a
+`GEMINI_API_KEY`.
+
+**Self-test:**
+
+```bash
+export EG=~/.claude/skills/end-grain-boards
+python3 $EG/scripts/selftest.py
+```
+
+**Ask Claude** for a board:
+
+> I want an end-grain cutting board with repeating 3D cubes, maple, cherry and walnut, about 12 by 16.
+
+> Make me a plan for a star pattern board in walnut and maple, with feet and a juice groove.
+
+> Same board but with 1" cubes and purpleheart instead of walnut.
+
+**Or drive it by hand:**
+
+```bash
+python3 $EG/scripts/cbplan.py $EG/examples/tumbling-blocks/design.json out/
+GEMINI_API_KEY=... python3 ~/.claude/skills/plan-to-photo/scripts/nano_banana.py out/guide.png out/spec.md out/room.md out/photo.jpg --takes 2
+python3 $EG/scripts/cbplan.py $EG/examples/tumbling-blocks/design.json out/ --photo out/photo-1.jpg
+```
+
+Full workflow, patterns and pitfalls: [end-grain-boards/SKILL.md](end-grain-boards/SKILL.md).
 
 ---
 
