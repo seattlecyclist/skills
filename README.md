@@ -209,8 +209,10 @@ Takes a plan and a description of a setting (a bedroom, a kitchen, a living room
 photorealistic picture of the piece in that room. The plan can be a woodworking-plans `plan.js`, a
 plan PDF, or images of its pages (scans, phone photos, screenshots): Claude reads the drawings into a
 model of every part and checks it against the parts list and overall size before rendering. The plan's geometry is imported exactly, so the
-joinery, tapers and proportions in the picture are the ones that will be built; AI image generators
-redraw the piece and lose them, so this is done the archviz way, in Blender Cycles.
+joinery, tapers and proportions in the picture are the ones that will be built. Given the plan pages,
+AI image generators redraw the piece and lose them, so there are two ways to the photo, both driven by
+the exact model: a quick one, where Google's Nano Banana Pro builds the room around a line drawing of the
+model, and the archviz way, in Blender Cycles.
 
 **What you get**
 
@@ -236,8 +238,20 @@ redraw the piece and lose them, so this is done the archviz way, in Blender Cycl
 
 ### Demo
 
-The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching walnut nightstands
-(render v6):
+The queen walnut castle-leg bed from its Rev A plan, photographed by Nano Banana Pro from a line
+drawing of the plan's exact 3D model (`run_nano_banana.sh`, about 30 seconds and $0.14):
+
+![Walnut castle-leg bed in a Pacific Northwest bedroom, made by Nano Banana from a line drawing](plan-to-photo/examples/walnut-bed/walnut-bed-nano-banana.jpg)
+
+The model only sees the drawing on the left plus a written spec
+([nano_banana_spec.md](plan-to-photo/examples/walnut-bed/nano_banana_spec.md)) and room brief
+([nano_banana_room.md](plan-to-photo/examples/walnut-bed/nano_banana_room.md)), so the headboard,
+legs and joinery stay as drawn while the room is invented:
+
+![Line drawing of the bed and the photo made from it](plan-to-photo/examples/walnut-bed/walnut-bed-lines-to-photo.jpg)
+
+The same bed rendered in Blender Cycles with scanned materials and cloth simulation, with matching
+walnut nightstands (render v6):
 
 ![Walnut castle-leg bed rendered in a bedroom](plan-to-photo/examples/walnut-bed/walnut-bed-bedroom.jpg)
 
@@ -260,7 +274,14 @@ The queen walnut castle-leg bed from its Rev A plan, in a bedroom with matching 
 export, Python 3 with Pillow, poppler or PyMuPDF for PDF plans. A GPU for the final: about 15
 minutes at 3000x2000 on an Apple M2 Max, hours on a CPU. Network access to polyhaven.com and ambientcg.com for the scans.
 
-**Self-test** (exports the plan, fetches the scans, builds, renders a quarter-size preview):
+**Nano Banana self-test** (needs only Node, Python with numpy and Pillow, and a `GEMINI_API_KEY`;
+builds the model, draws it, makes two photos):
+
+```bash
+GEMINI_API_KEY=... ~/.claude/skills/plan-to-photo/examples/walnut-bed/run_nano_banana.sh /tmp/walnut-bed-nb 2
+```
+
+**Blender self-test** (exports the plan, fetches the scans, builds, renders a quarter-size preview):
 
 ```bash
 export P2P=~/.claude/skills/plan-to-photo
