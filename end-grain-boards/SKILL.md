@@ -18,9 +18,13 @@ face is a long *bar* of that cross-section, ripped on the table saw. Bars are gl
 time into a small closed *log*: a triangle for 60 degree patterns (glued in a V block whose sides stop
 3/16" under the top of the log), a rectangle for 45 and 90 degree patterns (bands, then quarter logs in
 corner cauls). **Every face of every log is
-machined flat** before anything else is glued to it. Logs are crosscut into *slices*, slices are glued
-in pairs and then into straight *rows* in a row jig, rows are trued and glued into the board, and the
-board is flattened and then trimmed. An optional *frame* of end-grain blocks is glued round the trimmed
+machined flat** before anything else is glued to it. The long logs are then glued side by side into
+*planks*: a plank is one row of the board made long. Planks are planed (they are long grain), crosscut
+into *rows*, and the rows are glued into the board, which is flattened and then trimmed. **No row is
+ever assembled from loose slices.** `scripts/planks.py` finds which rows can come off the same plank
+(as cut, turned end for end, turned over, or slid along), so a repeating pattern needs one or two
+planks. A pattern whose rows do not repeat needs a plank per row and the checks say so: prefer
+patterns that repeat row to row. An optional *frame* of end-grain blocks is glued round the trimmed
 field. Every truing pass takes a skim, so the plan lays the pattern out at the trued sizes, not the drawn ones. `scripts/logs.py` works this out from the face: it lays the
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
@@ -37,6 +41,7 @@ has the rules and the reasons.
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
 | `scripts/logs.py` | The build: face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
+| `scripts/planks.py` | Groups the rows into planks: which rows are the same sequence of logs as cut, turned or slid along, and the end view of each plank. |
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
 | `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
@@ -123,7 +128,7 @@ Then look at `plan.html`:
 - **Logs** (sheet 04): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
   down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
   a simpler variant and say why.
-- **Layout** (sheet 05): letters, pencil-line marks and primes must be legible; rows straight.
+- **Planks & rows** (sheet 05): each plank's end view, letters, reference marks and primes must be legible; the row table says which plank each row comes from and how it is turned.
 - **Jigs** (sheet 06, step 2): one V block per size and height of part. More than four blocks means many
   small bar shapes; a larger `side` or fewer roles usually removes some.
 - **Steps** (sheet 06): a builder who cannot picture a glue-up builds from the drawings beside the steps.
@@ -165,11 +170,11 @@ new wood changes board feet and possibly the warnings.
 
 - Bevel accuracy is everything: half a degree off on a 60 degree bar opens a gap in every log. The
   plan has the builder set tilt with a digital gauge and dry-fit three scrap bars; keep that advice.
-- The faces glued when slices become rows and rows become the board are long grain (the sides of the
+- The faces glued when logs become planks and rows become the board are long grain (the sides of the
   logs). Never tell the builder to size them or double-coat them as end grain.
 - The plan's trim margins are measured from the deepest notch of a ragged edge to the cut, at the trued
   sizes. If you change `true_skim`, the margins and the finished size move with it.
-- Flatten, then trim. A thickness planer destroys end-grain boards; so does a jointer on a row's edge.
+- Flatten, then trim. A thickness planer destroys end-grain boards; so does a jointer on a row's edge. Planks are planed before they are crosscut, while they are still long grain.
 - A log taller than 2-5/8" does not pass under a 10" saw on a sled. Shrink `side` before promising a size.
 - Same-wood glue lines disappear in end grain, so the build may cut a piece in two or merge two
   pieces into one bar; the face drawing shows the pieces as built.

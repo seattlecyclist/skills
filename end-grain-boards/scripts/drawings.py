@@ -133,6 +133,7 @@ def layout(plan):
         if plan["info"]["kind"] == "panel": pos = (r["pts"][1][0] + 0.45, c[1])
         else: pos = (c[0] - u[0] * half, c[1] - u[1] * half)
         s.text(pos, f"R{r['n']}", 11.5, weight="600", fill=REF)
+        if r.get("plank"): s.text((pos[0] - u[1] * 0.0, pos[1] + (0.42 if abs(u[0]) > 0.5 else 0)) if abs(u[0]) > 0.5 else (pos[0], pos[1] - 0.42), r["plank"] + {"": "", "r": " ↻", "m": " ⇄", "f": " ⇅"}[r.get("op", "")], 9.5, fill=REF)
     s.poly([(trim[0], trim[1]), (trim[2], trim[1]), (trim[2], trim[3]), (trim[0], trim[3])], stroke=CUT, sw=1.6, dash="7 4")
     _legend(s, plan, s.h - 24)
     return s.svg()
@@ -522,6 +523,40 @@ def row_fig(plan):
     return s.svg()
 
 
+def plank_fig(plan, pl):
+    """End view of a plank on the glue-up base: the logs side by side, each with its letter and reference face."""
+    sp = plan["species"]; tri = plan["info"]["kind"] == "tri"; W = pl["width"]; Hh = pl["height"]
+    ex = 1.0 if tri else 0.0
+    bb = (-ex - 1.6, -0.55, W + ex + 1.6, Hh + 0.75)
+    sc = min(1040 / (bb[2] - bb[0]), 90)
+    s = Svg(bb, sc, pad=18, extra_h=0, title=f"Plank {pl['id']}, end view")
+    s.poly([(bb[0] + 0.2, -0.3), (bb[2] - 0.2, -0.3), (bb[2] - 0.2, 0), (bb[0] + 0.2, 0)], MDF, MDF_E, 1)
+    s.text((W / 2, -0.15), "plank base, taped", 10)
+    small = sc * (W / max(1, pl["n"])) < 26
+    for pk in pl["pucks"]:
+        for ro, pts in pk["cells"]: s.poly(pts, sp[ro]["end"], "#1e232740", 0.4)
+    for pk in pl["pucks"]:
+        s.poly(pk["pts"], "none", INK, 1.2); c = _cen(pk["pts"])
+        if pk.get("ref"):
+            a, b = pk["ref"]; k = 0.16
+            a2 = (a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k); b2 = (b[0] + (c[0] - b[0]) * k, b[1] + (c[1] - b[1]) * k)
+            a3 = (a2[0] + (b2[0] - a2[0]) * 0.12, a2[1] + (b2[1] - a2[1]) * 0.12); b3 = (b2[0] + (a2[0] - b2[0]) * 0.12, b2[1] + (a2[1] - b2[1]) * 0.12)
+            s.line(a3, b3, "#ffffff", 3.4); s.line(a3, b3, INK, 1.5)
+        _chip(s, c, pk["log"] + ("′" if pk["flip"] else ""), r=7 if small else 9, size=8.5 if small else 10.5)
+    if tri:      # edge strips square the leaning sides for the clamps
+        for end, sg in ((pl["pucks"][0], -1), (pl["pucks"][-1], 1)):
+            xo = 0 if sg < 0 else W
+            lo = [v for v in end["pts"] if abs(v[1]) < 1e-3]; hi = [v for v in end["pts"] if abs(v[1] - Hh) < 1e-3]
+            pick = (lambda vs: min(vs, key=lambda v: v[0])) if sg < 0 else (lambda vs: max(vs, key=lambda v: v[0]))
+            if lo and hi:
+                a, b = pick(lo), pick(hi)
+                s.poly([(xo + sg * ex, 0), a, b, (xo + sg * ex, Hh)], MDF, MDF_E, 1)
+        s.text((-ex / 2 - 0.1, Hh + 0.3), "edge strip", 10); s.text((W + ex / 2 + 0.1, Hh + 0.3), "edge strip", 10)
+    _arrow(s, (bb[0] + 0.05, Hh / 2), (-ex - 0.08, Hh / 2)); _arrow(s, (bb[2] - 0.05, Hh / 2), (W + ex + 0.08, Hh / 2))
+    s.text((W / 2, Hh + 0.42), "taped cauls clamped down across the top", 10)
+    return s.svg()
+
+
 def board_fig(plan):
     rows = plan["rows"]; sp = plan["species"]
     ang = math.radians(plan["info"].get("angle", 0)); nrm = (-math.sin(ang), math.cos(ang)); u = (math.cos(ang), math.sin(ang))
@@ -699,6 +734,7 @@ def _on_any(a, b, outline, keys):
 
 
 def asm_cut(plan):
+    if plan.get("planks"): return _asm_cut_plank(plan)
     lg = max((l for l in plan["logs"] if l["crosscut"]), key=lambda l: l["slices"]); sp = plan["species"]; cut = plan["slice_cut"]
     H = lg["h"]
     if lg["kind"] == "hex":
@@ -718,6 +754,22 @@ def asm_cut(plan):
     return s.svg(title=f"Crosscutting {lg['name']} into slices")
 
 
+def _asm_cut_plank(plan):
+    pl = max(plan["planks"], key=lambda p: p["rows_cut"]); sp = plan["species"]; cut = plan["slice_cut"]; H = pl["height"]; W = pl["width"]
+    cells = [(r, CB.ccw([tuple(v) for v in pts])) for pk in pl["pucks"] for r, pts in pk["cells"]]
+    s = Scene(az=58, el=30)
+    body = max(4.0, 0.45 * W); g = 0.6 * cut
+    for r, pts in cells: s.prism(pts, body, _along(), sp[r]["end"], sp[r]["long"])
+    for k in range(2):
+        w0 = body + g + k * (cut + g)
+        for r, pts in cells: s.prism(pts, cut, _along(ox=w0), sp[r]["end"], sp[r]["long"])
+    s.mark("line", (body + g / 2, -0.5, 0), (body + g / 2, W + 0.5, 0), CUT)
+    s.mark("line", (body + g / 2, W + 0.5, 0), (body + g / 2, W + 0.5, H + 0.4), CUT)
+    s.mark("text", (body + 2 * (cut + g), W / 2, H + 0.5), f"rows {short(cut)} thick", (-10, -22))
+    s.mark("text", (body + g / 2, W + 0.5, H + 0.4), "red: the saw cut", (0, -12))
+    return s.svg(title=f"Crosscutting plank {pl['id']} into rows")
+
+
 def make(plan):
     out = OrderedDict()
     out["face"] = face(plan); out["layout"] = layout(plan); out.update(bars(plan))
@@ -727,7 +779,8 @@ def make(plan):
     if plan["info"]["kind"] == "tri":
         out["jigs"] = jigs(plan); out["true"] = true_fig(plan)
     if any(bt.get("setup") in ("para", "trap", "flip") and bt.get("tilt") for bt in plan["bar_types"]): out["ripsled"] = ripsled(plan)
-    out["cut_setup"] = cut_setup(plan)
-    out["asm_cut"] = asm_cut(plan); out["row"] = row_fig(plan); out["board"] = hexboard_fig(plan) if plan["info"]["kind"] == "hex" else board_fig(plan); out["trim"] = trim_fig(plan)
+    for pl in plan.get("planks") or []: out[f"plank_{pl['id']}"] = plank_fig(plan, pl)
+    if not plan.get("planks"): out["cut_setup"] = cut_setup(plan); out["row"] = row_fig(plan)
+    out["asm_cut"] = asm_cut(plan); out["board"] = hexboard_fig(plan) if plan["info"]["kind"] == "hex" else board_fig(plan); out["trim"] = trim_fig(plan)
     if plan["board"].get("frame"): out["frame"] = frame_fig(plan)
     return out
