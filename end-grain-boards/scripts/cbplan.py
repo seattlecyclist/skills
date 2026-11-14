@@ -501,7 +501,7 @@ def build(design, out, photo=None):
         if not (lg["flat"]["bottom"] or lg["flat"]["top"]) or not (lg["flat"]["left"] or lg["flat"]["right"]):
             lg["carrier"] = True
 
-    plan = {"name": design.get("name", design["pattern"]), "pattern": design["pattern"], "board": {
+    plan = {"name": design.get("name", design["pattern"]), "description": design.get("description", ""), "pattern": design["pattern"], "board": {
                 "width": W, "length": Lb, "thickness": T, "trim": trim},
             "shop": shop, "species": {r: sp[r] for r in roles}, "woods": list(woods.values()),
             "notes": g.get("notes", []) + design.get("notes", []), "options": design.get("options", {}),
@@ -522,7 +522,7 @@ def build(design, out, photo=None):
         render_guide.render(plan, os.path.join(out, "guide.png"), **design.get("guide", {}))
     except ImportError as e:
         print("guide.png skipped:", e)
-    open(os.path.join(out, "plan.html"), "w").write(page(plan, svgs, photo))
+    open(os.path.join(out, "plan.html"), "w").write(page(plan, svgs, photo, os.path.join(out, "guide.png")))
     slim = {k: v for k, v in plan.items() if k not in ("polygons",)}
     json.dump(slim, open(os.path.join(out, "plan.json"), "w"), indent=1, default=str)
     return plan
@@ -544,12 +544,14 @@ def steps(plan, design):
     tx.append("Rip every bar of a shape in one session without touching the saw setup, and rip 10% spares. "
               "Dry-fit the first few bars into a unit or a short row before ripping the rest: half a degree of bevel "
               "error doubles at every joint and opens gaps across a row.")
-    S.append({"title": "Rip the bars", "text": tx, "diagrams": ["bars"]})
+    S.append({"title": "Rip the bars", "text": tx, "diagrams": ["bars"],
+              "dont": "touch the blade tilt or the thin-rip jig partway through a shape. Bars from two setups never meet cleanly; rip every bar of a shape, plus spares, in one run."})
     if plan["units"]:
         tx = []
         for u in plan["units"]:
             pcs = ", ".join(f'{p["count"]} x {short(p["length"])} long (for {p["log"]})' for p in u["pieces"])
-            tx.append(f"{u['name']}: glue {len(u['bars'])} bars as drawn; make {pcs}. You can glue one long unit and crosscut it.")
+            tx.append(f"{u['name']}: glue {len(u['bars'])} bars as drawn; make {pcs}.")
+        tx.append("Where a unit is needed at several lengths, glue it long and crosscut the pieces from it.")
         tx.append("Bevelled bars won't take bar clamps. Lay the bars face down edge to edge on packing tape in the drawn order, "
                   "glue the bevels, fold them up so the tape pulls the joints closed, and wrap with more tape or rubber "
                   "bands. Check each unit with the template from the diagram while the glue is wet.")
@@ -586,9 +588,10 @@ def steps(plan, design):
     if plan["pattern"] in ("cubes", "tumbling-blocks", "stars6"):
         tx.append("The rows nest by their zigzags, so each row centres itself on the one below. Clamp across the rows with "
                   "a little pressure from the ends too, or the rows can slide along the 60 degree faces.")
-    S.append({"title": "Glue the board", "text": tx, "diagrams": ["layout"]})
+    S.append({"title": "Glue the board", "text": tx, "diagrams": ["layout"],
+              "dont": "glue all the slices at once. With more than four joints the slices creep out of plane under clamp pressure, and end grain is slow to flatten."})
     W, L = plan["board"]["width"], plan["board"]["length"]
-    S.append({"title": "Trim and flatten", "diagrams": ["face"], "text": [
+    S.append({"title": "Trim and flatten", "diagrams": ["face"], "dont": "run the board through a thickness planer. End grain blows out at the trailing edge and the planer can throw pieces.", "text": [
         f"Trim to {dim(W)} x {dim(L)} on the red lines (crosscut sled or track saw, with a backer to stop breakout).",
         "Flatten both faces with a router sled or a drum sander. Do not run end grain through a thickness planer: it "
         "blows out the trailing edge and can throw pieces.",
@@ -810,64 +813,7 @@ def write_spec(plan, design, out):
 
 
 # ------------------------------------------------------------------------------------- HTML
-def page(plan, svgs, photo):
-    e = html.escape; W, L, T = plan["board"]["width"], plan["board"]["length"], plan["board"]["thickness"]
-    img = ""
-    if photo and os.path.exists(photo):
-        mime = "image/png" if photo.lower().endswith(".png") else "image/jpeg"
-        img = f'<figure class="hero"><img src="data:{mime};base64,{base64.b64encode(open(photo, "rb").read()).decode()}" alt="Render of the finished board"><figcaption>Render made from the plan\'s exact face (plan-to-photo).</figcaption></figure>'
-    ok = all(c["ok"] or c["level"] == "warn" for c in plan["checks"])
-    chk = "".join(f'<li class="{"ok" if c["ok"] else ("warn" if c["level"] == "warn" else "bad")}">{"✓" if c["ok"] else ("!" if c["level"] == "warn" else "✗")} {e(c["what"])}'
-                  + (f' <span class="muted">({e(c["detail"])})</span>' if c["detail"] else "") + "</li>" for c in plan["checks"])
-    mat = "".join(f'<tr><td><span class="sw" style="background:{next(w["end"] for w in plan["woods"] if w["name"] == st["species"])}"></span>{e(st["species"])}</td>'
-                  f'<td>{st["bf_buy"]:g} bd ft</td><td>' + "<br>".join(f'{it["rough"]} for bar {it["bar"]}: {it["blanks"]} blank{"s" if it["blanks"] > 1 else ""} {e(it["blank"])}' for it in st["items"])
-                  + "</td></tr>" for st in plan["stock"])
-    cl = "".join(f'<tr><td><b>{b["bar"]}</b></td><td>{e(b["label"])}</td><td>{e(plan_name(plan, b["species"]))} <span class="muted">({e(", ".join(b["roles"]))})</span></td>'
-                 f'<td>{b["total_bars"]}</td><td>' + ", ".join(f'{l["bars"]} @ {e(short(l["bar_length"]))}' for l in b["lengths"]) + f'</td><td>{e(dim(b["stock"]))}</td></tr>'
-                 for b in plan["bars"])
-    lg = "".join(f'<tr><td><b>{e(l["name"])}</b></td><td>{l["count"]}</td><td>{e(dim(l["length"]))}</td><td>{l["slices"]} (+{l["spares"]} spare)</td>'
-                 f'<td>{len(l["units"])} units, {len(l["loose_bars"])} loose bars</td></tr>' for l in plan["logs"])
-    st = ""
-    for n, s in enumerate(plan["steps"], 1):
-        figs = "".join(f'<div class="fig">{svgs[d]}</div>' for d in s["diagrams"] if d in svgs)
-        st += f'<section class="step"><h3><span class="num">{n}</span>{e(s["title"])}</h3><ol>' + "".join(f"<li>{e(t)}</li>" for t in s["text"]) + f"</ol>{figs}</section>"
-    notes = "".join(f"<li>{e(n)}</li>" for n in plan["notes"])
-    woods = "".join(f'<li><span class="sw" style="background:{w["end"]}"></span><b>{e(w["name"])}</b>'
-                    + (f' — Janka {w["janka"]}, tangential shrinkage {w["tan"]}%' if w["janka"] else "") + f'. {e(w["note"])}</li>' for w in plan["woods"])
-    return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{e(plan["name"])}</title><style>
-:root{{--bg:#fbf8f2;--fg:#1f1b16;--muted:#6b6257;--line:#ddd3c3;--card:#fff;--accent:#8a4b2d;--ok:#2f7d32;--bad:#b3261e}}
-@media (prefers-color-scheme:dark){{:root:not([data-theme="light"]){{--bg:#17140f;--fg:#efe8dc;--muted:#a99f90;--line:#3a332a;--card:#211d17;--accent:#e0a47a;--ok:#7bc47f;--bad:#f2867c}}}}
-:root[data-theme="dark"]{{--bg:#17140f;--fg:#efe8dc;--muted:#a99f90;--line:#3a332a;--card:#211d17;--accent:#e0a47a;--ok:#7bc47f;--bad:#f2867c}}
-*{{box-sizing:border-box}}body{{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 Georgia,'Iowan Old Style',serif}}
-main{{max-width:980px;margin:0 auto;padding:24px 16px 80px}}h1{{font-size:2.1rem;margin:.2em 0 .1em;line-height:1.15}}
-h2{{font:600 1.15rem/1.3 Helvetica,Arial,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);border-bottom:2px solid var(--line);padding-bottom:6px;margin-top:2.2em}}
-h3{{font:600 1.1rem Helvetica,Arial,sans-serif;margin:1.4em 0 .4em}}.num{{display:inline-block;background:var(--accent);color:var(--bg);border-radius:50%;width:1.6em;height:1.6em;text-align:center;line-height:1.6em;margin-right:.5em;font-size:.9em}}
-.muted{{color:var(--muted)}}.sub{{color:var(--muted);font:15px Helvetica,Arial,sans-serif}}
-table{{width:100%;border-collapse:collapse;font:14px/1.4 Helvetica,Arial,sans-serif;background:var(--card)}}td,th{{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}}th{{background:color-mix(in srgb,var(--accent) 12%,var(--card))}}
-.tw{{overflow-x:auto}}.fig{{background:#fff;border:1px solid var(--line);border-radius:6px;padding:8px;margin:12px 0;overflow-x:auto}}.fig svg{{max-width:100%;height:auto;display:block;margin:0 auto}}
-.hero img{{width:100%;border-radius:8px;display:block}}.hero{{margin:16px 0}}figcaption{{font:13px Helvetica,Arial,sans-serif;color:var(--muted);margin-top:6px}}
-.sw{{display:inline-block;width:14px;height:14px;border:1px solid #0005;border-radius:3px;vertical-align:-2px;margin-right:6px}}
-ul.checks{{list-style:none;padding:0;font:14px Helvetica,Arial,sans-serif}}.ok{{color:var(--ok)}}.warn{{color:#b26a00}}.bad{{color:var(--bad);font-weight:600}}
-.grid{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}@media(max-width:720px){{.grid{{grid-template-columns:1fr}}}}
-.step ol{{padding-left:1.3em}}.step li{{margin:.35em 0}}
-</style></head><body><main>
-<p class="sub">End-grain cutting board · shop plan</p>
-<h1>{e(plan["name"])}</h1>
-<p class="sub">{e(short(W))} x {e(short(L))} x {e(short(T))} finished · {len(plan["slices"])} slices from {sum(l["count"] for l in plan["logs"])} log{"s" if sum(l["count"] for l in plan["logs"]) > 1 else ""} · {sum(b["total_bars"] for b in plan["bars"])} bars · {e(", ".join(w["name"] for w in plan["woods"]))}</p>
-{img}
-<div class="fig">{svgs["face"]}</div>
-<ul>{notes}</ul>
-<h2>Checks</h2><p class="sub">{"Every check passes." if ok else "Some checks fail: read them before cutting."}</p><ul class="checks">{chk}</ul>
-<h2>Material list</h2><div class="tw"><table><tr><th>Species</th><th>Buy</th><th>Blanks (milled thickness x width x length)</th></tr>{mat}</table></div>
-<p class="sub">Board feet include 25% for defects and milling. Blanks are {e(short(plan["shop"]["stock_width"]))} wide after jointing; wider boards give more bars per blank.</p>
-<h2>Cut list</h2><div class="tw"><table><tr><th>Bar</th><th>Cross-section</th><th>Species</th><th>Qty</th><th>Lengths</th><th>Blank thickness</th></tr>{cl}</table></div>
-<div class="fig">{svgs["bars"]}</div>
-<h2>Logs and slices</h2><div class="tw"><table><tr><th>Log</th><th>Make</th><th>Length</th><th>Slices</th><th>Made of</th></tr>{lg}</table></div>
-<h2>Build steps</h2>{st}
-<h2>Woods</h2><ul>{woods}</ul>
-<p class="sub">Kerf {e(short(plan["shop"]["kerf"]))}, slices cut {e(short(T + plan["shop"]["flatten_allowance"]))}, logs at most {plan["shop"]["max_log_length"]:g}" long. Change these under "shop" in design.json.</p>
-</main></body></html>"""
+from plan_page import page  # noqa: E402  (the sheet-style plan page)
 
 
 if __name__ == "__main__":

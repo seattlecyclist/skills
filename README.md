@@ -138,7 +138,7 @@ polygons, so every number in the plan comes from the geometry.
 
 **What you get**
 
-- A self-contained HTML shop plan: the photo, the finished face with dimensions, a material list in
+- A self-contained HTML shop plan laid out as numbered sheets with title blocks: the photo, the finished face with dimensions, a material list in
   board feet per species, a cut list (each bar's cross-section, blank thickness, blade tilt, count
   and lengths), and eight build steps with diagrams: bar sections and rip setups, unit glue-ups,
   each log in end and side view with its crosscuts, and the numbered slice layout with trim lines.
