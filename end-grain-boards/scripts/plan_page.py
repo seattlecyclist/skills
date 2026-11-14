@@ -94,6 +94,12 @@ ol.steps .sn{font-family:var(--f-display);font-weight:700;font-size:26px;color:v
 ol.steps h4{margin:0 0 4px;font-size:15.5px;font-weight:600}
 ol.steps ul{margin:0;padding-left:18px;display:grid;gap:5px;max-width:76ch}
 ol.steps .see{font-family:var(--f-mono);font-size:12px;color:var(--graphite);margin-top:6px}
+.kick{display:inline-block;font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.09em;color:#fff;background:var(--accent);padding:2px 8px;border-radius:2px;margin-bottom:6px}
+.stepgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:14px 22px;align-items:start}
+.asm{display:grid;gap:10px;margin:0}
+.asm figure{margin:0;border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden}
+.asm svg{display:block;width:100%;height:auto}
+@media (max-width:760px){.stepgrid{grid-template-columns:1fr}}
 .dont{grid-column:2;margin-top:8px;border-left:3px solid var(--weak);padding:6px 10px;font-size:14px;background:color-mix(in srgb,var(--weak) 8%,transparent)}
 .dont b{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.07em;color:var(--weak);margin-right:6px}
 .stepbox{background:var(--sheet);padding:4px 18px}
@@ -113,6 +119,9 @@ footer{margin-top:48px;font-size:12.5px;color:var(--graphite);max-width:80ch}
 
 TICK = ('<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" '
         'fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>')
+
+
+ORD = {1: "1ST", 2: "2ND", 3: "3RD", 4: "4TH", 5: "5TH"}
 
 
 def page(plan, svgs, photo, guide=None):
@@ -240,11 +249,20 @@ def page(plan, svgs, photo, guide=None):
     # 06 build
     where = {"bars": "03", "layout": "05", "face": "01"}
     st = ""
+    nglue = 0
     for n, s in enumerate(plan["steps"], 1):
         refs = sorted({where.get(d, "04") for d in s["diagrams"]})
         see = f'<div class="see">See sheet {", ".join(refs)}</div>' if refs else ""
         dont = f'<div class="dont"><b>DON\'T</b>{fr(s["dont"])}</div>' if s.get("dont") else ""
-        st += f'<li><span class="sn">{n}</span><div><h4>{e(s["title"])}</h4><ul>{"".join(f"<li>{fr(t)}</li>" for t in s["text"])}</ul>{see}</div>{dont}</li>'
+        kick = ""
+        if s["title"].startswith("Glue"):
+            nglue += 1; kick = f'<span class="kick">{ORD[nglue]} GLUE-UP</span><br>'
+        figs = [f for f in s.get("figs", []) if f in svgs]
+        figs = list(dict.fromkeys(figs))
+        body = f'{kick}<h4>{e(s["title"])}</h4><ul>{"".join(f"<li>{fr(t)}</li>" for t in s["text"])}</ul>{see}'
+        if figs:
+            body = f'<div class="stepgrid"><div>{body}</div><div class="asm">{"".join(f"<figure>{svgs[f]}</figure>" for f in figs)}</div></div>'
+        st += f'<li><span class="sn">{n}</span><div>{body}</div>{dont}</li>'
     H.append(f'<article class="sheet" id="build">{tb("06", "Building it", "In order, with the reason where it isn\'t obvious", f"<div class=dims>{len(plan["steps"])} steps</div>")}'
              f'<div class="stepbox"><ol class="steps">{st}</ol></div></article>')
 

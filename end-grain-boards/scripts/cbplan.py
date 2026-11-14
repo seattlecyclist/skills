@@ -513,6 +513,13 @@ def build(design, out, photo=None):
     plan["steps"] = steps(plan, design)
     os.makedirs(os.path.join(out, "svg"), exist_ok=True)
     svgs = diagrams(plan, unit_type_of, unit_list)
+    import assembly
+    svgs.update(assembly.figures(plan, unit_list, unit_type_of))
+    figs = {"Rip the bars": ["asm_rip"], "Glue the units": [f"asm_unit{u['type'] + 1}" for u in plan["units"]],
+            "Glue the logs": [f"asm_log{l['type']}" for l in plan["logs"]], "Crosscut the slices": ["asm_cut"],
+            "Glue the board": ["asm_board"], "Trim and flatten": ["asm_trim"]}
+    for s_ in plan["steps"]:
+        s_["figs"] = figs.get(s_["title"], [])
     for name, s in svgs.items():
         open(os.path.join(out, "svg", name + ".svg"), "w").write(s)
     write_obj(plan, out)

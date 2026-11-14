@@ -27,6 +27,7 @@ makes as few logs as it can.
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `checker`, `brick`) and the polygon format for `custom`. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, units & logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
+| `scripts/assembly.py` | The illustrated build: 3D drawings of each step in the manner of printed shop plans (solid parts in their woods, glue faces yellow, orange arrows for clamp and push directions, circled part letters on leaders, the grain-direction arrow, red cut lines). Called by cbplan; sheet 06 shows each drawing beside its step, with 1st / 2nd / 3rd GLUE-UP headings. |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
 | `scripts/selftest.py` | Proves the checks catch an overlap, a gap, a bevel past 45 degrees and a bad wood. |
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
@@ -92,7 +93,9 @@ WARN to the user.
 Then look. Open `out/svg/face.svg` (or `plan.html`) and `out/guide.png` and ask: does the pattern
 read as what the user described? Contrast between roles is the usual problem (two mid-browns
 merge); the star patterns also depend on `spacing` and on which wood is the star. Change and rerun.
-Also read the log and layout diagrams: a pattern that needs many log types (`stars6` with `sparse`
+Also look at sheet 06: every step after buying has a 3D drawing (rip, each unit and log glue-up,
+crosscut, board glue-up, trim). Check that the exploded parts read clearly and the arrows point at the
+joints; a builder who can't picture the glue-up builds from these. Also read the log and layout diagrams: a pattern that needs many log types (`stars6` with `sparse`
 spacing needs seven) is more glue-ups; prefer a variant with one to three logs where the look allows,
 and say why. Motifs bigger than a few rows (snowflakes) are built row by row: tell the user how many
 logs and that the extra end trim raises the board feet.
