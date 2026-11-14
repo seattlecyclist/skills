@@ -110,6 +110,17 @@ Drum sander or router sled; never a thickness planer on end grain. Flatten first
 backer and tape on the cut line, so trimming removes any snipe and chipped edges. Sand 80 to 220,
 raising the grain before the last grit.
 
+## Without a drum sander
+
+The practice guide's rule is "planer while long grain; drum sander after". So:
+
+- Bars and logs (long grain): a thickness planer does everything the drum sander does, in the same V
+  blocks and carriers, at 1/64" a pass. A helical head is the best tool for it.
+- Rows on edge (cut across the grain): helical-head planer only, row in its carrier, a scrap block taped
+  behind the trailing end, 1/64" passes; otherwise the flat sanding board.
+- The glued board (end grain): router sled, then random-orbit sander. Makers who put end grain through
+  a planer add rails or a support block and still report tear-out and thrown boards; the plan never asks for it.
+
 ## Frame
 
 A frame is end grain too. Plane a board to the frame width, crosscut blocks from it at the slice

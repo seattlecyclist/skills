@@ -372,14 +372,15 @@ def jigs(plan):
         us = list(v["uses"]); h_ = (len(us) + 1) // 2 if len(", ".join(us)) > 24 else len(us)
         s.text((cx, -1.26), ", ".join(us[:h_]) + ("," if us[h_:] else ""), 10.5, fill="#5b6167")
         if us[h_:]: s.text((cx, -1.56), ", ".join(us[h_:]), 10.5, fill="#5b6167")
-    s.text(((x - gap) / 2, Hm + 0.42), "the part stands 3/16\" proud · red: the face being sanded · tape lines the V · one side slackens for gluing", 10.5)
+    s.text(((x - gap) / 2, Hm + 0.78), "the part stands 3/16\" proud · red: the face being sanded", 11.5)
+    s.text(((x - gap) / 2, Hm + 0.42), "tape lines the V · one side slackens for gluing", 11.5)
     return s.svg()
 
 
 def ripsled(plan):
     """The rip sled seen from above."""
     Ls = math.ceil(max(bl["blank_length"] for b in plan["bars"] for bl in b["lengths"]) + 8)
-    s = Svg((-1.5, -4.6, Ls + 1.5, 20.5), 500 / (Ls + 3), pad=16, extra_h=4, title="Rip sled, from above")
+    s = Svg((-1.5, -4.6, Ls + 1.5, 20.5), 560 / (Ls + 3), pad=16, extra_h=4, title="Rip sled, from above")
     ply = "#e6dcc3"
     s.poly([(-1.5, 16), (Ls + 1.5, 16), (Ls + 1.5, 18.4), (-1.5, 18.4)], MDF, MDF_E, 1); s.text((Ls / 2, 17.55), "rip fence, stays put", 12)
     s.poly([(0, 7), (Ls, 7), (Ls, 16), (0, 16)], ply, MDF_E, 1); s.poly([(0, 0), (Ls, 0), (Ls, 6.8), (0, 6.8)], ply, MDF_E, 1)
@@ -392,9 +393,9 @@ def ripsled(plan):
         x = Ls * fx; s.poly([(x - 0.9, 11.2), (x + 0.9, 11.2), (x + 0.9, 13.2), (x - 0.9, 13.2)], "#9aa3ab", "#59616a", 1); s.line((x, 11.2), (x, 8.35), "#59616a", 4)
     s.poly([(1.5, 4.3), (Ls - 1.5, 4.3), (Ls - 1.5, 4.9), (1.5, 4.9)], MDF, MDF_E, 1)
     s.text((Ls / 2, 14.9), "fence deck: three toggle clamps", 12, weight="600")
-    for y, lab, x0_, col in ((9.98, "locating fence", Ls - 1.5, INK), (9.1, "strip", Ls - 1.5, INK), (8.35, "caul", Ls - 2.5, INK), (6.9, "blade", Ls + 1.2, CUT), (4.6, "stop strip, for triangle bars", Ls - 1.5, INK)):
-        if col == INK: s.line((x0_, y), (Ls + 1.9, y), INK, 0.7)
-        s.text((Ls + 2.2, y), lab, 11.5, anchor="start", fill=col)
+    for y, yl, lab, x0_, col in ((9.98, 11.4, "locating fence", Ls - 1.5, INK), (9.1, 9.9, "strip", Ls - 1.5, INK), (8.35, 8.4, "caul", Ls - 2.5, INK), (6.9, 6.9, "blade", Ls + 1.2, CUT), (4.6, 4.6, "leaning stop, for triangle bars", Ls - 1.5, INK)):
+        if col == INK: s.line((x0_, y), (Ls + 0.4, y), INK, 0.7); s.line((Ls + 0.4, y), (Ls + 1.9, yl), INK, 0.7)
+        s.text((Ls + 2.2, yl), lab, 12, anchor="start", fill=col)
     s.text((Ls / 2, 2.2), "landing deck", 12, weight="600")
     s.text((0.4, -1.1), "bridge", 11.5, anchor="start"); s.text((Ls - 0.4, -1.1), "bridge", 11.5, anchor="end")
     _arrow(s, (Ls * 0.38, -1.2), (Ls * 0.62, -1.2), w=4, hw=9, hl=12)
@@ -410,7 +411,7 @@ def true_fig(plan):
     for r, pts in lg["cells"]: s.poly(pts, plan["species"][r]["end"], INK, 0.8)
     s.poly(lg["outline"], "none", INK, 1.5)
     s.line((-L / 2, H), (L / 2, H), CUT, 2.6)
-    cx, cy = s.P(0, H + 0.72); r = 0.66 * sc
+    cx, cy = s.P(0, H + 0.72); r = 0.66 * sc; s.P(0, H + 1.42)
     s.raw(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="#eee9dc" stroke="{MDF_E}" stroke-width="1.2"/>'
           f'<path d="M{cx - r * .55:.1f},{cy - r * .2:.1f} a{r * .6:.1f},{r * .6:.1f} 0 0 1 {r * 1.1:.1f},0" fill="none" stroke="{INK}" stroke-width="1.2"/>'
           f'<path d="M{cx + r * .55:.1f},{cy - r * .2:.1f} l-7,-2 l4,7 z" fill="{INK}"/>')
@@ -531,14 +532,14 @@ def board_fig(plan):
     for t in (-0.68, 0.68):   # cauls across the rows
         a = (cx + u[0] * t * ext_u, cy + u[1] * t * ext_u); hw = 0.28
         q = [(a[0] + nrm[0] * sg1 * (ext_n + 0.9) + u[0] * sg2 * hw, a[1] + nrm[1] * sg1 * (ext_n + 0.9) + u[1] * sg2 * hw) for sg1, sg2 in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-        s.poly(q, MDF, MDF_E, 1)
+        s.poly(q, MDF, MDF_E, 1.2, dash="6 4", op=0.25)
     a = (cx + u[0] * 0.68 * ext_u, cy + u[1] * 0.68 * ext_u)
     if abs(nrm[0]) > 0.5:
         sgx = 1 if nrm[0] > 0 else -1
-        s.text((cx + u[0] * 0.86 * ext_u + sgx * nrm[0] * (ext_n + 0.3), cy + u[1] * 0.86 * ext_u), "cauls across, near each end", 11, anchor="start")
+        s.text((cx + u[0] * 0.86 * ext_u + sgx * nrm[0] * (ext_n + 0.3), cy + u[1] * 0.86 * ext_u), "cauls across (dashed), near each end", 11, anchor="start")
     else:
         sgy = 1 if nrm[1] > 0 else -1
-        s.text((cx, cy + sgy * nrm[1] * (ext_n + 1.95)), "cauls across the rows, near each end", 11)
+        s.text((cx, cy + sgy * nrm[1] * (ext_n + 1.95)), "cauls across the rows (dashed), near each end", 11)
     for r, o in zip(rows, off):
         c = _cen(mv(r["pts"], o)); half = r["length"] / 2 + 0.45
         s.text((c[0] - u[0] * half, c[1] - u[1] * half), f"R{r['n']}", 11, weight="600", fill=REF)
