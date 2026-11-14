@@ -36,12 +36,14 @@ def _fit(target, unit, offset=0.0, lo=1):
 def _rhombille(p, board, colour):
     s = float(p.get("side", 1.25))
     w = S3 * s
-    cols = int(p.get("cols") or _fit(board["width"], w, -0.5 * w, 2))
+    # the logs are triangles of side 3s standing in columns 1.5 hexagons wide: the board is a whole number of columns
+    kcol = int(p.get("columns") or max(2, round(board["width"] / (1.5 * w))))
+    cols = int(math.ceil(kcol * 1.5 + 0.5)) + 1
     rows = int(p.get("rows") or _fit(board["length"], 1.5 * s, -0.5 * s, 2))
     polys = []
-    for j in range(rows):
+    for j in range(-4, rows + 4):
         cy = 1.5 * j * s
-        for col in range(cols):
+        for col in range(-3, cols + 3):
             cx = col * w + (w / 2 if j % 2 else 0)
             i = col - j // 2                      # axial coordinate
             T, B = (cx, cy + s), (cx, cy - s)
@@ -51,8 +53,10 @@ def _rhombille(p, board, colour):
             unit = f"r{j}/h{col}"
             for name, pts in (("lid", [C, UR, T, UL]), ("left", [C, UL, LL, B]), ("right", [C, B, LR, UR])):
                 polys.append(_poly(pts, colour(name, i, j), f"r{j}", unit))
-    trim = [0.0, -s / 2, (cols - 0.5) * w, 1.5 * (rows - 1) * s + s / 2]
-    return polys, trim, rows, cols
+    y0 = float(p.get("y0", -s / 2)) * 1.0
+    trim = [0.0, y0, kcol * 1.5 * w, y0 + 1.5 * (rows - 1) * s + s]
+    _rhombille.cells = {"kind": "tri", "side": 3 * s, "origin": [0.0, -s], "angle": 90, "levels": int(p.get("levels", 1))}
+    return polys, trim, rows, kcol
 
 
 def cubes(p, board):
@@ -60,11 +64,9 @@ def cubes(p, board):
     their own species (light lid, medium and dark sides reads best)."""
     polys, trim, rows, cols = _rhombille(p, board, lambda name, i, j: name)
     s = float(p.get("side", 1.25))
-    return {"polygons": polys, "trim": trim, "roles": ["lid", "left", "right"],
-            "notes": [f"{rows} rows of {cols} cubes; every cube is 3 rhombus bars (60/120 degrees, {s:g}\" sides) "
-                      "glued into a hexagon, hexagons glued side by side into a row log, row slices nested with "
-                      "a half-cube offset.",
-                      "Light lid, medium left, dark right gives light from the top left; swap left and right to move the light."]}
+    return {"polygons": polys, "trim": trim, "roles": ["lid", "left", "right"], "cells": _rhombille.cells,
+            "notes": [f"Every cube is three {s:g}\" diamonds: lid, left face, right face.",
+                      "Light lid, medium left, dark right reads as light from the top left; swap left and right to move the light."]}
 
 
 def stars6(p, board):
@@ -93,10 +95,9 @@ def stars6(p, board):
 
     polys, trim, rows, cols = _rhombille(p, board, colour)
     roles = (["star_lid", "star_left", "star_right"] if shade else ["star"]) + ["field"]
-    return {"polygons": polys, "trim": trim, "roles": roles,
-            "notes": [f"{rows} rows of {cols} hexagons of 3 rhombi each; the six rhombi around every chosen point form a "
-                      f"six-point star ({spacing} spacing), the rest is field. Rows that differ get their own row log.",
-                      "Every bar is the same 60 degree rhombus: one saw setup for the whole board."]}
+    return {"polygons": polys, "trim": trim, "roles": roles, "cells": _rhombille.cells,
+            "notes": [f"Six {float(p.get('side', 1.0)):g}\" diamonds around a point make each star ({spacing} spacing); the field is the same diamond in the ground wood.",
+                      "Every piece is a 60 degree diamond or a triangle cut at the same blade tilt."]}
 
 
 def snowflakes(p, board):
@@ -131,6 +132,7 @@ def snowflakes(p, board):
     cols = int(p.get("cols") or _fit(board["width"], w, -0.5 * w, 2))
     rows = int(p.get("rows") or _fit(board["length"], 1.5 * s, -0.5 * s, 2))
     jc = rows // 2; ic = cols // 2 - jc // 2
+    ic -= (ic + 2 * jc) % 3            # flake centres on the corners of the triangle logs
     R = arm + 2
     # flake centres: columns 'spacing' apart, flake rows 2k hexagon rows apart (straight up, so every
     # flake row lines up with the hexagon rows and the row logs repeat every 2k rows)
@@ -151,10 +153,9 @@ def snowflakes(p, board):
 
     polys, trim, rows, cols = _rhombille(dict(p, side=s, cols=cols, rows=rows), board, colour)
     roles = (["core"] if core else []) + ["flake", "field"]
-    return {"polygons": polys, "trim": trim, "roles": roles,
-            "notes": [f"Snowflakes with six arms of {arm} diamonds and side branches, repeating every {m} diamonds; "
-                      f"{rows} rows of {cols} hexagons, each hexagon 3 rhombus bars. Every bar is the same 60 degree "
-                      "rhombus. The flakes don't line up with the rows, so several rows differ and each gets its own log."]}
+    return {"polygons": polys, "trim": trim, "roles": roles, "cells": _rhombille.cells,
+            "notes": [f"Each snowflake has six arms of {arm} diamonds with side branches, and the flakes repeat every {m} diamonds.",
+                      "Every piece is a 60 degree diamond or a triangle cut at the same blade tilt."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -201,10 +202,10 @@ def stars8(p, board):
                     polys.append(_poly([(x + cx, y + cy) for x, y in pts], role, f"b{r}-{c}", f"b{r}-{c}/q{q}"))
     roles = ["star_a", "star_b", "field"] if alternate else ["star_a", "field"]
     return {"polygons": polys, "trim": [0, 0, cols * S, rows * S], "roles": roles,
-            "notes": [f"{rows} x {cols} LeMoyne star blocks, {S:.3f}\" square. Each block is four identical "
-                      "quarter units turned 90 degrees to each other, so one block log makes every block.",
-                      "The edge triangles are made as two half-triangles (one in each quarter); the glue line "
-                      "between them is same-species and disappears in end grain."]}
+            "cells": {"kind": "blocks", "side": a, "cols": cols, "rows": rows,
+                      "roles": {"a": "star_a", "b": "star_b" if alternate else "star_a", "field": "field"}},
+            "notes": [f"{rows} x {cols} star blocks, each {S:.3f}\" square. A block is four identical quarter logs turned 90 degrees to each other.",
+                      "The ground triangles on each block edge are made as two halves, one in each quarter; that glue line joins the same wood and disappears in end grain."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -220,9 +221,8 @@ def checker(p, board):
             x, y = i * s, j * s
             polys.append(_poly([(x, y), (x + s, y), (x + s, y + s), (x, y + s)],
                                "a" if (i + j) % 2 == 0 else "b", f"r{j}"))
-    return {"polygons": polys, "trim": [0, 0, cols * s, rows * s], "roles": ["a", "b"],
-            "notes": [f"{rows} rows of {cols} squares. The row log is just a strip panel: alternating strips "
-                      f"{s:g}\" wide and {s:g}\" thick, edge glued."]}
+    return {"polygons": polys, "trim": [0, 0, cols * s, rows * s], "roles": ["a", "b"], "cells": {"kind": "panel"},
+            "notes": [f"{rows} rows of {cols} squares, {s:g}\" each."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -238,8 +238,8 @@ def brick(p, board):
             x, y = (i * bw - bw / 2 if j % 2 == 0 else i * bw), j * bh
             polys.append(_poly([(x, y), (x + bw, y), (x + bw, y + bh), (x, y + bh)],
                                "a" if i % 2 == 0 else "b", f"r{j}"))
-    return {"polygons": polys, "trim": [0, 0, cols * bw, rows * bh], "roles": ["a", "b"],
-            "notes": [f"{rows} courses; even rows carry a half brick past each end that is trimmed off."]}
+    return {"polygons": polys, "trim": [0, 0, cols * bw, rows * bh], "roles": ["a", "b"], "cells": {"kind": "panel"},
+            "notes": [f"{rows} courses; alternate courses carry a half brick past each end that is trimmed off."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -253,9 +253,10 @@ def _tri_rows(s, board, p):
     cols = int(p.get("cols") or max(1, round(width / s)))
     L = lambda i, j: ((i + j / 2) * s, j * h)
     out = []
-    for j in range(rows):
-        i0 = -((j + 1) // 2) - 1
-        for i in range(i0, i0 + cols + 3):
+    pad = int(p.get("_pad", 0))
+    for j in range(-pad, rows + pad):
+        i0 = -((j + 1) // 2) - 1 - pad
+        for i in range(i0, i0 + cols + 3 + 2 * pad):
             out.append(("up", j, [L(i, j), L(i + 1, j), L(i, j + 1)]))
             out.append(("down", j, [L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)]))
     return out, [0.0, 0.0, cols * s, rows * h], rows, cols, h
@@ -271,6 +272,7 @@ def geodomes(p, board):
     s = float(p.get("side", 0.8)); n = int(p.get("freq", 4)); K = int(p.get("tones", 4))
     lx, ly, lz = p.get("light", [-0.55, 0.6, 0.58])
     ln = math.sqrt(lx * lx + ly * ly + lz * lz); lx, ly, lz = lx / ln, ly / ln, lz / ln
+    p = dict(p); p["rows"] = int(p.get("rows") or max(n, n * round(board["length"] / (s * S3 / 2) / n))); p["_pad"] = 2 * n
     tris, trim, rows, cols, h = _tri_rows(s, board, p)
     # dome centres: lattice spanned by A = n(1,1) and B = n(-1,2) in (i, j); shift so a dome sits mid-board
     ox, oy = trim[2] / 2, trim[3] / 2
@@ -320,10 +322,9 @@ def geodomes(p, board):
     polys = [_poly(pts, f"tone{tone[o]}", f"r{j}") for (kind, j, pts), o in zip(tris, offs)]
     roles = [f"tone{k}" for k in range(1, K + 1)]
     return {"polygons": polys, "trim": trim, "roles": roles,
-            "notes": [f"{rows} rows of equilateral triangles ({s:g}\" sides). Domes are hexagons {n} triangles a side "
-                      f"({6 * n * n} facets, {2 * n * s:.2f}\" across), shaded in {K} woods as if lit from the upper left.",
-                      "Every bar is the same equilateral triangle: one saw setup for the whole board. Each row is a flat-sided "
-                      "strip; rows that differ get their own log."]}
+            "cells": {"kind": "tri", "side": n * s, "origin": list(cen(ic, jc)), "angle": 0},
+            "notes": [f"Domes are hexagons {n} triangles to a side ({6 * n * n} facets, {2 * n * s:.2f}\" across), shaded in {K} woods as if lit from the upper left.",
+                      f"Every bar is the same {s:g}\" equilateral triangle: one saw setup for the whole board."]}
 
 
 def kagome(p, board):
@@ -333,30 +334,30 @@ def kagome(p, board):
     in adjacent row slices, so each row is a flat-sided strip: trapezoids alternating with triangles.
     Roles: hex, up, down (use one wood for up and down for a single row log)."""
     a = float(p.get("side", 0.9)); h = a * S3 / 2
-    rows = int(p.get("rows") or _fit(board["length"], h))
+    rows = int(p.get("rows") or max(4, 4 * round(board["length"] / h / 4)))
     cols = int(p.get("cols") or max(1, round(board["width"] / (2 * a))))
     polys = []
-    for j in range(rows):
+    for j in range(-8, rows + 8):
         y0, y1 = j * h, (j + 1) * h
         # hexagon rows sit on even lines y = 2kh with centres every 2a, odd hexagon rows shifted by a
         if j % 2 == 0:      # tops of the hexagons centred on y0 (wide at the bottom), down triangles between
             off = (j // 2 % 2) * a
-            for k in range(-1, cols + 1):
+            for k in range(-4, cols + 4):
                 cx = off + 2 * k * a
                 polys.append(_poly([(cx - a, y0), (cx + a, y0), (cx + a / 2, y1), (cx - a / 2, y1)], "hex", f"r{j}"))
                 polys.append(_poly([(cx + a, y0), (cx + 1.5 * a, y1), (cx + a / 2, y1)], "down", f"r{j}"))
         else:               # bottoms of the hexagons centred on y1 (wide at the top), up triangles between
             off = ((j + 1) // 2 % 2) * a
-            for k in range(-1, cols + 1):
+            for k in range(-4, cols + 4):
                 cx = off + 2 * k * a
                 polys.append(_poly([(cx - a / 2, y0), (cx + a / 2, y0), (cx + a, y1), (cx - a, y1)], "hex", f"r{j}"))
                 polys.append(_poly([(cx + a / 2, y0), (cx + 1.5 * a, y0), (cx + a, y1)], "up", f"r{j}"))
     trim = [0.0, 0.0, cols * 2 * a, rows * h]
     return {"polygons": polys, "trim": trim, "roles": ["hex", "up", "down"],
-            "notes": [f"{rows} row strips {h:.3f}\" tall: half-hexagon trapezoids ({2 * a:g}\" and {a:g}\" across) "
-                      f"alternating with {a:g}\" triangles. Each hexagon is two trapezoids from neighbouring rows; "
-                      "their glue line is same-species and disappears in end grain, but only if the rows land exactly.",
-                      "Trapezoids and triangles are both ripped at a 30 degree tilt, flipping the blank every pass."]}
+            "cells": {"kind": "tri", "side": 2 * a, "origin": [-a, 0.0], "angle": 0, "levels": int(p.get("levels", 2))},
+            "notes": [f"Hexagons {2 * a:g}\" across with {a:g}\" triangles between them. Each hexagon is built from pieces in neighbouring logs; "
+                      "those glue lines join the same wood and disappear in end grain.",
+                      "Every bar is ripped at a 30 degree blade tilt."]}
 
 
 def rosettes(p, board):
@@ -402,7 +403,55 @@ def rosettes(p, board):
                       "Three bar shapes and three saw setups: hexagon (four 30 degree bevels), square, triangle (30 degrees)."]}
 
 
-GENERATORS = {"cubes": cubes, "tumbling-blocks": cubes, "stars6": stars6, "snowflakes": snowflakes, "snowflake": snowflakes, "stars8": stars8,
+def pinwheel(p, board):
+    """Pinwheel rosettes: the rosette pattern (hexagon, ring of six, small triangles) redrawn on the triangle
+    grid so it can be built from triangle logs. Regular hexagons of side 'side' on a lattice (2,1),(-1,3); each
+    hexagon is ringed by six 60 degree diamonds that lean the same way round, each diamond bridging two hexagons,
+    and two small triangles fill what is left (the snub trihexagonal tiling). Roles: hex, diamond, tri."""
+    a = float(p.get("side", 0.75)); h = a * S3 / 2
+    rows = int(p.get("rows") or max(2, 2 * round(board["length"] / h / 2)))
+    cols = int(p.get("cols") or max(2, 2 * round(board["width"] / a / 2)))
+    L = lambda i, j: ((i + j / 2) * a, j * h)
+    def is_c(i, j):                       # hexagon centres: i - 2j = 0 mod 7  (lattice (2,1), (-1,3))
+        return (i - 2 * j) % 7 == 0
+    nb = [(1, 0), (0, 1), (-1, 1), (-1, 0), (0, -1), (1, -1)]
+    def centre_of(v):
+        if is_c(*v): return v
+        for d in nb:
+            c = (v[0] + d[0], v[1] + d[1])
+            if is_c(*c): return c
+        return None
+    polys = []; petals = {}
+    for j in range(-8, rows + 8):
+        i0 = -((j + 1) // 2) - 8
+        for i in range(i0, i0 + cols + 17):
+            if is_c(i, j):
+                polys.append(_poly([L(i + d[0], j + d[1]) for d in nb], "hex", f"r{j}"))
+            for tri in ([(i, j), (i + 1, j), (i, j + 1)], [(i + 1, j), (i + 1, j + 1), (i, j + 1)]):
+                if any(is_c(*v) for v in tri): continue            # part of a hexagon
+                cs = [centre_of(v) for v in tri]
+                pair = [c for c in set(cs) if cs.count(c) >= 2]    # two corners on one hexagon's rim: a petal
+                if not pair: polys.append(_poly([L(*v) for v in tri], "tri", f"r{j}")); continue
+                petals[tuple(sorted(tri))] = tri
+    used = set()
+    for k, tri in petals.items():          # petals pair up across a shared edge into diamonds
+        if k in used: continue
+        for k2, t2 in petals.items():
+            if k2 == k or k2 in used: continue
+            sh = set(tri) & set(t2)
+            if len(sh) == 2:
+                a_ = [v for v in tri if v not in sh][0]; b_ = [v for v in t2 if v not in sh][0]; s0, s1 = sorted(sh)
+                polys.append(_poly([L(*a_), L(*s0), L(*b_), L(*s1)], "diamond", "r0")); used.add(k); used.add(k2); break
+        else:
+            polys.append(_poly([L(*v) for v in tri], "diamond", "r0"))
+    trim = [0.0, 0.0, cols * a, rows * h]
+    return {"polygons": polys, "trim": trim, "roles": ["hex", "diamond", "tri"],
+            "cells": {"kind": "tri", "side": 2 * a, "origin": [0.0, 0.0], "angle": 0, "levels": int(p.get("levels", 1))},
+            "notes": [f"Hexagons {2 * a:g}\" across, each ringed by six diamonds leaning the same way, with small triangles between: "
+                      "a rosette drawn on a triangle grid so every piece has 60 degree corners."]}
+
+
+GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cubes, "tumbling-blocks": cubes, "stars6": stars6, "snowflakes": snowflakes, "snowflake": snowflakes, "stars8": stars8,
               "lemoyne": stars8, "checker": checker, "checkerboard": checker, "brick": brick,
               "geodomes": geodomes, "geodesic": geodomes, "kagome": kagome, "trihex": kagome,
               "rosettes": rosettes, "rhombitrihex": rosettes}

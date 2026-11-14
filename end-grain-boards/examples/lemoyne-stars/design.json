@@ -1,9 +1,3 @@
-{
-  "name": "LeMoyne Star End-Grain Board",
-  "description": "eight-point quilt stars: each star has eight diamond points alternating padauk and purpleheart on a hard maple ground, the stars set in a grid",
-  "pattern": "stars8",
-  "params": {"side": 1.0, "alternate": true},
-  "board": {"width": 13, "length": 17, "thickness": 1.5},
-  "species": {"star_a": "padauk", "star_b": "purpleheart", "field": "maple"},
-  "options": {"edge": "1/8\" chamfer", "handles": true}
-}
+{"name": "LeMoyne Star End-Grain Board", "description": "eight-point quilt stars: each star has eight diamond points alternating padauk and purpleheart on a hard maple ground, the stars set in a grid",
+ "pattern": "stars8", "params": {"side": 0.75, "alternate": true}, "board": {"width": 13, "length": 17, "thickness": 1.5},
+ "species": {"star_a": "padauk", "star_b": "purpleheart", "field": "maple"}, "options": {"edge": "1/8\" chamfer", "handles": true}}

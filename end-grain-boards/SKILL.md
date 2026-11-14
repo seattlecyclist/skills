@@ -14,34 +14,34 @@ brief → design.json → cbplan.py (checks, plan, diagrams, guide image) → re
 ```
 
 **How every board here is built.** An end-grain face is the cut end of a log. Each polygon on the
-face is a long *bar* of that cross-section, ripped on the table saw (bevelled for angles). The script
-cuts the face into straight parallel *strips* (`scripts/strips.py`), splitting any bar a strip line
-crosses (in tumbling blocks only the maple lids split, along their short diagonal, and the same-wood
-seam all but disappears). Each strip is a *log*: its bars glue up single file into a panel with two
-flat faces, which are scraped or drum-sanded clean before the panel is crosscut into *slices*. The
-slices are straight strips, laid out (some slid, turned or flipped) and glued like any end-grain board,
-then trimmed and flattened. Every glue face is a flat plane that can be checked and cleaned: nothing is
-glued into a V-groove. Strips that are windows of one longer strip come from one log, so a pattern
-usually needs one or two logs.
+face is a long *bar* of that cross-section, ripped on the table saw. Bars are glued three or four at a
+time into a small closed *log*: a triangle for 60 degree patterns (glued in a V cradle), a rectangle
+for 45 and 90 degree patterns (bands, then quarter logs in corner cauls). **Every face of every log is
+machined flat** before anything else is glued to it. Logs are crosscut into *slices*, slices are glued
+in pairs and then into straight *rows* in a row jig, rows are trued and glued into the board, and the
+board is flattened and then trimmed. `scripts/logs.py` works this out from the face: it lays the
+pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
+same log turned or flipped, and orders each log's glue-ups in flat layers.
 
-The older method (bars into units, units into logs whose outer faces zigzag) is still there with
-`"build": {"method": "units"}`, but its log faces are V-grooves that can't be cleaned; don't use it
-unless the user asks.
+Never plan a glue-up whose outside is a zigzag or V-groove (rows of hexagons, nested units): those
+faces cannot be machined, squeeze-out stays in them and the next joint gaps. `references/technique.md`
+has the rules and the reasons.
 
 | Path | What it is |
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
-| `scripts/strips.py` | Cuts the face into straight strips: searches strip direction, width and offset for the fewest split bars with every bar spanning its strip (single file) and no slivers; merges strips into logs; marks the bars past the trim line that each slice carries. Override in `design.build`: `axis` (`x` vertical strips, `y` horizontal), `pitch`, `offset`, `min_pitch`, `max_pitch`. |
-| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `rosettes`, `checker`, `brick`) and the polygon format for `custom`. |
+| `scripts/logs.py` | The build: face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
+| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
+| `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
-| `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, units & logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
-| `scripts/assembly.py` | The illustrated build: 3D drawings of each step in the manner of printed shop plans (solid parts in their woods, glue faces yellow, orange arrows for clamp and push directions, circled part letters on leaders, the grain-direction arrow, red cut lines). Called by cbplan; sheet 06 shows each drawing beside its step, with 1st / 2nd / 3rd GLUE-UP headings. |
+| `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
+| `scripts/assembly.py` | `Scene`: the small 3D drawing engine behind the exploded views (solid parts in their woods, glue faces yellow, orange clamp arrows, circled labels, grain arrow, red cut lines). |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
-| `scripts/selftest.py` | Proves the checks catch an overlap, a gap, a bevel past 45 degrees and a bad wood. |
+| `scripts/selftest.py` | Proves every example passes and the checks catch an overlap, a gap, a bevel past 45 degrees, a bad wood and an unbuildable pattern. |
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
-| `references/technique.md` | Bevel ripping, tape glue-ups, crosscutting slices, flattening, finishing, safety. **Read before writing advice the plan doesn't already give.** |
+| `references/technique.md` | The five rules, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Eight worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, and three expert ones, `geodesic-domes`, `kagome-stars`, `hex-rosettes`; each with `design.json`, `plan.html`, `guide.jpg` and (all but the checkerboard) `photo.jpg`. |
+| `examples/` | Eight worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, and three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`; each with `design.json`, `plan.html`, `guide.jpg` and (all but the checkerboard) `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in
@@ -54,17 +54,17 @@ Get, or ask once for only what you cannot infer:
 - **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`;
   stars, Star of David, hexagram → `stars6`; snowflakes → `snowflakes`; eight-point, quilt or LeMoyne star, compass star →
   `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`; geodesic, domes, triangulated
-  spheres → `geodomes`; kagome, trihexagonal, triaxial weave, star lattice → `kagome`; hexagons with squares
-  and triangles, rosettes, rhombitrihexagonal → `rosettes`. Anything else (chevrons,
+  spheres → `geodomes`; kagome, trihexagonal, triaxial weave, star lattice → `kagome`; rosettes, hexagons ringed
+  by other pieces → `pinwheel` (the hexagon-square-triangle rosette, `rosettes`, has no sound build; say so and offer `pinwheel`). Anything else (chevrons,
   hexagons, diamonds, a logo-like motif) → `custom` polygons (`references/patterns.md`). Say which you chose.
 - **Woods**, one per role the pattern has (`cubes`: lid, left, right; `stars6`: star, field; `snowflakes`: flake, field; `stars8`:
   star_a, star_b, field; `geodomes`: tone1 (lightest) to tone4 (darkest); `kagome`: hex, up, down;
-  `rosettes`: hex, square, tri; `checker` and `brick`: a, b). For 3D effects, light-medium-dark
+  `pinwheel`: hex, diamond, tri; `checker` and `brick`: a, b). For 3D effects, light-medium-dark
   matters more than the species: maple / cherry / walnut is the classic. Fill gaps from
   `references/species.md` and say so. Refuse red oak, softwoods, spalted wood, cocobolo (it explains why).
 - **Size.** Default 12 x 16 x 1-1/2". Generators fit whole repeats, so the finished size moves to the
-  nearest repeat; report the actual size. Piece size (`side`) sets how busy it looks: rhombus sides
-  1" to 1-1/2", star rhombi 3/4" to 1-1/4".
+  nearest repeat; report the actual size. Piece size (`side`) sets how busy it looks, and the log it
+  makes must pass under the saw (2-5/8" tall): cube and star diamonds up to 1", kagome and pinwheel 3/4", LeMoyne 3/4".
 - **Extras:** edge treatment, feet, juice groove, handles (`options`), and the setting for the photo.
 
 ## 2. design.json
@@ -74,7 +74,7 @@ Get, or ask once for only what you cannot infer:
   "name": "Tumbling Blocks End-Grain Board",
   "description": "3D tumbling blocks: a honeycomb of cubes seen corner-on, maple lids over cherry and walnut sides",
   "pattern": "cubes",
-  "params": {"side": 1.25},
+  "params": {"side": 1.0},
   "board": {"width": 12, "length": 16, "thickness": 1.5},
   "species": {"lid": "maple", "left": "cherry", "right": "walnut"},
   "options": {"edge": "1/8\" chamfer", "feet": true, "juice_groove": false, "handles": false},
@@ -84,8 +84,9 @@ Get, or ask once for only what you cannot infer:
 ```
 
 `description` is used word for word in the render prompt, so describe what a viewer sees. `shop`
-defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" trimmed off each log end, logs at
-most 24" (longer ones are split), blanks 5-1/2" wide, one spare slice per log. Generator `params`
+defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" waste at each log end, logs at
+most 24" (longer ones are split), blanks 5-1/2" wide with the last 1" not ripped, bars ripped 1/32" over,
+1/64" allowed for truing each log face, 1/8" cleaned off every board edge, saw clearance 3-1/8" over a 1/2" sled. Generator `params`
 are in `references/patterns.md` (`rows`/`cols` override the fit).
 
 ## 3. Build and check
@@ -95,22 +96,21 @@ python3 scripts/cbplan.py design.json out/
 ```
 
 It prints the actual size, every bar shape with its blade tilt, each log (count, length, slices) and
-the board feet per species, then the checks: species hard enough (Janka 900+), bars convex, **no
-overlaps and no gaps** over the finished board (a sampled coverage test), every bevel 45 degrees or
-less, board 1" or thicker; warnings for strips that don't glue single file (bars side by side inside a strip, as in
-LeMoyne stars: say so, and try another `build.axis` or `pitch`), and for species that move differently, unknown species and boards
-large for their thickness. A FAIL is a design error: fix the design, never the plan text. Explain any
-WARN to the user.
+the board feet per species, then the checks: species hard enough (Janka 900+), pieces convex, **no
+overlaps and no gaps**, slices cover the board, every log's parts fill its section, every bar has a
+table-saw setup with a bevel of 45 degrees or less, every sliced log fits under the saw, no glue-up has
+more than four parts, at least 1/8" to trim on every edge, board 1" or thicker; warnings for small bars,
+many log types, species that move differently and boards large for their thickness. A FAIL is a design
+error: fix the design (usually `side` or `levels`), never the plan text. Explain any WARN to the user.
 
-Then look. Open `out/svg/face.svg` (or `plan.html`) and `out/guide.png` and ask: does the pattern
-read as what the user described? Contrast between roles is the usual problem (two mid-browns
-merge); the star patterns also depend on `spacing` and on which wood is the star. Change and rerun.
-Also look at sheet 06: every step after buying has a 3D drawing (rip, each unit and log glue-up,
-crosscut, board glue-up, trim). Check that the exploded parts read clearly and the arrows point at the
-joints; a builder who can't picture the glue-up builds from these. Also read the log and layout diagrams: a pattern that needs many log types (`stars6` with `sparse`
-spacing needs seven) is more glue-ups; prefer a variant with one to three logs where the look allows,
-and say why. Motifs bigger than a few rows (snowflakes) are built row by row: tell the user how many
-logs and that the extra end trim raises the board feet.
+Then look at `plan.html`:
+- **Face** (sheet 01): does it read as what the user described? Contrast between roles is the usual
+  problem (two mid-browns merge; a dark wood on the largest pieces takes over). Is the crop balanced?
+- **Logs** (sheet 04): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
+  down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
+  a simpler variant and say why.
+- **Layout** (sheet 05): letters, stripe edges and primes must be legible; rows straight.
+- **Steps** (sheet 06): a builder who cannot picture a glue-up builds from the drawings beside the steps.
 
 ## 4. Render (plan-to-photo)
 
@@ -135,8 +135,8 @@ scene spec like any other model.
 ## 5. Deliver
 
 Publish `plan.html` (self-contained) as an Artifact or attach it, with the photo. In chat give: the
-finished size, the woods and board feet, how many bars, units, logs and slices, the saw setups (for
-example "every bar is one 60-degree rhombus, blade at 30 degrees"), anything the checks warned
+finished size, the woods and board feet, how many bars, logs, slices and rows, the saw setups (for
+example "two bar shapes, both with the blade at 30 degrees"), the jigs to make, anything the checks warned
 about, and what you chose for them. Keep `design.json` with the plan.
 
 ## Changes
@@ -147,11 +147,13 @@ new wood changes board feet and possibly the warnings.
 
 ## Pitfalls
 
-- Bevel accuracy is everything: half a degree off on a 60-degree rhombus opens a gap at every third
-  joint across a row. The plan tells the builder to set tilt with a digital gauge and dry-fit a unit
-  before ripping all the bars; keep that advice if you rewrite steps.
-- A thickness planer destroys end-grain boards. Flatten with a router sled or drum sander.
-- Patterns whose rows differ need a log per row type. Before you promise a pattern, check the log count.
+- Bevel accuracy is everything: half a degree off on a 60 degree bar opens a gap in every log. The
+  plan has the builder set tilt with a digital gauge and dry-fit three scrap bars; keep that advice.
+- The faces glued when slices become rows and rows become the board are long grain (the sides of the
+  logs). Never tell the builder to size them or double-coat them as end grain.
+- Flatten, then trim. A thickness planer destroys end-grain boards; so does a jointer on a row's edge.
+- A log taller than 2-5/8" does not pass under a 10" saw on a sled. Shrink `side` before promising a size.
+- Same-wood glue lines disappear in end grain, so the build may cut a piece in two or merge two
+  pieces into one bar; the face drawing shows the pieces as built.
 - The generators' coordinates are inches, y up; the SVGs flip y. In a `custom` design every polygon
-  must be convex (split concave shapes into convex bars) and the slice groups must be what is
-  physically crosscut from one log.
+  must be convex.

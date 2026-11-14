@@ -61,17 +61,20 @@ plan, errs = run(d); expect("red oak is refused", plan is None and "not a cuttin
 
 d = json.load(open(os.path.join(EX, "checkerboard", "design.json")))
 plan, _ = run(d)
-expect("checkerboard strips come from one log", len(plan["logs"]) == 1)
-d["build"] = {"method": "units"}; plan, _ = run(d)
-expect("checkerboard rows (units method) come from one log, every other row turned",
-       len(plan["logs"]) == 1 and {s["xf"] for s in plan["slices"]} == {"id", "r180"})
+expect("checkerboard: one strip panel, every other slice turned", len(plan["logs"]) == 1 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False, True})
 d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
 plan, _ = run(d)
-expect("tumbling blocks: one strip panel, bars single file, only the lids split",
-       len(plan["logs"]) == 1 and plan["strips"]["narrow"] == 0 and len(plan["bar_types"]) == 2)
-d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json"))); d["build"] = {"method": "units"}
+expect("tumbling blocks: one triangle log, two bar shapes, no glue-up over four parts",
+       len(plan["logs"]) == 1 and len(plan["bar_types"]) == 2 and max(len(s["parts"]) for s in plan["logs"][0]["stages"]) <= 4)
+d["params"]["side"] = 1.25; plan, errs = run(d)
+expect("a log too tall for the saw is caught", errs and any("fits under the saw" in e for e in errs))
+d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
 plan, _ = run(d)
-expect("LeMoyne quarters (units method) are one unit type", len(plan["units"]) == 1 and len(plan["bar_types"]) == 3)
+expect("LeMoyne: bands, quarter, half and block logs; only the block is sliced",
+       [l["shape"] for l in plan["logs"]] == ["band", "band", "quarter", "half", "block"] and [l["id"] for l in plan["logs"] if l["crosscut"]] == ["E"])
+plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"width": 12, "length": 16, "thickness": 1.5},
+                  "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
+expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
 
 print("all good" if not fails else f"{fails} failed")
 sys.exit(1 if fails else 0)

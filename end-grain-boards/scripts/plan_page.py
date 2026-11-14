@@ -5,6 +5,7 @@ IBM Plex Mono labels and numbers, walnut-brown accent; light and dark.
 page(plan, svgs, photo) -> one self-contained HTML string (fonts from Google Fonts, nothing else external).
 """
 import base64, html, os, re
+from collections import OrderedDict
 
 
 def _fr(s):
@@ -60,7 +61,7 @@ nav.index .s{font-family:var(--f-mono);font-size:12px;color:var(--graphite)}
 .stamp{font-family:var(--f-mono);font-size:12px;color:var(--good);display:flex;gap:6px;align-items:center}.stamp.bad{color:var(--weak)}
 .main,.lower{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:1px;background:var(--rule)}
 .lower{border-top:1px solid var(--rule)}.full{grid-template-columns:1fr}
-.main>figure,.lower>figure{margin:0;background:var(--sheet);padding:14px;display:grid;gap:8px;align-content:start;min-width:0}
+.main>figure,.lower>figure,.notes>figure{margin:0;background:var(--sheet);padding:14px;display:grid;gap:8px;align-content:start;min-width:0}
 .ph{background:var(--plate);border-radius:2px;overflow:auto;display:block}
 .ph svg,.ph img{display:block;max-width:100%;height:auto;margin:0 auto}
 figcaption{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:12.5px;color:var(--graphite)}
@@ -99,6 +100,8 @@ ol.steps .see{font-family:var(--f-mono);font-size:12px;color:var(--graphite);mar
 .asm{display:grid;gap:10px;margin:0}
 .asm figure{margin:0;border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden}
 .asm svg{display:block;width:100%;height:auto}
+.logpair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}.logpair .ph svg{max-height:340px;width:auto}
+@media (max-width:760px){.logpair{grid-template-columns:1fr}}
 @media (max-width:760px){.stepgrid{grid-template-columns:1fr}}
 .dont{grid-column:2;margin-top:8px;border-left:3px solid var(--weak);padding:6px 10px;font-size:14px;background:color-mix(in srgb,var(--weak) 8%,transparent)}
 .dont b{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.07em;color:var(--weak);margin-right:6px}
@@ -125,17 +128,19 @@ ORD = {1: "1ST", 2: "2ND", 3: "3RD", 4: "4TH", 5: "5TH"}
 
 
 def page(plan, svgs, photo, guide=None):
-    from cbplan import dim, short, XF_MARK, XF_TEXT, plan_name
+    from cbplan import dim, short, plan_name
     e = html.escape; fr = _fr
     W, L, T = plan["board"]["width"], plan["board"]["length"], plan["board"]["thickness"]
-    sh = plan["shop"]; logs = plan["logs"]; bars = plan["bars"]
-    nbars = sum(b["total_bars"] for b in bars); nlogs = sum(l["count"] for l in logs); nsl = len(plan["slices"])
+    sh = plan["shop"]; logs = plan["logs"]; bars = plan["bars"]; rows = plan["rows"]
+    nbars = sum(b["total_bars"] for b in bars); nlogs = sum(l["count"] for l in logs); nsl = plan["n_slices"]
     bf = sum(s["bf_buy"] for s in plan["stock"])
     errors = [c for c in plan["checks"] if not c["ok"] and c["level"] != "warn"]
     warns = [c for c in plan["checks"] if not c["ok"] and c["level"] == "warn"]
     size = f'{short(W)} × {short(L)} × {short(T)}'
     stamp = (f'<div class="stamp bad">✗ {len(errors)} check{"s" if len(errors) > 1 else ""} fail</div>' if errors else
              f'<div class="stamp">{TICK}{len(plan["checks"]) - len(warns)} of {len(plan["checks"])} checks pass</div>')
+    wname = lambda k: plan_name(plan, k)
+    pl = lambda n, w: f"{n} {w}" + ("" if n == 1 else "s")
 
     def tb(no, title, by, meta):
         return (f'<div class="tb"><div class="no mono">{no}</div><div><h2>{e(title)}</h2><div class="by">{by}</div></div>'
@@ -144,27 +149,26 @@ def page(plan, svgs, photo, guide=None):
     def fig(svg_or_img, label, extra=""):
         return f'<figure><div class="ph">{svg_or_img}</div><figcaption><span class="lbl">{e(label)}</span>{extra}</figcaption></figure>'
 
-    # title: last two words in the accent
     words = plan["name"].split()
     h1 = (e(" ".join(words[:-2])) + " <em>" + e(" ".join(words[-2:])) + "</em>") if len(words) > 2 else f"<em>{e(plan['name'])}</em>"
     desc = plan.get("description") or ""
-    lede = fr((desc[0].upper() + desc[1:] + ". ") if desc else "") + fr(plan["notes"][0] if plan["notes"] else "")
+    lede = fr((desc[0].upper() + desc[1:] + ". ") if desc else "")
     chain = "<i>→</i>".join(f'<span><b>{n}</b>{e(s["title"].replace("the ", ""))}</span>' for n, s in enumerate(plan["steps"], 1))
     stats = "".join(f'<div class="stat"><b class="mono">{b}</b><small>{e(s)}</small></div>' for b, s in (
         (fr(f'{size.replace(chr(34), "")}"'), "W × L × T, finished"),
-        (str(nbars), f'bars, {len(plan["bar_types"])} shape{"s" if len(plan["bar_types"]) > 1 else ""}'),
-        (str(nlogs), f'log{"s" if nlogs > 1 else ""} glued, {len(logs)} kind{"s" if len(logs) > 1 else ""}'),
-        (str(nsl), "slices in the final glue-up"),
-        (f"{bf:g}", "board feet to buy, " + ", ".join(w["name"].split()[-1].lower() for w in plan["woods"]))))
+        (str(nbars), f'bars in {pl(len(plan["bar_types"]), "shape")}'),
+        (str(nlogs), f'logs glued, {pl(len(logs), "kind")}'),
+        (str(nsl), f"slices in {pl(len(rows), 'row')}"),
+        (f"{bf:g}", "board feet to buy")))
 
     sheets = [("overview", "Overview", short(W) + " × " + short(L)), ("materials", "Material list", f"{bf:g} bd ft"),
-              ("bars", "Bars & rip setups", f'{len(plan["bar_types"])} shape{"s" if len(plan["bar_types"]) > 1 else ""}'),
-              ("logs", "Strip panels" if plan.get("method") == "strips" else "Units & logs", (f'{len(plan["units"])} unit{"" if len(plan["units"]) == 1 else "s"} · ' if plan["units"] else "") + f'{len(logs)} log{"" if len(logs) == 1 else "s"}'),
+              ("bars", "Bars & rip setups", pl(len(plan["bar_types"]), "shape")), ("logs", "Logs", pl(len(logs), "kind")),
               ("layout", "Slice layout", f"{nsl} slices"), ("build", "Building it", f'{len(plan["steps"])} steps')]
     index = "".join(f'<a href="#{i}"><span class="n">{n:02d}</span><span class="t">{e(t)}</span><span class="s">{fr(s)}</span></a>'
                     for n, (i, t, s) in enumerate(sheets, 1))
     index += (f'<a href="#checks"><span class="n">R</span><span class="t">Checks</span><span class="s" style="color:var(--{"weak" if errors else "good"})">'
               f'{"✗ " + str(len(errors)) + " fail" if errors else "all pass ✓"}</span></a>')
+    sheet_no = {i: f"{n:02d}" for n, (i, _, _) in enumerate(sheets, 1)}
 
     H = []
     # 01 overview
@@ -172,93 +176,116 @@ def page(plan, svgs, photo, guide=None):
         mime = "image/png" if photo.lower().endswith(".png") else "image/jpeg"
         hero = fig(f'<img src="data:{mime};base64,{base64.b64encode(open(photo, "rb").read()).decode()}" alt="Render of the finished board">',
                    "Render", '<span>made from the exact face with plan-to-photo</span>')
-    else:
-        hero = fig(svgs["face"], "Finished face")
-    if photo and os.path.exists(photo):
         second = fig(svgs["face"], "Top face · finished size")
-    elif guide and os.path.exists(guide):
-        second = fig(f'<img src="data:image/png;base64,{base64.b64encode(open(guide, "rb").read()).decode()}" alt="Colour-coded view of the board">',
-                     "Colour-coded view")
     else:
-        second = '<div class="notes"></div>'
+        hero = fig(svgs["face"], "Top face · finished size")
+        top = max((l for l in logs if l["crosscut"]), key=lambda l: l["slices"])
+        second = fig(svgs.get(f'asm_log_{top["id"]}', svgs[f'log_{top["id"]}']), f'The building block · log {top["id"]}',
+                     f'<span>{len(top["cells"])} pieces, {top["slices"]} slices of it in the board</span>')
     woods = "".join(f'<li><span class="sw" style="background:{w["end"]}"></span>{e(w["name"])}: '
                     f'{next((s["bf_buy"] for s in plan["stock"] if s["species"] == w["name"]), 0):g} bd ft</li>' for w in plan["woods"])
     tilts = sorted({round(b["tilt"], 1) for b in plan["bar_types"] if b["tilt"]})
-    tools = ["Table saw" + (f" with a digital angle gauge (blade at {', '.join(f'{t:g}°' for t in tilts)})" if tilts else ""),
-             "Thin-rip jig, zero-clearance insert, push block", "Crosscut sled with a stop block",
-             "Bar clamps, cauls, packing tape for the bevelled units", "Router sled or drum sander (not a planer)",
+    kind = plan["info"]["kind"]
+    tools = ["Table saw" + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in tilts)})" if tilts else "") + ", thin-rip stop, zero-clearance insert",
+             "Jointer and planer for the blanks and bars",
+             {"tri": "Drum sander with a V sled (or a jack plane and the sled) to true the logs", "blocks": "Jointer and planer to true the logs",
+              "panel": "Planer to true the panels"}[kind],
+             "Crosscut sled with a stop block and hold-down",
+             {"tri": "Shop-made V cradle and row jig (step 3)", "blocks": "Shop-made corner cauls and row jig (step 3)", "panel": "Flat cauls"}[kind],
+             "Bar clamps, taped cauls, Titebond III", "Drum sander or router sled to flatten; never a planer on end grain",
              "Random-orbit sander, mineral oil and board butter"]
+    how = {"tri": "Bars are glued three or four at a time into small triangular logs in a V cradle. Every face of every log is sanded flat, the logs are sliced, "
+                  "the triangular slices are glued into straight rows, and the rows are glued into the board. No glue-up ever has a face that cannot be machined.",
+           "blocks": "Each star block is built as a square log: two bars make a band, two bands and a square bar make a quarter log, four quarter logs make the block. "
+                     "Every log is jointed and planed square before the next glue-up, then the block logs are sliced and the slices glued in rows.",
+           "panel": "Square-edged strips are glued into flat panels, the panels are planed and crosscut, and the slices are stood on end and glued into the board."}[kind]
+    notes = [how] + list(plan["notes"])
+    glance = "".join(f'<dt>{e(k)}</dt><dd class="m">{fr(v)}</dd>' for k, v in (
+        ("Bars", f'{nbars} + spares, {pl(len(plan["bar_types"]), "shape")}'), ("Logs", ", ".join(f'{l["count"]} × {l["id"]}' for l in logs)),
+        ("Slices", f'{nsl}, cut {short(plan["slice_cut"])} thick'), ("Rows", f'{len(rows)}, each {short(rows[0]["height"])} wide'),
+        ("Glue-ups", f'{sum(1 for s in plan["steps"] if s.get("glue"))} stages, never more than four parts in a log')))
+    side = (f'<div class="notes" style="padding:0;display:grid;gap:0;align-content:start">{second}'
+            f'<div class="notes"><h3>How it goes together</h3><ul>{"".join(f"<li>{fr(n)}</li>" for n in notes)}</ul><h3>At a glance</h3><dl class="kv">{glance}</dl></div></div>')
     H.append(f'<article class="sheet" id="overview">{tb("01", "Overview", fr(desc[0].upper() + desc[1:]) if desc else "", f"<div class=dims>{fr(size)}</div>{stamp}")}'
-             f'<div class="main">{hero}{second}</div>'
-             f'<div class="lower"><div class="notes"><h3>About the pattern</h3><ul>{"".join(f"<li>{fr(n)}</li>" for n in plan["notes"])}</ul></div>'
-             f'<div class="notes"><h3>What you\'ll need</h3><ul>{woods}</ul><h3>Tools</h3><ul>{"".join(f"<li>{fr(t)}</li>" for t in tools)}</ul></div></div></article>')
+             f'<div class="main">{hero}{side}</div>'
+             f'<div class="lower" style="grid-template-columns:1fr 1.65fr"><div class="notes"><h3>Wood to buy</h3><ul>{woods}</ul></div>'
+             f'<div class="notes"><h3>Tools</h3><ul style="grid-template-columns:1fr 1fr;gap:5px 28px">{"".join(f"<li>{fr(t)}</li>" for t in tools)}</ul></div></div></article>')
 
     # 02 materials
-    rows = ""
+    trs = ""
     for st in plan["stock"]:
         col = next(w["end"] for w in plan["woods"] if w["name"] == st["species"])
-        rows += f'<tr class="grp"><td colspan="4"><span class="sw" style="background:{col}"></span>{e(st["species"])} · buy {st["bf_buy"]:g} bd ft</td></tr>'
+        trs += f'<tr class="grp"><td colspan="5"><span class="sw" style="background:{col}"></span>{e(st["species"])} · buy {st["bf_buy"]:g} bd ft</td></tr>'
         for it in st["items"]:
-            rows += (f'<tr><td><span class="chip">{it["bar"]}</span></td><td class="m">{e(it["rough"])}</td><td class="q">{it["blanks"]}</td>'
-                     f'<td class="m">{fr(it["blank"])}</td></tr>')
+            for bl in it["blanks"]:
+                trs += (f'<tr><td><span class="chip">{it["bar"]}</span></td><td class="m">{e(it["rough"])}</td><td class="q">{bl["n"]}</td>'
+                        f'<td class="m">{fr(bl["size"])}</td><td class="m">{e(bl["yield"])} · {it["per_blank"]} per blank</td></tr>')
     wl = "".join(f'<li><span class="sw" style="background:{w["end"]}"></span><b>{e(w["name"])}</b>'
                  + (f' · Janka {w["janka"]} · shrinkage {w["tan"]}%' if w["janka"] else "") + f'. {fr(w["note"])}</li>' for w in plan["woods"])
-    H.append(f'<article class="sheet" id="materials">{tb("02", "Material list", "Blanks per species, milled to the bar thickness", "<div class=dims>T × W × L</div>")}'
-             f'<div class="lower full" style="border-top:0"><div class="panel"><div class="tbl"><table class="d"><tr><th>Bar</th><th>Rough</th>'
-             f'<th style="text-align:right;padding-right:12px">Blanks</th><th>Milled blank</th></tr>{rows}</table></div>'
-             f'<p class="small">Board feet include 25% for defects and milling. Blanks are {fr(short(sh["stock_width"]))} wide after jointing; wider stock gives more bars per blank.</p></div></div>'
+    H.append(f'<article class="sheet" id="materials">{tb("02", "Material list", "Blanks for each bar, by species, milled to the bar\'s thickness", "<div class=dims>T × W × L</div>")}'
+             f'<div class="lower full" style="border-top:0"><div class="panel"><div class="tbl"><table class="d"><tr><th>Bar</th><th>Rough stock</th>'
+             f'<th style="text-align:right;padding-right:12px">Blanks</th><th>Milled blank</th><th>Bars it must yield</th></tr>{trs}</table></div>'
+             f'<p class="small">Board feet include 25% for defects and milling. Blanks are {fr(short(sh["stock_width"]))} wide after jointing and the last {fr(short(sh["blank_remainder"]))} of each is not ripped, '
+             f'so the bars per blank shown are what the blank really gives. Wider stock gives more.</p></div></div>'
              f'<div class="lower full"><div class="notes"><h3>The woods</h3><ul>{wl}</ul></div></div></article>')
 
     # 03 bars
-    cl = "".join(f'<tr><td><span class="chip">{b["bar"]}</span></td><td>{fr(b["label"])}<span class="sub">{e(plan_name(plan, b["species"]))} · {e(", ".join(b["roles"]))}</span></td>'
-                 f'<td class="q">{b["total_bars"]}</td><td class="m">' + "<br>".join(f'<span class="fr">{l["bars"]} @ {fr(short(l["bar_length"]))}</span>' for l in b["lengths"])
+    cl = "".join(f'<tr><td><span class="chip">{b["bar"]}</span></td><td>{fr(b["label"])}<span class="sub">{e(wname(b["species"]))}</span></td>'
+                 f'<td class="q">{b["total_bars"]} + {b["total_spares"]}</td><td class="m">' + "<br>".join(f'{l["bars"]} + {l["spares"]} @ {fr(short(l["bar_length"]))}' for l in b["lengths"])
                  + f'</td><td class="m">{fr(short(b["stock"]))}</td></tr>' for b in bars)
     setups = "".join(f'<div class="joint"><div class="jh"><span class="jn">{bt["id"]}</span><div><h4>{fr(bt["label"])}</h4>'
                      f'<div class="jsub">{"blade " + format(bt["tilt"], ".1f") + "° from vertical" if bt["tilt"] else "blade square"}</div></div></div>'
-                     f'<ul class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">{"".join(f"<li>{fr(s)}</li>" for s in bt["steps"])}</ul></div>'
+                     f'<ol class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">{"".join(f"<li>{fr(s)}</li>" for s in bt["steps"])}</ol></div>'
                      for bt in plan["bar_types"])
-    H.append(f'<article class="sheet" id="bars">{tb("03", "Bars & rip setups", "Every piece of the face is the end of one of these bars", f"<div class=dims>{nbars} bars · kerf {fr(short(sh["kerf"]))}</div>")}'
-             f'<div class="main">{fig(svgs["bars"], "Cross-sections and the blank, end view")}<div class="panel"><h3>Cut list</h3><div class="tbl"><table class="d">'
-             f'<tr><th>Bar</th><th>Section</th><th style="text-align:right;padding-right:12px">Qty</th><th>Lengths</th><th>Blank</th></tr>{cl}</table></div></div></div>'
+    H.append(f'<article class="sheet" id="bars">{tb("03", "Bars & rip setups", "Every piece of the face is the end of one of these bars", f"<div class=dims>{nbars} bars + spares · kerf {fr(short(sh["kerf"]))}</div>")}'
+             f'<div class="main">{fig(svgs["bars"], "Cross-sections, and the blank seen from its end")}<div class="panel"><h3>Cut list</h3><div class="tbl"><table class="d">'
+             f'<tr><th>Bar</th><th>Section</th><th style="text-align:right;padding-right:12px">Qty + spare</th><th>Lengths</th><th>Blank</th></tr>{cl}</table></div>'
+             f'<p class="small">Bars are cut {fr(short(sh["glue_extra"]))} longer than the log they go into.</p></div></div>'
              f'<div class="jgrid setups" style="border-top:1px solid var(--rule);--n:{min(3, len(plan["bar_types"]))}">{setups}</div></article>')
 
-    # 04 units and logs
+    # 04 logs
     cards = ""
-    for u in plan["units"]:
-        pcs = "<br>".join(f'{p["count"]} × {fr(short(p["length"]))} for {e(p["log"])}' for p in u["pieces"])
-        cards += (f'<div class="joint"><div class="ph">{svgs.get(f"unit{u["type"] + 1}", "")}</div><div class="jh"><span class="jn">U{u["type"] + 1}</span>'
-                  f'<div><h4>{len(u["bars"])} bars glued as drawn</h4><div class="jsub">tape glue-up</div></div></div>'
-                  f'<dl class="kv"><dt>Make</dt><dd class="m">{pcs}</dd></dl></div>')
     for l in logs:
-        what = ", ".join(x for x in ((f'{len(l["units"])} units' if l["units"] else ""), (f'{len(l["loose_bars"])} bars' if l["loose_bars"] else "")) if x)
-        cards += (f'<div class="joint" style="grid-column:1/-1"><div class="ph">{svgs[f"log{l["type"]}"]}</div><div class="jh"><span class="jn">{e(l["name"][-1])}</span>'
-                  f'<div><h4>{e(l["name"])}: {e(what)} {"in a panel" if plan.get("method") == "strips" else "side by side"}</h4><div class="jsub">{"needs a plywood carrier on the sled" if l.get("carrier") else "sits flat on the sled"}</div></div></div>'
-                  f'<dl class="kv"><dt>Make</dt><dd class="m">{l["count"]} × {fr(short(l["length"]))} long</dd><dt>Slices</dt><dd class="m">{l["slices"]} + {l["spares"]} spare, '
-                  f'{fr(short(T + sh["flatten_allowance"]))} thick</dd></dl></div>')
-    H.append(f'<article class="sheet" id="logs">{tb("04", *(("Strip panels", "Each log is one straight strip of the board: bars glued single file into a panel with two flat faces, drawn lying on the bench") if plan.get("method") == "strips" else ("Units & logs", "Bars glue into units, units glue side by side into logs; labels show any unit turned or flipped")), f"<div class=dims>{(str(len(plan["units"])) + " unit type" + ("" if len(plan["units"]) == 1 else "s") + " · ") if plan["units"] else ""}{len(logs)} log type{"" if len(logs) == 1 else "s"}</div>")}'
+        made = " + ".join(f'{k} × {fr(short(ln))}' for ln, k in l["make"])
+        parts = OrderedDict()
+        for st in l["stages"]:
+            for p in st["parts"]:
+                key = ("log " + p["log"]) if "log" in p else ("bar " + p["bar"] + " " + wname(p["wood"]).split()[-1].lower())
+                parts[key] = parts.get(key, 0) + 1
+        ptxt = ", ".join(f"{c} × {k}" for k, c in parts.items())
+        use = f'{l["slices"]} slices + {l["spares"]} spare, {fr(short(plan["slice_cut"]))} thick' if l["crosscut"] else "goes into " + ", ".join(
+            sorted({"log " + o["id"] for o in logs for st in o["stages"] for p in st["parts"] if p.get("log") == l["id"]}))
+        asm = svgs.get(f'asm_log_{l["id"]}')
+        cards += (f'<div class="joint" style="grid-column:1/-1"><div class="jh"><span class="jn">{e(l["id"])}</span>'
+                  f'<div><h4>{e(l["name"])}: {fr(short(l["w"]))} {e(l["what"])}</h4><div class="jsub">{"one solid bar, trued like the other logs" if sum(len(s_["parts"]) for s_ in l["stages"]) == 1 else pl(len(l["stages"]), "glue-up") + " · " + e(l["stages"][0]["jig"])}</div></div></div>'
+                  f'<div class="logpair"><div class="ph">{svgs[f"log_{l["id"]}"]}</div>' + (f'<div class="ph">{asm}</div>' if asm else "") + '</div>'
+                  f'<dl class="kv"><dt>Parts</dt><dd class="m">{e(ptxt)}</dd><dt>Make</dt><dd class="m">{made} long</dd><dt>Use</dt><dd class="m">{use}</dd></dl></div>')
+    H.append(f'<article class="sheet" id="logs">{tb("04", "Logs", "End views, as the parts sit in the jig: yellow is glue, orange is clamp pressure, numbers are bars from sheet 03, faded parts are already glued", f"<div class=dims>{pl(len(logs), "log type")}</div>")}'
              f'<div class="jgrid">{cards}</div></article>')
 
     # 05 layout
-    turns = sorted({s["xf"] for s in plan["slices"]} - {"id"})
-    per_log = "".join(f'<dt>{e(l["name"])}</dt><dd class="m">slices ' + ", ".join(str(s["n"]) for s in plan["slices"] if s["log"] == l["name"]) + "</dd>" for l in logs)
-    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", ("Number, log letter and any turn, glued in number order; trim on the red dashed line"), f"<div class=dims>{nsl} slices</div>")}'
-             f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Where each slice comes from</h3><dl class="kv">{per_log}</dl>'
-             f'<h3>Marks</h3><ul>' + ("".join(f"<li><b class=mono>{XF_MARK[t]}</b> {e(XF_TEXT[t])}</li>" for t in turns) or "<li>Every slice goes down as cut.</li>")
-             + '</ul><p class="small">The pencil V drawn across each log before crosscutting tells you which face is up and keeps the slices in order.</p></div></div></article>')
+    per_log = "".join(f'<dt>Log {e(l["id"])}</dt><dd class="m">{l["slices"]} slices</dd>' for l in logs if l["crosscut"])
+    rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">' + " ".join(pk["log"] + ("′" if pk["flip"] else "") for pk in r["pucks"]) + '</td></tr>' for r in rows)
+    marks = ("<li>The letter is the log the slice comes from.</li><li>The heavy line is the edge that carries the crayon stripe (the log's reference face).</li>"
+             "<li>A prime (A′) means dot down: the slice is turned over.</li><li>R1, R2 … are the rows, glued in that order.</li>"
+             "<li>Dashed red is the trim line; the paler area is cut off.</li>") if kind != "panel" else (
+             "<li>Each row is one slice of the panel named by its letter.</li><li>A prime (A′) means the slice is turned end for end.</li><li>Dashed red is the trim line.</li>")
+    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", "Top view before trimming: which slice goes where, and which way round", f"<div class=dims>{nsl} slices · {pl(len(rows), "row")}</div>")}'
+             f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Reading the drawing</h3><ul>{marks}</ul>'
+             f'<h3>Slices needed</h3><dl class="kv">{per_log}</dl>'
+             f'<h3>Row by row, in the direction the row label points away from</h3><div class="tbl"><table class="d">{rowtab}</table></div></div></div></article>')
 
     # 06 build
-    where = {"bars": "03", "layout": "05", "face": "01"}
     st = ""
     nglue = 0
     for n, s in enumerate(plan["steps"], 1):
-        refs = sorted({where.get(d, "04") for d in s["diagrams"]})
+        refs = [sheet_no[d] for d in s.get("see", []) if d in sheet_no]
         see = f'<div class="see">See sheet {", ".join(refs)}</div>' if refs else ""
         dont = f'<div class="dont"><b>DON\'T</b>{fr(s["dont"])}</div>' if s.get("dont") else ""
         kick = ""
-        if s["title"].startswith("Glue"):
-            nglue += 1; kick = f'<span class="kick">{ORD[nglue]} GLUE-UP</span><br>'
-        figs = [f for f in s.get("figs", []) if f in svgs]
-        figs = list(dict.fromkeys(figs))
+        if s.get("glue"):
+            nglue += 1; kick = f'<span class="kick">GLUE-UP {nglue}</span><br>'
+        figs = list(dict.fromkeys(f for f in s.get("figs", []) if f in svgs))
         body = f'{kick}<h4>{e(s["title"])}</h4><ul>{"".join(f"<li>{fr(t)}</li>" for t in s["text"])}</ul>{see}'
         if figs:
             body = f'<div class="stepgrid"><div>{body}</div><div class="asm">{"".join(f"<figure>{svgs[f]}</figure>" for f in figs)}</div></div>'
@@ -272,14 +299,14 @@ def page(plan, svgs, photo, guide=None):
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{e(plan["name"])}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700&family=IBM+Plex+Mono:wght@400;500&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@112,600;112,700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
 <style>{CSS}</style></head><body><div class="wrap">
-<header class="hero"><div class="eyebrow">End-grain cutting board · shop plan · {e(plan["pattern"])}</div>
+<header class="hero"><div class="eyebrow">End-grain cutting board · shop plan</div>
 <h1>{h1}</h1><p class="lede">{lede}</p><div class="chain" aria-label="Build order">{chain}</div><div class="stats">{stats}</div></header>
 <nav class="index" aria-label="Sheets">{index}</nav>
 <main>{"".join(H)}</main>
 <section class="find" id="checks"><div class="eyebrow">Checks</div><h2>What the model proves</h2>
-<p class="lede">Recomputed from the board's geometry every time the plan is built: the pieces must cover the board exactly and every bar must be one a table saw can rip.</p>
+<p class="lede">Recomputed from the board's geometry every time the plan is built: the pieces cover the board exactly, every log's parts fill its section, every bar has a table-saw setup, and every log fits the saw.</p>
 <table class="cost">{chk}</table></section>
-<footer>Kerf {fr(short(sh["kerf"]))}, slices cut {fr(short(T + sh["flatten_allowance"]))} ({fr(short(sh["flatten_allowance"]))} to flatten), {fr(short(sh["end_trim"]))} trimmed from each log end, logs at most {sh["max_log_length"]:g}" long, one spare slice per log. Change these under "shop" in design.json and rebuild.</footer>
+<footer>Kerf {fr(short(sh["kerf"]))}; slices cut {fr(short(plan["slice_cut"]))}; {fr(short(sh["end_trim"]))} waste at each end of a log; logs at most {sh["max_log_length"]:g}" long; bars ripped {fr(short(sh["rip_oversize"]))} over and machined to size; {fr(short(sh["true_skim"]))} allowed for truing each log face. Change these under "shop" in design.json and rebuild.</footer>
 </div></body></html>"""

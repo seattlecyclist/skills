@@ -1,8 +1,8 @@
 # Patterns
 
 Coordinates are inches, x across the board, y along it, y up. Every generator returns polygons
-(`pts`, counter-clockwise, convex), each with a `role` (species), a `slice` (which slice it lands in)
-and a `unit` (the sub-assembly glued before the log, or none), plus the `trim` rectangle.
+(`pts`, counter-clockwise, convex), each with a `role` (species), plus the `trim` rectangle and
+`cells`: the grid of logs the face is cut into (see `custom`).
 
 ## cubes (tumbling blocks)
 
@@ -15,10 +15,11 @@ rows shifted half a hexagon.
 | `side` | 1.25 | rhombus side, inches |
 | `cols`, `rows` | fitted | hexagons per row, rows |
 
-Build: one bar (60 degree rhombus, blank side·sin60 thick, blade 30 degrees) → hex units of 3 →
-row logs of `cols` hexes → slices nest with a half-hex offset. One log type. Finished width
-(cols − 1/2)·√3·side, length 1.5·side·(rows − 1) + side. Roles: `lid`, `left`, `right`. Light lid,
-mid left, dark right puts the light top left.
+Build: triangle logs three diamonds on a side (`3·side`), each of three diamonds and three small
+triangles (half lids) in two glue-ups; the board is whole columns of those logs, so its width moves
+to a multiple of `2.6·side`. One log type, two bar shapes, both at a 30 degree blade tilt. Keep
+`side` at 1" or less so the log passes under the saw. Roles: `lid`, `left`, `right`. Light lid, mid
+left, dark right puts the light top left.
 
 ## stars6 (six-point stars)
 
@@ -51,16 +52,17 @@ branch and closes a hexagon ring (a different motif); branches at step 2 or more
 | `stagger` | false | shift every other flake row half a spacing (doubles the log types) |
 | `core` | false | role `core` for the six centre rhombi |
 
-Roles: `flake`, `field`. The example (arm 3, branch at 2, spacing 7, side 0.65) needs 7 row logs
-for 18 slices: rows repeat only every 2·rise rows.
+Roles: `flake`, `field`. Flake centres are snapped to log corners and `spacing` should be a multiple
+of 3, or the flakes land differently on every log and the log types multiply. The example (arm 2,
+branch at 1, spacing 6, stagger, side 0.5, `levels` 2) needs seven log types, two of them sliced.
 
 ## stars8 (LeMoyne / eight-point quilt star)
 
-Square blocks of side a(2+√2) (a = rhombus side): 8 rhombi of 45/135 degrees around the centre,
-4 corner squares of side a, 4 right-isosceles edge triangles (legs a, hypotenuse a√2). Each block is
-4 identical quarter units turned 90 degrees, and each quarter is 2 rhombi, a square and two
-half-triangles (legs a/√2) so that quarters have straight sides. Blocks are the slices: one block log
-makes every block.
+Square blocks of side a(2+√2) (a = diamond side): 8 diamonds of 45/135 degrees around the centre,
+4 corner squares of side a, 4 right-isosceles edge triangles. Built as square logs: a diamond bar and
+a small triangle bar make a flat band; two bands and a square bar make a quarter log in corner cauls;
+two quarter logs make a half log, two halves the block log. Every log is jointed and planed square
+before the next glue-up. Blocks are the slices. Keep the block under 2-5/8" (`side` 0.75).
 
 | param | default | meaning |
 |---|---|---|
@@ -86,44 +88,48 @@ crown ring is a tone lighter and the rim ring a tone darker, so each dome bulges
 | `light` | [-0.55, 0.6, 0.58] | light direction (x, y, z); upper left by default |
 | `rim` | true | darken the outer ring |
 
-One bar (equilateral triangle, blade 30 degrees). Every row is a flat strip; with `freq` 3 the strip
-build finds 3 row logs. Light to dark woods with clear steps: maple / canarywood / cherry / walnut.
+Logs are the dome's six sectors: triangles `freq·side` on a side, each glued from flat layers
+(same-tone neighbours merge into one trapezoid bar, so there are far fewer bars than facets). With
+`freq` 3 there are four log types. Light to dark woods with clear steps: maple / canarywood / cherry / walnut.
 
 ## kagome (trihexagonal star lattice)
 
 Regular hexagons on a triangular grid with up and down triangles between them; every hexagon is
-ringed by six triangles, so it reads as interlocking six-point stars (a triaxial weave). Rows are flat
-strips of half-hexagon trapezoids (60 degrees, `2·side` by `side`) alternating with triangles; each
-hexagon is two trapezoids from neighbouring rows, so the rows must land exactly.
+ringed by six triangles, so it reads as interlocking six-point stars (a triaxial weave).
 
 | param | default | meaning |
 |---|---|---|
 | `side` | 0.9 | hexagon and triangle side |
+| `levels` | 2 | four `2·side` logs glued into a `4·side` log before slicing |
 
-Roles `hex`, `up`, `down`. Two row logs (one if `up` and `down` are the same wood). Both bars rip at
-30 degrees, flipping the blank each pass.
+Roles `hex`, `up`, `down`. Logs of side `2·side`: a trapezoid (a third of a hexagon) under a
+triangle. Two small log types, two large. Keep `4·side` at 3" or less (`side` 0.75). Make the hexagon
+the light wood: a dark hexagon takes over the board.
 
-## rosettes (rhombitrihexagonal, 3.4.6.4)
+## rosettes (rhombitrihexagonal, 3.4.6.4): drawn, not built
 
-Hexagons, squares and triangles of one edge length `side`: each hexagon framed by six squares with a
-triangle at every corner. A unit is a hexagon, three squares (right, upper right, upper left) and two
-triangles. The strip build cuts it into vertical strips through hexagon centres (half hexagons become
-60 degree trapezoids, half triangles 30/60 right triangles); pieces nest two across inside a strip,
-so each strip is tape-glued on a template and flattened before crosscutting (the single-file check warns).
+Hexagons, squares and triangles of one edge length. The generator still draws it, but `cbplan.py`
+refuses to plan it: the pattern mixes 60 and 90 degree corners, so no grid of triangle or square
+logs holds it. Every way of cutting it up leaves either a glue-up whose faces cannot be machined
+flat or slivers of hexagon and square. Offer `pinwheel` instead and say why.
+
+## pinwheel (pinwheel rosettes, snub trihexagonal)
+
+The buildable rosette: hexagons, each ringed by six diamonds that all lean the same way, with small
+triangles where three rings meet. Every corner is 60 or 120 degrees, so it sits on a triangle grid.
 
 | param | default | meaning |
 |---|---|---|
-| `side` | 0.75 | every edge |
-| `split_tri` | false | roles `tri_up` and `tri_down` instead of `tri` |
+| `side` | 0.75 | every edge; hexagons are `2·side` across |
+| `levels` | 1 | 2 glues four `2·side` logs into a `4·side` log: a quarter of the slices to handle |
 
-Roles `hex`, `square`, `tri`. One log, up to six saw setups: hexagon (rip square to
-2·side wide and across-flats thick, then four 30 degree bevels), square, triangle.
+Roles `hex`, `diamond`, `tri`. Three small log types (plus three large with `levels` 2). Bars: a
+triangle, a diamond and a trapezoid, all at a 30 degree blade tilt. Keep `4·side` at 3" or less.
 
 ## checker
 
-Square bars `side`, alternating `a`/`b`; rows are slices, every other one turned end for end.
-Classic two-step: the row log is a strip panel `side` thick. Use `side` = finished-thickness-ish
-squares (1-1/4" to 2").
+Square bars `side`, alternating `a`/`b`. The classic two-step: strips glued into a panel `side`
+thick, the panel crosscut, every other slice turned end for end. Use `side` 1-1/4" to 2".
 
 ## brick
 
@@ -137,29 +143,36 @@ Give the face directly:
 ```json
 {"pattern": "custom",
  "polygons": [
-   {"pts": [[0,0],[1,0],[1,1],[0,1]], "role": "a", "slice": "r0", "unit": null},
-   {"pts": [[1,0],[2,0],[2,1],[1,1]], "role": "b", "slice": "r0", "unit": null}
+   {"pts": [[0,0],[1,0],[1,1],[0,1]], "role": "a", "slice": "r0"},
+   {"pts": [[1,0],[2,0],[2,1],[1,1]], "role": "b", "slice": "r0"}
  ],
  "trim": [0, 0, 2, 1],
  "species": {"a": "maple", "b": "walnut"}, "board": {"width": 2, "length": 1, "thickness": 1.5}}
 ```
 
-Rules that make it buildable:
-- Every polygon convex; split concave pieces (a chevron is two parallelograms).
-- Angles a table saw can bevel: each bar's faces within 45 degrees of square to a reference face.
-  Parallelograms and rhombi from 45 to 90 degrees, isosceles triangles with an apex of 90 degrees
-  or less, squares and rectangles all rip directly. Others get a warning and a sled.
-- A `slice` is one crosscut piece: all its polygons must be glued as one log. Make slices rows or
-  blocks with at least one flat side where possible; slices with matching zigzag sides nest (rows of
-  hexagons).
-- A `unit` groups bars glued first (a hexagon of three rhombi); unit ids must be unique across the
-  board (prefix with the slice id).
-- Make repeats identical so they match: the script groups slices and units that are the same up to
-  translation, a 90 or 180 degree turn or a flip, and makes one log per group.
+Without `cells` a custom face is built as strip panels, so every polygon must be a rectangle and a
+`slice` must be one straight row of them (checkerboards, bricks, stripes, basket weaves).
+
+For a face with 60 degree geometry, add the log grid and leave `slice` out:
+
+```json
+"cells": {"kind": "tri", "side": 3.0, "origin": [0, 0], "angle": 0, "levels": 1}
+```
+
+`side` is the side of the triangle log, `origin` a grid corner, `angle` the direction the rows run
+(0 across the board, 90 up it), `levels: 2` glues four logs into a log of side `2·side` before
+slicing. `logs.py` clips the face to that grid, merges same-wood neighbours into single bars, and
+finds which cells are the same log turned or flipped. Choose the grid so that:
+- grid lines follow piece edges or cut pieces along a line of symmetry (a cut through a piece
+  becomes a same-wood glue line, which disappears in end grain);
+- the pattern repeats on the grid, so few log types come out (print the plan and count; over six
+  is a lot of glue-ups);
+- the log is at most 2-5/8" tall (side 3"), or it will not pass under a 10" saw on a sled;
+- every piece left after clipping and merging is a diamond, parallelogram, trapezoid or triangle
+  with 60 degree corners. Anything else fails "Bar can be cut".
 
 Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern will be reused; add a
 `design.json` to `examples/` and run `scripts/selftest.py`.
-
 ## Ideas that map onto these
 
 - Chevron / herringbone: parallelogram bars (45 or 60 degrees), rows of alternating lean.
