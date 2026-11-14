@@ -1109,7 +1109,8 @@ def steps(plan, design):
             tx = [f"The slices are the rows: {nrow} of them. Lay them out end grain up in the order on sheet 05, turning the ones marked with a prime end for end."]
         else:
             tx = [f"Lay out the whole board dry on a flat surface from sheet 05: {nrow} rows of up to {per} slices. Each slice goes pencil line up, with the line on the edge where the drawing shows it. "
-                  "A letter with a prime (A′) is turned over, line underneath; the drawing still shows which edge the line is on. Look at the whole pattern before any glue goes on.",
+                  + ("A letter with a prime (A′) is turned over, line underneath; the drawing still shows which edge the line is on. " if any(pk.get("flip") for r in rows for pk in r["pucks"]) else "No slice in this board is turned over. ")
+                  + "Look at the whole pattern before any glue goes on.",
                   "The glue faces here are the trued sides of the logs: long grain. Roll a thin coat on one face of each joint and keep glue off the end grain."]
             if kind == "tri":
                 tx += ["Cut a spare slice in half on the band saw, from one corner to the middle of the opposite side. The two halves are the end blocks: they turn the slanted ends of a row into square faces for the clamps.",

@@ -284,7 +284,7 @@ def page(plan, svgs, photo, guide=None):
     per_log = "".join(f'<dt>Log {e(l["id"])}</dt><dd class="m">{l["slices"]} slices</dd>' for l in logs if l["crosscut"])
     rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">' + _runs([pk["log"] + ("′" if pk["flip"] else "") + ("½" if pk.get("half") else "") for pk in r["pucks"]]) + '</td></tr>' for r in rows)
     marks = ("<li>The letter is the log the slice comes from.</li><li>The short heavy line is the pencil line you drew on the slice at the saw: it marks the log's reference face.</li>"
-             "<li>A prime (A′) means the slice is turned over, pencil line underneath, on the edge shown.</li><li>R1, R2 … are the rows, glued in that order.</li>"
+             + ("<li>A prime (A′) means the slice is turned over, pencil line underneath, on the edge shown.</li>" if any(pk.get("flip") for r in rows for pk in r["pucks"]) else "<li>Every slice goes pencil line up; none is turned over.</li>") + "<li>R1, R2 … are the rows, glued in that order.</li>"
              "<li>Dashed red is the trim line; the paler area is cut off.</li>") if kind not in ("panel", "hex") else (
              "<li>Every hexagon is one puck, a slice of log A, set with its pale lid diamond toward the top of the drawing.</li>"
              "<li>½ is a half puck: a puck sawn in two from point to point (step 7), sawn edge to the outside.</li>"
