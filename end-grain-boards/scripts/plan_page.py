@@ -220,6 +220,8 @@ def page(plan, svgs, photo, guide=None):
         notes.insert(1, f"What repeats: {pl(nb_, 'bar shape')}, {pl(nl_, 'log type')} and {pl(np_, 'plank type')} make all {len(rows)} rows. "
                      + (f"Every row is a crosscut of a plank that is cut more than once, as it comes off the saw or turned." if rep_ == len(rows)
                         else f"{rep_} of the {len(rows)} rows come from a plank that is cut more than once; the others do not repeat, and sheet 05 says which planks those are."))
+        if plan.get("repeats", {}).get("summary"):
+            sm = plan["repeats"]["summary"]; notes.insert(2, "Why: " + sm[0].lower() + sm[1:])
     glance = "".join(f'<dt>{e(k)}</dt><dd class="m">{fr(v)}</dd>' for k, v in (
         ("Bars", f'{nbars} + spares, {pl(len(plan["bar_types"]), "shape")}'), ("Logs", ", ".join(f'{l["count"]} × {l["id"]}' for l in logs)),
 (("Planks", ", ".join(f'{p_["count"]} × {p_["id"]}' for p_ in planks) + f', crosscut {short(plan["slice_cut"])} thick') if planks else ("Slices", f'{nsl}, cut {short(plan["slice_cut"])} thick')), ("Rows", f'{len(rows)}, each about {short(max(r["height"] for r in rows))} wide') if kind != "hex" else ("Pucks", f'{sum(1 for r in rows for pk in r["pucks"] if not pk.get("half"))} whole, {sum(1 for r in rows for pk in r["pucks"] if pk.get("half"))} half, in {len(rows)} rows'),

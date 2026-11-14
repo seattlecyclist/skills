@@ -770,6 +770,10 @@ def build(design, out, photo=None):
                                setup=bt["recipe"].get("setup"), strip=bt["recipe"].get("strip"), vsize=bt["recipe"].get("vsize"), stock=bt["recipe"]["stock"]) for bt in bar_types.values()],
             "bars": bars_out, "logs": logs, "rows": rows, "info": lp["info"], "stock": list(stock.values()), "checks": checks, "method": "planks" if planks else "logs", "planks": planks,
             "slice_cut": cut, "n_slices": sum(len(r["pucks"]) for r in rows)}
+    import repeats as RP
+    plan["repeats"] = RP.analyse(plan)
+    if plan["repeats"].get("summary"):
+        check(True, "Repeat math", plan["repeats"]["summary"])
     plan["vblocks"] = vblocks(plan)
     plan["steps"] = steps(plan, design)
     os.makedirs(os.path.join(out, "svg"), exist_ok=True)
