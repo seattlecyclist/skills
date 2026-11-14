@@ -193,6 +193,16 @@ def build(design, out, photo=None):
     svgs = drawings(plan)
     for name, v in svgs.items(): open(os.path.join(out, "svg", name + ".svg"), "w").write(v)
     CB.write_obj(plan, out); CB.write_spec(plan, design, out)
+    # the repeat math, in the same shape repeats.analyse gives the bevelled-log boards; here it follows from the two checks above
+    rp = 2 if rows >= 4 else None
+    say = ([f"rows repeat every 2 rows as cut"] if rp else []) + [
+        "a row turned end for end is the row next to it (the same as sliding it one tile along)",
+        f"so 1 plank type makes all {rows} rows, 1 log type makes the plank and 1 slab type makes every log"]
+    plan["repeats"] = {"rows": rows, "bar_shapes": 1, "log_types": 1, "kind": "plank", "planks": 1, "plank_copies": 1, "single_row_planks": 0 if rows > 1 else 1,
+                       "row_period": rp, "turns": [{"op": "r", "name": "turned end for end", "centre": rows / 2 + 0.5, "self": 0}], "orbits": 1,
+                       "rows_per_plank": rows, "log_lengths": cols // 2, "logs_in_planks": cols, "widest_plank": round(cols * s, 3),
+                       "rows_for_full_repeat": 2, "summary": (say[0][0].upper() + say[0][1:] + "; " + "; ".join(say[1:]) if rp else say[0][0].upper() + say[0][1:] + "; " + say[1]) + "."}
+    check(True, "Repeat math", plan["repeats"]["summary"])
     try:
         import render_guide
         render_guide.render(plan, os.path.join(out, "guide.png"), **design.get("guide", {}))
@@ -514,6 +524,10 @@ def page(plan, svgs, photo, guide=None):
            f"The tile is the end of a log made of four identical slabs. A slab is {short(u)} thick with the {L} and {D} meeting on a 45 degree line, and it is ripped off a two-ply blank with the blade tilted to 45 degrees.",
            "Nothing is assembled from small pieces. Blanks, slabs, logs and the plank are all long, flat-sided and planed between glue-ups; the rows are crosscut from the finished plank.",
            "The base board has no border: the pattern runs to the edge. The dark border on the maker’s board is an option on sheet 07."]
+    rep = plan.get("repeats", {})
+    if rep.get("summary"):
+        how.insert(2, f"What repeats: 1 slab shape, 1 log type and 1 plank type make all {N['rows']} rows. Every row is a crosscut of the one plank, as it comes off the saw or turned end for end.")
+        how.insert(3, "Why: " + rep["summary"][0].lower() + rep["summary"][1:])
     glance = "".join(f"<dt>{e(k)}</dt><dd class='m'>{e(v)}</dd>" for k, v in (
         ("Blanks", f"{N['nblank']}, each {L} {short(N['Tl'])} on {D} {short(N['Td'])}"), ("Slabs", f"{N['nslab']} + {N['spare_slabs']} spare, {short(s)} × {short(u)} after squaring"),
         ("Logs", f"{N['nlong']} at {short(N['log_len'])}, cut into {N['cols']} at {short(N['plank_len'])}"), ("Plank", f"{short(N['cols'] * s)} × {short(s)} × {short(N['plank_len'])}"),
