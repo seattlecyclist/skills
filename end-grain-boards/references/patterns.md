@@ -231,3 +231,24 @@ Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern w
   blank) or three rhombi per hexagon in one species.
 - Diamond lattice: 45 or 60 degree rhombi in two species, alternate along the row.
 - Borders: a ring of rectangular bars around any pattern; give them their own slices.
+
+## maze (two-wood maze, after Stammherz)
+
+Roles `light`, `dark`. `params`: `bar` (bar width, default 0.5), `cols` (tiles across, must be even), `rows`.
+
+One square tile, four bars on a side: two light bars in a dark ground, each stepping sideways by one bar
+width on a 45 degree jog of the same thickness. Every other tile is turned a quarter turn (a checkerboard),
+which makes the maze and the over-and-under look. Worked out from the stills of the maker's videos
+(https://www.youtube.com/shorts/TrEm6C_xBT8 and https://www.youtube.com/watch?v=rUjjSO708qE): glue lines
+every four bar widths mark the tiles, and the model matches a squared-up still on 90% of pixels. At phone
+resolution the jogs read as 60 degrees; they are 45.
+
+Build (`scripts/twoply.py`), in planks throughout: the tile is four identical slabs, each `bar` thick, in
+which light and dark meet on a 45 degree line. A slab is ripped with the blade at 45 degrees from a two-ply
+blank (light on dark, face glued; the ply thicknesses set where the line falls), planed, and ripped square.
+Four slabs, every other one rolled over, make a square log; logs side by side, every other one a quarter
+turn, make the plank; rows are crosscut from the plank and every other row is turned end for end (so
+`cols` must be even). The blank must pass under the blade at 45 degrees (about 2-1/8" on a 10" saw), which
+limits `bar` to about 9/16". The maker's stills show the laminating, the tilted rip, bevelled two-tone
+strips on the planer and the final glue-up; the exact blank and the slab squaring are this skill's
+reconstruction and no one has built from it yet. Say so when delivering the plan.

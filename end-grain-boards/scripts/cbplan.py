@@ -460,6 +460,9 @@ def _up(x, step=0.25):
 
 
 def build(design, out, photo=None):
+    if design["pattern"] in patterns.PLANK:          # rows crosscut from one glued-up plank: its own builder
+        import twoply
+        return twoply.build(design, out, photo)
     import logs as LG
     shop = dict(DEFAULT_SHOP, **design.get("shop", {}))
     board = design["board"]; T = float(board.get("thickness", 1.5))

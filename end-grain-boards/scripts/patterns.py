@@ -498,8 +498,14 @@ GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cube
               "rosettes": rosettes, "rhombitrihex": rosettes}
 
 
+PLANK = {"maze", "two-wood-maze"}      # built by twoply.py: slabs ripped from a two-ply blank, logs, one plank, rows
+
+
 def generate(design):
     pat = design["pattern"]
+    if pat in PLANK:
+        import twoply
+        return twoply.generate(design.get("params", {}), design["board"])
     if pat == "custom":
         return {"polygons": design["polygons"], "trim": design["trim"],
                 "roles": sorted({p["role"] for p in design["polygons"]}), "notes": design.get("notes", [])}
