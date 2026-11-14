@@ -1,0 +1,23 @@
+{
+ "name": "Notched Cubes End-Grain Board",
+ "description": "tumbling blocks with a small cube bitten out of the near corner of every block, maple tops over cherry and walnut sides",
+ "pattern": "notched",
+ "params": {
+  "side": 0.75,
+  "log": 2
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "lid": "maple",
+  "left": "cherry",
+  "right": "walnut"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

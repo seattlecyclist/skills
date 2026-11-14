@@ -506,3 +506,152 @@ def generate(design):
     if pat not in GENERATORS:
         raise SystemExit(f"unknown pattern {pat!r}; one of {sorted(GENERATORS)} or 'custom'")
     return GENERATORS[pat](design.get("params", {}), design["board"])
+
+
+# --------------------------------------------------------------------------------------------
+# Lattice patterns: colourings of a fine triangular lattice (small triangles of side t), built from
+# triangle logs k small triangles on a side. Same-wood neighbours inside a log merge into one bar.
+# --------------------------------------------------------------------------------------------
+def _lattice(p, board, t, k, colour, quarter=False, centre=None):
+    """colour(u, v) -> role for the small triangle whose centroid is (u, v) in lattice units (edges along
+    (1, 0) and (0, 1), 60 degrees apart). quarter=True turns the lattice a quarter turn (pointy-top hexagons).
+    centre: lattice vertex to put at the middle of the board (one centred motif)."""
+    from logs import merge_all
+    L = k * t; H = L * S3 / 2
+    W, Ln = board["width"], board["length"]
+    if quarter:      # log rows run along the board: columns of logs H wide
+        ncol = max(2, round(W / H)); nrow = max(2, round(Ln / (L / 2))); gw, gh = nrow * L / 2, ncol * H
+    else:
+        ncol = max(2, round(W / (L / 2))); nrow = max(2, round(Ln / H)); gw, gh = ncol * L / 2, nrow * H
+    P = lambda i, j: ((i + j / 2) * t, j * t * S3 / 2)
+    ox = oy = 0.0
+    if centre is not None:
+        cx, cy = P(*centre); ox, oy = gw / 2 - cx, gh / 2 - cy
+        ox = round(ox / (L / 2)) * (L / 2) if False else ox
+    polys = []
+    J0 = -2; J1 = int(gh / H) + 3
+    for J in range(J0 - 4, J1 + 4):
+        I0 = int((-ox - (J + 1) * L / 2) / L) - 3; I1 = int((gw - ox - J * L / 2) / L) + 3
+        for I in range(I0 - 2, I1 + 2):
+            for up in (True, False):
+                items = []
+                for a in range(k):
+                    for b in range(k - a):
+                        i, j = (I * k + a, J * k + b) if up else (I * k + k - 1 - a, J * k + k - 1 - b)
+                        tris = [(i + 1 / 3, j + 1 / 3, [P(i, j), P(i + 1, j), P(i, j + 1)])] if up else [(i + 2 / 3, j + 2 / 3, [P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)])]
+                        if a + b < k - 1:      # the triangle of the other hand that sits inside the same log
+                            tris.append((i + 2 / 3, j + 2 / 3, [P(i + 1, j), P(i + 1, j + 1), P(i, j + 1)]) if up else (i + 1 / 3, j + 1 / 3, [P(i, j), P(i + 1, j), P(i, j + 1)]))
+                        for u, v, pts in tris:
+                            r = colour(u, v); items.append((r, r, pts))
+                for _, r, pts in merge_all(items):
+                    pts = [(x + ox, y + oy) for x, y in pts]
+                    if quarter: pts = [(gh - y, x) for x, y in pts]
+                    polys.append(_poly(pts, r, f"r{J}"))
+    if quarter:
+        trim = [0.0, 0.0, gh, gw]; cells = {"kind": "tri", "side": L, "origin": [gh - oy, ox], "angle": 90, "levels": int(p.get("levels", 1))}
+    else:
+        trim = [0.0, 0.0, gw, gh]; cells = {"kind": "tri", "side": L, "origin": [ox, oy], "angle": 0, "levels": int(p.get("levels", 1))}
+    return polys, trim, cells
+
+
+def _hexdist(u, v):
+    return max(abs(u), abs(v), abs(u + v))
+
+
+def _sector(u, v):
+    """0..5: which sixth of the plane round the origin (u, v) is in, counter-clockwise from the (1, 0) edge."""
+    x, y = u + v / 2, v * S3 / 2
+    return int((math.degrees(math.atan2(y, x)) % 360) // 60)
+
+
+def chevrons(p, board):
+    """Stepped chevrons, the board Mike Dillen built after SPALM: every triangle log is three identical
+    trapezoid bars set pinwheel fashion, one of each wood. Roles: a, b, c."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        a, b = u % 3, v % 3
+        up = (a + b) < 3
+        if not up: a, b = 3 - a, 3 - b
+        if b < 1 and a + b < 2: r = 0
+        elif a < 1: r = 2
+        else: r = 1
+        return "abc"[r]
+    polys, trim, cells = _lattice(p, board, t, 3, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c"], "cells": cells,
+            "notes": [f"One log, one bar: three trapezoids ({2 * t:g}\" and {t:g}\" faces) glued pinwheel fashion into a {3 * t:g}\" triangle. No triangle bar anywhere.",
+                      "This is the build Mike Dillen documented after SPALM's board: trapezoid sticks in a V cradle, every face sanded flat."]}
+
+
+def gems(p, board):
+    """Faceted gems: hexagons cut like stones, six trapezoid facets round a small hexagon table, the facets
+    shaded in four woods as if lit from the top left, so no facet meets its own wood in the next gem.
+    Roles: light, pale, shade, dark, table."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        best = None
+        for ci in range(int(u // 2) * 2 - 4, int(u // 2) * 2 + 6, 2):
+            for cj in range(int(v // 2) * 2 - 4, int(v // 2) * 2 + 6, 2):
+                if (ci // 2 - cj // 2) % 3: continue
+                d = _hexdist(u - ci, v - cj)
+                if best is None or d < best[0]: best = (d, ci, cj)
+        d, ci, cj = best
+        if d < 1: return "table"
+        return ["shade", "pale", "light", "pale", "shade", "dark"][_sector(u - ci, v - cj)]
+    polys, trim, cells = _lattice(p, board, t, 2, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["light", "pale", "shade", "dark", "table"], "cells": cells,
+            "notes": [f"Each gem is a hexagon {4 * t:g}\" across its points: a {2 * t:g}\" table ringed by six facets.",
+                      f"Every log is one trapezoid facet bar and one small triangle of the table, so a gem is six {2 * t:g}\" triangle slices meeting at its centre."]}
+
+
+def ziggurat(p, board):
+    """Ziggurat: one stepped hexagonal pyramid seen from above, centred on the board. Hexagonal rings one
+    lattice step wide alternate between a dark line and a terrace; the terraces are shaded by which way they
+    face. Roles: light, mid, dark, line."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        d = int(_hexdist(u, v))
+        if d % 2: return "line"
+        return ["mid", "light", "light", "mid", "dark", "dark"][_sector(u, v)]
+    polys, trim, cells = _lattice(p, board, t, 2, colour, centre=(0, 0))
+    return {"polygons": polys, "trim": trim, "roles": ["light", "mid", "dark", "line"], "cells": cells,
+            "notes": [f"Concentric hexagonal steps {t:g}\" wide round the middle of the board; the terraces face six ways and are shaded in three woods.",
+                      "One motif, not a repeat: lay the slices out from sheet 05 and number them before gluing."]}
+
+
+def ribbons(p, board):
+    """Folded ribbons: zigzag ribbons of diamonds running the length of the board, each ribbon in a lit wood
+    and a shaded wood so it reads as pleated paper. Roles: a_lit, a_shade, b_lit, b_shade."""
+    t = float(p.get("side", 0.75)); wide = int(p.get("wide", 1))
+    def colour(u, v):
+        j = math.floor(v); i = math.floor(u); up = (u - i) + (v - j) < 1
+        if j % 2 == 0: col = i              # diamonds lean right: up(i,j) + down(i,j)
+        else: col = i if up else i + 1      # diamonds lean left: down(i-1,j) + up(i,j)
+        c = col + j // 2
+        return ("a" if (c // wide) % 2 == 0 else "b") + ("_lit" if j % 2 == 0 else "_shade")
+    polys, trim, cells = _lattice(p, board, t, 2, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["a_lit", "a_shade", "b_lit", "b_shade"], "cells": cells,
+            "notes": [f"Every piece is a {t:g}\" diamond; a ribbon is a zigzag column of them, lit on one slope and shaded on the other."]}
+
+
+def notched(p, board):
+    """Notched cubes: tumbling blocks with a small cube bitten out of the near corner of every block, so each
+    block shows three outer faces and the three inner faces of the notch. Roles: lid, left, right."""
+    t = float(p.get("side", 0.5))
+    def colour(u, v):
+        best = None
+        for ci in range(int(u // 2) * 2 - 6, int(u // 2) * 2 + 8, 2):
+            for cj in range(int(v // 2) * 2 - 6, int(v // 2) * 2 + 8, 2):
+                if (ci // 2 - cj // 2) % 3: continue
+                d = _hexdist(u - ci, v - cj)
+                if best is None or d < best[0]: best = (d, ci, cj)
+        d, ci, cj = best
+        s = _sector(u - ci, v - cj)          # lattice turned a quarter turn: sector 0 starts pointing up the board
+        outer = {0: "lid", 1: "left", 2: "left", 3: "right", 4: "right", 5: "lid"}[s]
+        inner_ = {0: "right", 1: "right", 2: "lid", 3: "lid", 4: "left", 5: "left"}[s]
+        return inner_ if d < 1 else outer
+    polys, trim, cells = _lattice(p, board, t, int(p.get("log", 3)), colour, quarter=True)
+    return {"polygons": polys, "trim": trim, "roles": ["lid", "left", "right"], "cells": cells,
+            "notes": [f"Blocks {4 * t:g}\" across their points, each with a {t:g}\" notch at the near corner."]}
+
+
+GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched})

@@ -32,6 +32,27 @@ needs a triangle bar and no published build uses it. Keep `side` at 1" or less.
 
 Roles: `lid`, `left`, `right`. Light lid, mid left, dark right puts the light top left.
 
+## Lattice patterns: chevrons, gems, ziggurat, ribbons, notched
+
+Five expert-plus patterns drawn as colourings of a fine triangular lattice (small triangles of side
+`side`) and built from triangle logs two or three small triangles on a side. Same-wood neighbours
+inside a log merge into one bar, so every log is two to four bars and one glue-up. `side` defaults to
+0.75"; the board moves to a whole number of logs.
+
+| pattern | what it is | roles | log | bars |
+|---|---|---|---|---|
+| `chevrons` | three-armed pinwheels that run into zigzag chains | `a`, `b`, `c` | 3 x side, one type | one trapezoid; no triangle bar |
+| `gems` | hexagonal cut gems: a table ringed by six shaded facets | `light`, `pale`, `shade`, `dark`, `table` | 2 x side, four types | trapezoid, small triangle |
+| `ziggurat` | one stepped hexagonal pyramid centred on the board | `light`, `mid`, `dark`, `line` | 2 x side, six types | trapezoid, small triangle |
+| `ribbons` | zigzag ribbons of diamonds, lit and shaded like pleated paper | `a_lit`, `a_shade`, `b_lit`, `b_shade` | 2 x side, four types | diamond, small triangle |
+| `notched` | tumbling blocks with a small cube bitten out of each near corner | `lid`, `left`, `right` | 2 x side (`log`), six types | trapezoid, small triangle |
+
+`chevrons` is the build Mike Dillen documented after SPALM's board (three trapezoid sticks in a V
+cradle). The other four are this skill's own designs on the same triangle-log method; no published
+build of them exists. All but `chevrons` need the small triangle bar and so the McMillan cut.
+`ziggurat` is one motif, not a repeat. To add another, write a `colour(u, v)` function and pass it to
+`_lattice`.
+
 ## stars6 (six-point stars)
 
 The same rhombille tiling coloured differently. Six rhombi meet at their 60 degree corners at every

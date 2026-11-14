@@ -1,0 +1,24 @@
+{
+ "name": "Faceted Gems End-Grain Board",
+ "description": "a field of hexagonal cut gems, each a purpleheart table ringed by six facets shaded from pale maple at the top left through canarywood and cherry to walnut at the bottom right",
+ "pattern": "gems",
+ "params": {
+  "side": 0.75
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "light": "maple",
+  "pale": "canarywood",
+  "shade": "cherry",
+  "dark": "walnut",
+  "table": "purpleheart"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}
