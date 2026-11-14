@@ -175,7 +175,7 @@ RIP_POINTS = [
      "It runs against the rip fence, which stays on the side the blade leans away from: its usual place on a left-tilt saw; on a right-tilt saw move the fence to the left of the blade."),
     ("Two decks", "The fence deck, between the fence and the blade, carries the locating fence and the toggle clamps. The landing deck, beyond the blade and under its lean, catches what comes off. Nothing is ever loose on the saw table."),
     ("Trapezoids and diamonds", "They start as square-edged strips and are clamped to the fence deck for both bevels; only a waste sliver drops on the landing deck."),
-    ("Triangles", "A triangle leaves no flat for a clamp, so the wide blank is clamped and the bar is cut free on the landing deck. It is not loose: the stop strip's edge is ripped at the same tilt and leans over the bar's sloping face, "
+    ("Triangles", "A triangle leaves no flat for a clamp, so the wide blank is clamped and the bar is cut free on the landing deck. The guide shows this sled for trapezoid strips only; the triangle pocket is this plan's own extension of it, so cut test bars in scrap first. It is not loose: the stop strip's edge is ripped at the same tilt and leans over the bar's sloping face, "
      "so the bar sits base down in a dovetail-shaped pocket between stop and deck, on stick-on sandpaper, and cannot lift, tip or creep. It rides along with the sled; nothing rubs it past the blade."),
     ("After every pass", "Push the sled on until the work is clear of the blade, or switch off and wait for the blade to stop, before lifting anything out. Keep the riving knife in place.")]
 RIP_TEXT = " ".join(t for _, t in RIP_POINTS)
@@ -853,7 +853,7 @@ def steps(plan, design):
                 "Fence deck: the 9\" deck beside the rip fence. Screw a straight locating fence, 3/4\" x 1-1/2\", flat on it and parallel to the cut, through slotted holes so it can be reset for each bar shape, "
                 "and mount three toggle clamps behind it with their pads reaching over it. The pads close on a caul, a straight strip 1/2\" wide and 3/4\" high laid along the top of the work, so the pressure is spread and no pad is near the blade. Lay the caul over the part of the work that has deck under it, toward the locating fence, never out over a leaning edge. "
                 ,
-                "Landing deck: the other deck. For triangle bars a stop strip is screwed to it parallel to the cut: a 3/4\" strip with one edge ripped at the blade's tilt, set so that edge leans toward the blade and over the bar, "
+                "Landing deck: the other deck. For triangle bars a stop strip is screwed to it parallel to the cut: a strip planed thinner than the bar (each bar card gives the thickness) with one edge ripped at the blade's tilt, set so that edge leans toward the blade and over the bar, "
                 "with a strip of stick-on 120 grit sandpaper on the deck in front of it. Leave the rip fence where it is for the whole run; every setting is made on the sled."]
     if kind == "tri":
         vb = plan["vblocks"]; longest = max(lg["length"] for lg in logs) + sh["glue_extra"]
@@ -986,7 +986,7 @@ def steps(plan, design):
             g_, t_ = main["glued"], main["trued"]; vbk = _vb(plan, main["w"], main["h"])
             tx = [f"Every face of a log is a glue face later, so every face gets machined. Scribble pencil across the top face, set the log in the {vbk['name']} (second side screwed tight) and run it through the "
                   f"drum sander with 80 or 100 grit until the scribble just disappears; turn the log and do the other two faces.",
-                  "No drum sander: a thickness planer does this job as well or better, because these faces are long grain. Send the log through in the same V block, passes of 1/64\" or less, "
+                  "No drum sander: a thickness planer can do this job, because these faces are long grain. The makers in the guide plane long-grain stock but sand their triangle logs, so carrying the V block through the planer is this plan's adaptation: prove it on a spare log first. Send the log through in the same V block, passes of 1/64\" or less, "
                   "the block's stop at the end that goes in last. A helical head leaves the cleanest face; with straight knives feed so the grain runs downhill. "
                   "With neither machine, clamp the block in the vise and use a jack plane and a straightedge.",
                   f"Work in rounds: every log through with its first face up at one drum setting, then every log with its second face up, then the third. "
@@ -1073,9 +1073,7 @@ def steps(plan, design):
               f"Stand the row on edge in the truing carrier, scribble pencil along the top edge, and pass it under the drum sander until the scribble just goes, about {sk}. "
               f"Turn the row over and do the other edge. Every row gets the same passes at the same setting, so all " + ("star " if brd else "") + f"rows finish the same width, about {dim(max(r['height'] for r in rows))}"
               + (f". The two border rows are slices glued end to end as well, so true their edges the same way in the low carrier; they finish about {dim(min(r['height'] for r in rows))} wide." if brd else "."),
-              "No drum sander: a row's edge is cut across the grain, and a planer breaks out the last slice unless it is backed. With a helical-head planer, keep the row in the carrier, "
-              "tape a scrap block of the same height tight behind the trailing end, and take passes of 1/64\" or less. With straight knives, or if a test row chips, "
-              "glue 80 grit paper to a flat board, hold the row against a square block, and take the same number of even strokes on every edge. Never plane a row loose, and keep rows off the jointer."]
+              "No drum sander: the guide keeps the planer for stock that is still long grain, and a row's edge is cut across the grain. The route that stays inside the guide is by hand: glue 80 grit paper to a flat board, hold the row against a square block, and take the same number of even strokes on every edge. A helical-head planer is this plan's adaptation, not the guide's, and the risk is a broken-out last slice: only with the row in the carrier, a scrap block of the same height taped tight behind the trailing end, passes of 1/64\" or less, and a test row first. Never with straight knives, never a row loose, and keep rows off the jointer."]
         S.append({"title": "True the rows", "text": tx, "figs": [], "see": []})
 
     tx = [f"Dry-fit the {nrow} rows in order" + (". Slide each row along its neighbour until the corners of the slices meet corner to corner along the whole joint, then draw a pencil line across every joint so the rows go back in register under glue."

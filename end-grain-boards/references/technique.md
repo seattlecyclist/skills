@@ -114,10 +114,11 @@ raising the grain before the last grit.
 
 The practice guide's rule is "planer while long grain; drum sander after". So:
 
-- Bars and logs (long grain): a thickness planer does everything the drum sander does, in the same V
+- Bars and logs (long grain): a thickness planer can do what the drum sander does (the guide planes long-grain stock, but its makers sand triangle logs, so the V block in a planer is an adaptation to prove on a spare log), in the same V
   blocks and carriers, at 1/64" a pass. A helical head is the best tool for it.
-- Rows on edge (cut across the grain): helical-head planer only, row in its carrier, a scrap block taped
-  behind the trailing end, 1/64" passes; otherwise the flat sanding board.
+- Rows on edge (cut across the grain): outside the guide's planer rule. First choice is the flat
+  sanding board by hand. A helical-head planer is an adaptation with a known risk (the last slice
+  breaks out): row in its carrier, scrap block taped behind the trailing end, 1/64" passes, test row first.
 - The glued board (end grain): router sled, then random-orbit sander. Makers who put end grain through
   a planer add rails or a support block and still report tear-out and thrown boards; the plan never asks for it.
 
