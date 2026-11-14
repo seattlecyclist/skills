@@ -100,6 +100,7 @@ def face(plan):
 
 
 def layout(plan):
+    if plan.get("planks"): return _layout_planks(plan)
     rows = plan["rows"]; trim = plan["board"]["trim"]; sp = plan["species"]
     ang = math.radians(plan["info"].get("angle", 0)); u = (math.cos(ang), math.sin(ang))
     bb = bbox_of([r["pts"] for r in rows]); m = 0.9
@@ -439,6 +440,52 @@ def true_fig(plan):
     return s.svg()
 
 
+def _pencil(s, a, b, up):
+    """The pencil arrow on a row: it starts at the fence end and points along the row. Dashed: it is on the underside."""
+    d = math.hypot(b[0] - a[0], b[1] - a[1]); ux, uy = (b[0] - a[0]) / d, (b[1] - a[1]) / d; h = min(0.34, d / 3)
+    tip = [b, (b[0] - ux * h - uy * h * 0.45, b[1] - uy * h + ux * h * 0.45), (b[0] - ux * h + uy * h * 0.45, b[1] - uy * h - ux * h * 0.45)]
+    s.line(a, (b[0] - ux * h * 0.8, b[1] - uy * h * 0.8), "#ffffff", 5.5); s.poly(tip, "#ffffff", "#ffffff", 3)
+    if up: s.line(a, (b[0] - ux * h * 0.8, b[1] - uy * h * 0.8), REF, 2.6); s.poly(tip, REF, REF, 1)
+    else:
+        n = 4
+        for k in range(n):
+            p = (a[0] + ux * d * k / n, a[1] + uy * d * k / n); q = (a[0] + ux * d * (k + 0.55) / n, a[1] + uy * d * (k + 0.55) / n)
+            s.line(p, q, REF, 2.2)
+        s.poly(tip, "#ffffff", REF, 1.6)
+
+
+def _layout_planks(plan):
+    """Rows as whole crosscuts of their planks: which plank, which way round, how far slid. No log letters here:
+    by this stage the builder is handling rows, not logs."""
+    from planks import OP_SHORT
+    rows = plan["rows"]; trim = plan["board"]["trim"]; sp = plan["species"]
+    ang = math.radians(plan["info"].get("angle", 0)); u = (math.cos(ang), math.sin(ang)); horiz = abs(u[0]) > 0.5
+    bb = bbox_of([r["slice"]["outline"] for r in rows]); ml = 3.0 if horiz else 0.9; mt = 0.9 if horiz else 1.5
+    bb = (bb[0] - ml, bb[1] - mt, bb[2] + 0.9, bb[3] + 0.9)
+    sc = min(680 / (bb[2] - bb[0]), 860 / (bb[3] - bb[1]))
+    s = Svg(bb, sc, pad=26, extra_h=40, title="Rows before trimming")
+    for r in rows:
+        for role, pts in r["slice"]["cells"]: s.poly(pts, sp[role]["end"], "#1e232730", 0.3)
+    x0, y0, x1, y1 = bb
+    for q in ([(x0, y0), (x1, y0), (x1, trim[1]), (x0, trim[1])], [(x0, trim[3]), (x1, trim[3]), (x1, y1), (x0, y1)],
+              [(x0, trim[1]), (trim[0], trim[1]), (trim[0], trim[3]), (x0, trim[3])], [(trim[2], trim[1]), (x1, trim[1]), (x1, trim[3]), (trim[2], trim[3])]):
+        s.poly(q, "#ffffff", "none", 0, op=0.55)
+    for r in rows:
+        sl = r["slice"]; s.poly(sl["outline"], "none", INK, 1.6)
+        _pencil(s, sl["mark"][0], sl["mark"][1], sl["face_up"])
+        c = _cen(sl["outline"]); ext = max(abs((v[0] - c[0]) * u[0] + (v[1] - c[1]) * u[1]) for v in sl["outline"])
+        lab = f"R{r['n']}"; sub = f"{r['plank']} {OP_SHORT[r['op']]}"
+        if horiz:
+            px = min(v[0] for v in sl["outline"]) - 0.3
+            s.text((px, c[1] + 0.16), lab, 12, weight="600", fill=REF, anchor="end"); s.text((px, c[1] - 0.2), sub, 9.5, fill=REF, anchor="end")
+        else:
+            py = max(v[1] for v in sl["outline"]) + 0.75
+            s.text((c[0], py), lab, 12, weight="600", fill=REF); s.text((c[0], py - 0.36), sub.replace(" ", " · ", 1) if len(sub) < 9 else sub.split(" ", 1)[0], 9, fill=REF)
+    s.poly([(trim[0], trim[1]), (trim[2], trim[1]), (trim[2], trim[3]), (trim[0], trim[3])], stroke=CUT, sw=1.6, dash="7 4")
+    _legend(s, plan, s.h - 24)
+    return s.svg()
+
+
 def cut_setup(plan):
     """The crosscut sled from the operator's side: how the log is held."""
     lg = max((l for l in plan["logs"] if l["crosscut"]), key=lambda l: l["slices"]); tri = lg["kind"] == "tri"
@@ -554,6 +601,7 @@ def plank_fig(plan, pl):
         s.text((-ex / 2 - 0.1, Hh + 0.3), "edge strip", 10); s.text((W + ex / 2 + 0.1, Hh + 0.3), "edge strip", 10)
     _arrow(s, (bb[0] + 0.05, Hh / 2), (-ex - 0.08, Hh / 2)); _arrow(s, (bb[2] - 0.05, Hh / 2), (W + ex + 0.08, Hh / 2))
     s.text((W / 2, Hh + 0.42), "taped cauls clamped down across the top", 10)
+    _pencil(s, (0.3 * Hh, Hh / 2), (0.3 * Hh + min(1.6, W / 5), Hh / 2), True)      # the pencil arrow every row gets at the saw
     return s.svg()
 
 

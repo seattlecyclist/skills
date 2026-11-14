@@ -642,6 +642,17 @@ def build(design, out, photo=None):
         n = len(pl["uses"]); need = n + shop["spare_slices"]
         k = max(1, math.ceil(need * pitch / usable)); per = math.ceil(need / k)
         pl.update(rows_cut=n, spares=k * per - n, per_plank=per, count=k, length=_up(per * pitch + ends))
+        # is this plank worth making: is its row repeated, as cut or turned?
+        by = OrderedDict()
+        for u in pl["uses"]: by[u["op"]] = by.get(u["op"], 0) + 1
+        slid = len({u["at"] for u in pl["uses"]}) > 1
+        if n == 1:
+            pl["worth"] = False
+            pl["why"] = f"Not repeated. Row {pl['uses'][0]['row']} is the only row with this sequence of logs, as cut or turned, so this plank saves no work: it is that one row, glued once."
+        else:
+            pl["worth"] = True
+            pl["why"] = (f"Repeated {n} times: " + _join(f"{c} {'row' if c == 1 else 'rows'} {PK.OP_TEXT[o]}" for o, c in by.items())
+                         + (", some slid along" if slid else "") + f". One glue-up gives all {n} rows.")
         for pk in pl["pucks"]:
             lg = byid[pk["log"]]; lg["make"][pl["length"]] += k
             lg.setdefault("planks", []); lg["planks"] += [] if pl["id"] in lg["planks"] else [pl["id"]]
@@ -735,9 +746,11 @@ def build(design, out, photo=None):
         check(pl["width"] <= shop["max_crosscut"] + 1e-6, f"Plank {pl['id']} fits the crosscut sled",
               f'{short(pl["width"])} wide; the sled crosscuts {short(shop["max_crosscut"])}' + ("" if pl["width"] <= shop["max_crosscut"] + 1e-6 else ". Make the board narrower across the rows, or set shop.max_crosscut"), "warn")
     if planks:
-        once = [pl["id"] for pl in planks if pl["rows_cut"] == 1]
-        check(len(once) * 2 <= len(planks), "Most planks give more than one row",
-              (f"{len(once)} of {len(planks)} planks are cut for a single row; the pattern does not repeat from row to row" if once else f"{len(planks)} plank type{'s' if len(planks) > 1 else ''} for {len(rows)} rows"), "warn")
+        once = [pl["id"] for pl in planks if pl["rows_cut"] == 1]; rep = sum(pl["rows_cut"] for pl in planks if pl["rows_cut"] > 1)
+        check(len(once) * 2 <= len(planks), "Planks are worth making: most rows repeat, as cut or turned",
+              f"{rep} of {len(rows)} rows come from a plank that is cut more than once; {len(planks)} plank type{'s' if len(planks) > 1 else ''} in all"
+              + (f". {_join(once)} {'is' if len(once) == 1 else 'are'} cut for a single row" if once else "")
+              + ("; this pattern does not repeat from row to row at this size, so planks save little. Change the pattern, its colouring or the board size" if len(once) * 2 > len(planks) else ""), "warn")
     mx = max(len(st["parts"]) for lg in logs for st in lg["stages"] if lg["kind"] != "panel")if any(lg["kind"] != "panel" for lg in logs) else 0
     check(mx <= 4, "No log glue-up has more than four parts", f"largest has {mx}" if mx else "", "warn")
     crossed = [lg for lg in logs if lg["crosscut"]]
@@ -866,6 +879,7 @@ def _plank_steps(S, plan):
         return (f"Plank {pl['id']}: make {pl['count']}, {dim(pl['length'])} long, {pl['n']} logs across and {short(pl['width'])} wide, for row" + ("s " if len(rs) > 1 else " ") + _join(str(r) for r in rs) + ".")
     tx = [f"A plank is one row of the board made long. The logs lie side by side, long grain to long grain, and every crosscut of the plank is a whole row, so no row is put together from loose slices. "
           f"This board takes {npl}. " + " ".join(of(pl) for pl in planks),
+          "Why planks pay here: " + " ".join(f"{pl['id']}: {pl['why']}" for pl in planks),
           "Sheet 05 draws the end of each plank as you see it from the marked ends of the logs: which log lies where, which way up, and where its reference face is (the short heavy line). "
           + ("A letter with a prime (A′) is a log turned end for end, its marked end at the far end of the plank. " if flips else "Every log has its marked end at the same end of the plank. ")
           + "Lay each plank out dry on the taped base and look at its end against the drawing before any glue goes on.",
@@ -890,21 +904,22 @@ def _plank_steps(S, plan):
     S.append({"title": "True the planks", "text": tx, "figs": [], "see": [],
               "dont": "leave one plank a pass thicker than the others. Rows of different widths walk the pattern out of line across the board."})
 
-    edge = ("Lay the plank flat on the sled with one edge strip between it and the sled fence, bevel to bevel, so the leaning edge has a full face to bear on. " if tri else "Lay the plank flat on the sled with one edge against the sled fence. ")
+    edge = ("Lay the plank flat on the sled, the face that was up in the glue-up still up, with the edge where the red arrow starts on sheet 05 toward the sled fence and one edge strip between them, bevel to bevel, so the leaning edge has a full face to bear on. " if tri
+            else "Lay the plank flat on the sled, the face that was up in the glue-up still up, with the edge where the red arrow starts on sheet 05 against the sled fence. ")
     nr = sum(pl["rows_cut"] + pl["spares"] for pl in planks)
     tx = [edge + "Clamp it down with the hold-down, marked ends of the logs away from the stop. Square that end first, taking only what cleans it.",
           f"Set the stop block {dim(cut + 1.0)} from the blade and use the 1\" spacer: slide the plank up to the spacer, clamp the plank, take the spacer away, then cut. "
           f"The row comes off {dim(cut)} thick (finished {short(T)} plus {short(sh['flatten_allowance'])} to flatten) with an inch of room beside it, so it cannot bind between blade and stop.",
           f"Cut {nr} rows in all: " + ", ".join(f"{pl['rows_cut']} + {pl['spares']} spare from plank {pl['id']}" for pl in planks) + ". "
-          "As each row comes off, turn up the face that was toward the blade and pencil the plank's number on it at the end that was against the fence. "
-          "That face is the top of the board, and the number tells the two ends apart when sheet 05 asks for a row turned round.",
+          "As each row comes off, turn up the face that was toward the blade and pencil an arrow on it, starting at the end that was against the fence and pointing along the row, with the plank's number beside it. "
+          "Sheet 05 draws that arrow on every row, so you lay each row with its arrow pointing the way the drawing shows: solid when the arrow is face up, dashed when the row is turned over.",
           "Hold the row down on the sled base with a push stick as the blade comes through, hand well clear. Push the sled on until the row is past the blade, stop, and lift the row away before pulling the sled back.",
           f"The last {short(sh['hold_end'])} of each plank is the part the clamp holds. It is never cut into rows: stop there."]
     S.append({"title": "Crosscut the planks into rows", "text": tx, "figs": ["asm_cut"], "see": [],
               "dont": "cut a row against a fixed stop with no spacer, or cut into the last 2 inches of a plank. A trapped row is thrown; a short stub cannot be held."})
 
     turned = sorted({r["op"] for r in rows if r.get("op")})
-    tx = [f"Lay the {nrow} rows out dry in the order on sheet 05, numbers up. "
+    tx = [f"Lay the {nrow} rows out dry in the order on sheet 05, each with its pencil arrow pointing the way its red arrow is drawn. "
           + ("The table on sheet 05 says which rows go in as cut and which are " + _join(PK.OP_TEXT[o] for o in turned) + ". " if turned else "Every row goes in as cut, number at the same side. ")
           + "Slide each row along its neighbour until the corners of the logs meet corner to corner along the whole joint, as drawn, then draw a pencil line across every joint so the rows go back in register under glue.",
           "Glue two or three rows at a time, then glue those sections together. Clamp across the rows every 4 to 5 inches with moderate pressure, "

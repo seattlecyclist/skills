@@ -215,6 +215,11 @@ def page(plan, svgs, photo, guide=None):
                   "Expect a few hairline gaps; they are filled with glue and sanding dust before the last sanding.",
            "panel": "Square-edged strips are glued into flat panels, the panels are planed and crosscut, and the slices are stood on end and glued into the board."}[kind]
     notes = [how] + list(plan["notes"])
+    if planks:
+        nb_ = len(plan["bar_types"]); nl_ = len(logs); np_ = len(planks); rep_ = sum(p_["rows_cut"] for p_ in planks if p_["worth"])
+        notes.insert(1, f"What repeats: {pl(nb_, 'bar shape')}, {pl(nl_, 'log type')} and {pl(np_, 'plank type')} make all {len(rows)} rows. "
+                     + (f"Every row is a crosscut of a plank that is cut more than once, as it comes off the saw or turned." if rep_ == len(rows)
+                        else f"{rep_} of the {len(rows)} rows come from a plank that is cut more than once; the others do not repeat, and sheet 05 says which planks those are."))
     glance = "".join(f'<dt>{e(k)}</dt><dd class="m">{fr(v)}</dd>' for k, v in (
         ("Bars", f'{nbars} + spares, {pl(len(plan["bar_types"]), "shape")}'), ("Logs", ", ".join(f'{l["count"]} × {l["id"]}' for l in logs)),
 (("Planks", ", ".join(f'{p_["count"]} × {p_["id"]}' for p_ in planks) + f', crosscut {short(plan["slice_cut"])} thick') if planks else ("Slices", f'{nsl}, cut {short(plan["slice_cut"])} thick')), ("Rows", f'{len(rows)}, each about {short(max(r["height"] for r in rows))} wide') if kind != "hex" else ("Pucks", f'{sum(1 for r in rows for pk in r["pucks"] if not pk.get("half"))} whole, {sum(1 for r in rows for pk in r["pucks"] if pk.get("half"))} half, in {len(rows)} rows'),
@@ -297,13 +302,16 @@ def page(plan, svgs, photo, guide=None):
         flips = any(pk["flip"] for p_ in planks for pk in p_["pucks"])
         pcards = "".join(
             f'<div class="joint" style="grid-column:1/-1"><div class="jh"><span class="jn">{e(p_["id"])}</span><div><h4>Plank {e(p_["id"])}: {p_["n"]} logs across, {fr(short(p_["width"]))} wide</h4>'
-            f'<div class="jsub">end view from the marked ends of the logs, as it lies on the base</div></div></div><div class="ph">{svgs["plank_" + p_["id"]]}</div>'
-            f'<dl class="kv"><dt>Make</dt><dd class="m">{p_["count"]} × {fr(short(p_["length"]))} long</dd><dt>Logs, left to right</dt><dd class="m">{_runs([pk["log"] + ("′" if pk["flip"] else "") for pk in p_["pucks"]])}</dd>'
+            f'<div class="jsub">End view from the marked ends of the logs, as it lies on the base. This is also what one row looks like from above. Letters are logs from sheet 04; a prime is a log turned end for end. The red arrow is the pencil arrow every row gets at the saw: it starts at the edge that lay against the sled fence</div></div></div><div class="ph">{svgs["plank_" + p_["id"]]}</div>'
+            f'<dl class="kv"><dt>Worth a plank?</dt><dd>{"Yes. " if p_["worth"] else "No. "}{e(p_["why"])}</dd><dt>Make</dt><dd class="m">{p_["count"]} × {fr(short(p_["length"]))} long</dd><dt>Logs, left to right</dt><dd class="m">{_runs([pk["log"] + ("′" if pk["flip"] else "") for pk in p_["pucks"]])}</dd>'
             f'<dt>Gives</dt><dd class="m">{pl(p_["rows_cut"], "row")} + {p_["spares"]} spare, {fr(short(plan["slice_cut"]))} thick: R{", R".join(str(u["row"]) for u in p_["uses"])}</dd></dl></div>' for p_ in planks)
         rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">{e(r["plank"])}</td><td>{e(OP_TEXT[r["op"]])}</td></tr>' for r in rows)
-        marks = ("<li>Each row, R1, R2 …, is one crosscut of the plank named beside it.</li><li>The letters are the logs in the row, and the short heavy line is each log's reference face.</li>"
-                 + ("<li>A prime (A′) is a log turned end for end in its plank.</li>" if flips or any(pk.get("flip") for r in rows for pk in r["pucks"]) else "")
-                 + "<li>Rows from one plank are slid along each other until the pattern meets, as drawn; the ends that overhang are trimmed off.</li>"
+        marks = ("<li>Each row, R1, R2 …, is one whole crosscut of the plank named beside it, drawn at its full length.</li>"
+                 "<li>The red arrow is the pencil arrow you drew on each row at the saw, as on the plank drawing above. Lay each row so its arrow points the way the drawing shows.</li>"
+                 + ("<li>A dashed arrow is on the underside: that row is turned over.</li>" if any(not r["slice"]["face_up"] for r in rows) else "<li>Every arrow is face up. No row is flipped over.</li>")
+                 + ("<li>Turned end for end means spun half a turn flat on the bench, same face up.</li>" if any(r["op"] == "r" for r in rows) else "")
+                 + 
+                 "<li>Rows from one plank are slid along each other until the pattern meets, as drawn; the ends that overhang are trimmed off.</li>"
                  "<li>Dashed red is the trim line; the paler area is cut off.</li>")
         H.append(f'<article class="sheet" id="layout">{tb("05", "Planks & rows", "Each plank is a row of the board made long; each crosscut of it is a row. Then the top view before trimming: which row goes where, and which way round", f"<div class=dims>{pl(npl, "plank")} · {pl(len(rows), "row")}</div>")}'
                  f'<div class="jgrid logs">{pcards}</div>'
