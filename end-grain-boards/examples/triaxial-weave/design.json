@@ -1,0 +1,9 @@
+{
+ "name": "Triaxial Weave End-Grain Board",
+ "description": "three sets of strands in maple, cherry and white oak woven at 60 degrees round dark hexagonal openings, each strand passing over one neighbour and under the next",
+ "pattern": "triweave",
+ "params": {"side": 0.75},
+ "board": {"width": 12, "length": 16, "thickness": 1.5},
+ "species": {"a": "maple", "b": "cherry", "c": "white-oak", "hole": "walnut"},
+ "options": {"edge": "1/8\" chamfer", "feet": true}
+}

@@ -70,6 +70,15 @@ logs two units on a side (three light bars round a dark one, or one solid bar), 
 four units on a side. No bar is larger than two units. Roles `tri`, `hole`, `ground`. `side` 0.625.
 Two planks, each cut for half the rows. This skill's own design.
 
+## triweave (triaxial weave)
+
+Open hexagonal basketwork on the lattice, logs three units on a side. Three sets of strands one unit
+wide and three units apart run at 60 degrees to each other round hexagonal openings two units across.
+Where two strands cross, one is on top: `a` over `b`, `b` over `c`, `c` over `a`, so every strand goes
+over one neighbour and under the next. Roles `a`, `b`, `c` (one wood per strand direction) and `hole`.
+Two log types (three trapezoids; a hexagon bar with three corner triangles), one plank for every row.
+`side` 0.75. This skill's own design; searches found square basket-weave boards only.
+
 ## swell (graded checkerboard)
 
 A two-wood checkerboard whose strip widths and row thicknesses grow from `min` (3/8") at the edges to

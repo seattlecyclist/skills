@@ -727,4 +727,22 @@ def swell(p, board):
                       "The graded-width method is the one behind Andrei Muntian's optical illusion boards, documented step by step by Bob Chambers. Grading both directions on a sine curve is this skill's own layout."]}
 
 
-GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched, "tribars": tribars, "sierpinski": sierpinski, "swell": swell})
+def triweave(p, board):
+    """Triaxial weave: three sets of strands, one per wood, cross at 60 degrees round hexagonal openings, as in
+    open hexagonal basketwork. At each crossing one strand is on top: a over b, b over c, c over a, so every
+    strand goes over one neighbour and under the next. Roles: a, b, c (the strands), hole."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        i, j, w = math.floor(u), math.floor(v), math.floor(u + v)
+        A, B, C = j % 3 == 0, i % 3 == 0, w % 3 == 2
+        if A and B: return "a"
+        if B and C: return "b"
+        if C and A: return "c"
+        return "a" if A else "b" if B else "c" if C else "hole"
+    polys, trim, cells = _lattice(p, board, t, 3, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c", "hole"], "cells": cells,
+            "notes": [f"Strands are {t * S3 / 2:.3g}\" wide and {3 * t:g}\" apart, round {2 * t:g}\" hexagonal openings.",
+                      "This skill's own design. The weave is the open hexagonal weave of basketry; two web searches found only square basket-weave boards, none woven three ways."]}
+
+
+GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched, "tribars": tribars, "sierpinski": sierpinski, "swell": swell, "triweave": triweave})
