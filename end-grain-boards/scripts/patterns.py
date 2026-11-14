@@ -394,9 +394,11 @@ def rosettes(p, board):
     trim = [0.0, 0.0, cols * D, rows * V]
     roles = ["hex", "square"] + (["tri_up", "tri_down"] if split else ["tri"])
     return {"polygons": polys, "trim": trim, "roles": roles,
-            "notes": [f"{rows} rows of {cols} rosette units; every edge is {a:g}\". A unit is a hexagon, three squares "
-                      "and two triangles glued around it; units glue side by side into a zigzag row log, and the row "
-                      "slices nest with a half-unit offset.",
+            "notes": [f"{rows} rows of {cols} rosettes; every edge is {a:g}\". Built as straight strips: the strip lines run "
+                      "through hexagon centres, so some hexagons are two trapezoids and some squares and triangles are halves; "
+                      "the halves' glue lines are same-species and disappear in end grain.",
+                      "Inside each strip the pieces nest two across, so tape-glue each strip on a full-size template, then "
+                      "flatten both broad faces before crosscutting.",
                       "Three bar shapes and three saw setups: hexagon (four 30 degree bevels), square, triangle (30 degrees)."]}
 
 

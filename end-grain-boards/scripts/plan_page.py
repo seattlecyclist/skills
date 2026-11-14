@@ -94,6 +94,12 @@ ol.steps .sn{font-family:var(--f-display);font-weight:700;font-size:26px;color:v
 ol.steps h4{margin:0 0 4px;font-size:15.5px;font-weight:600}
 ol.steps ul{margin:0;padding-left:18px;display:grid;gap:5px;max-width:76ch}
 ol.steps .see{font-family:var(--f-mono);font-size:12px;color:var(--graphite);margin-top:6px}
+.kick{display:inline-block;font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.09em;color:#fff;background:var(--accent);padding:2px 8px;border-radius:2px;margin-bottom:6px}
+.stepgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.35fr);gap:14px 22px;align-items:start}
+.asm{display:grid;gap:10px;margin:0}
+.asm figure{margin:0;border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden}
+.asm svg{display:block;width:100%;height:auto}
+@media (max-width:760px){.stepgrid{grid-template-columns:1fr}}
 .dont{grid-column:2;margin-top:8px;border-left:3px solid var(--weak);padding:6px 10px;font-size:14px;background:color-mix(in srgb,var(--weak) 8%,transparent)}
 .dont b{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.07em;color:var(--weak);margin-right:6px}
 .stepbox{background:var(--sheet);padding:4px 18px}
@@ -113,6 +119,9 @@ footer{margin-top:48px;font-size:12.5px;color:var(--graphite);max-width:80ch}
 
 TICK = ('<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="1" y="1" width="12" height="12" rx="2" '
         'fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 7.2l2 2 4-4.4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>')
+
+
+ORD = {1: "1ST", 2: "2ND", 3: "3RD", 4: "4TH", 5: "5TH"}
 
 
 def page(plan, svgs, photo, guide=None):
@@ -150,7 +159,7 @@ def page(plan, svgs, photo, guide=None):
 
     sheets = [("overview", "Overview", short(W) + " × " + short(L)), ("materials", "Material list", f"{bf:g} bd ft"),
               ("bars", "Bars & rip setups", f'{len(plan["bar_types"])} shape{"s" if len(plan["bar_types"]) > 1 else ""}'),
-              ("logs", "Units & logs", (f'{len(plan["units"])} unit{"" if len(plan["units"]) == 1 else "s"} · ' if plan["units"] else "") + f'{len(logs)} log{"" if len(logs) == 1 else "s"}'),
+              ("logs", "Strip panels" if plan.get("method") == "strips" else "Units & logs", (f'{len(plan["units"])} unit{"" if len(plan["units"]) == 1 else "s"} · ' if plan["units"] else "") + f'{len(logs)} log{"" if len(logs) == 1 else "s"}'),
               ("layout", "Slice layout", f"{nsl} slices"), ("build", "Building it", f'{len(plan["steps"])} steps')]
     index = "".join(f'<a href="#{i}"><span class="n">{n:02d}</span><span class="t">{e(t)}</span><span class="s">{fr(s)}</span></a>'
                     for n, (i, t, s) in enumerate(sheets, 1))
@@ -223,16 +232,16 @@ def page(plan, svgs, photo, guide=None):
     for l in logs:
         what = ", ".join(x for x in ((f'{len(l["units"])} units' if l["units"] else ""), (f'{len(l["loose_bars"])} bars' if l["loose_bars"] else "")) if x)
         cards += (f'<div class="joint" style="grid-column:1/-1"><div class="ph">{svgs[f"log{l["type"]}"]}</div><div class="jh"><span class="jn">{e(l["name"][-1])}</span>'
-                  f'<div><h4>{e(l["name"])}: {e(what)} side by side</h4><div class="jsub">{"needs a plywood carrier on the sled" if l.get("carrier") else "sits flat on the sled"}</div></div></div>'
+                  f'<div><h4>{e(l["name"])}: {e(what)} {"in a panel" if plan.get("method") == "strips" else "side by side"}</h4><div class="jsub">{"needs a plywood carrier on the sled" if l.get("carrier") else "sits flat on the sled"}</div></div></div>'
                   f'<dl class="kv"><dt>Make</dt><dd class="m">{l["count"]} × {fr(short(l["length"]))} long</dd><dt>Slices</dt><dd class="m">{l["slices"]} + {l["spares"]} spare, '
                   f'{fr(short(T + sh["flatten_allowance"]))} thick</dd></dl></div>')
-    H.append(f'<article class="sheet" id="logs">{tb("04", "Units & logs", "Bars glue into units, units glue side by side into logs; labels show any unit turned or flipped", f"<div class=dims>{len(plan["units"])} unit type{"" if len(plan["units"]) == 1 else "s"} · {len(logs)} log type{"" if len(logs) == 1 else "s"}</div>")}'
+    H.append(f'<article class="sheet" id="logs">{tb("04", *(("Strip panels", "Each log is one straight strip of the board: bars glued single file into a panel with two flat faces, drawn lying on the bench") if plan.get("method") == "strips" else ("Units & logs", "Bars glue into units, units glue side by side into logs; labels show any unit turned or flipped")), f"<div class=dims>{(str(len(plan["units"])) + " unit type" + ("" if len(plan["units"]) == 1 else "s") + " · ") if plan["units"] else ""}{len(logs)} log type{"" if len(logs) == 1 else "s"}</div>")}'
              f'<div class="jgrid">{cards}</div></article>')
 
     # 05 layout
     turns = sorted({s["xf"] for s in plan["slices"]} - {"id"})
     per_log = "".join(f'<dt>{e(l["name"])}</dt><dd class="m">slices ' + ", ".join(str(s["n"]) for s in plan["slices"] if s["log"] == l["name"]) + "</dd>" for l in logs)
-    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", "Number, log letter and any turn, glued bottom to top; trim on the red dashed line", f"<div class=dims>{nsl} slices</div>")}'
+    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", ("Number, log letter and any turn, glued in number order; trim on the red dashed line"), f"<div class=dims>{nsl} slices</div>")}'
              f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Where each slice comes from</h3><dl class="kv">{per_log}</dl>'
              f'<h3>Marks</h3><ul>' + ("".join(f"<li><b class=mono>{XF_MARK[t]}</b> {e(XF_TEXT[t])}</li>" for t in turns) or "<li>Every slice goes down as cut.</li>")
              + '</ul><p class="small">The pencil V drawn across each log before crosscutting tells you which face is up and keeps the slices in order.</p></div></div></article>')
@@ -240,11 +249,20 @@ def page(plan, svgs, photo, guide=None):
     # 06 build
     where = {"bars": "03", "layout": "05", "face": "01"}
     st = ""
+    nglue = 0
     for n, s in enumerate(plan["steps"], 1):
         refs = sorted({where.get(d, "04") for d in s["diagrams"]})
         see = f'<div class="see">See sheet {", ".join(refs)}</div>' if refs else ""
         dont = f'<div class="dont"><b>DON\'T</b>{fr(s["dont"])}</div>' if s.get("dont") else ""
-        st += f'<li><span class="sn">{n}</span><div><h4>{e(s["title"])}</h4><ul>{"".join(f"<li>{fr(t)}</li>" for t in s["text"])}</ul>{see}</div>{dont}</li>'
+        kick = ""
+        if s["title"].startswith("Glue"):
+            nglue += 1; kick = f'<span class="kick">{ORD[nglue]} GLUE-UP</span><br>'
+        figs = [f for f in s.get("figs", []) if f in svgs]
+        figs = list(dict.fromkeys(figs))
+        body = f'{kick}<h4>{e(s["title"])}</h4><ul>{"".join(f"<li>{fr(t)}</li>" for t in s["text"])}</ul>{see}'
+        if figs:
+            body = f'<div class="stepgrid"><div>{body}</div><div class="asm">{"".join(f"<figure>{svgs[f]}</figure>" for f in figs)}</div></div>'
+        st += f'<li><span class="sn">{n}</span><div>{body}</div>{dont}</li>'
     H.append(f'<article class="sheet" id="build">{tb("06", "Building it", "In order, with the reason where it isn\'t obvious", f"<div class=dims>{len(plan["steps"])} steps</div>")}'
              f'<div class="stepbox"><ol class="steps">{st}</ol></div></article>')
 

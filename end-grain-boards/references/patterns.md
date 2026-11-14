@@ -86,9 +86,8 @@ crown ring is a tone lighter and the rim ring a tone darker, so each dome bulges
 | `light` | [-0.55, 0.6, 0.58] | light direction (x, y, z); upper left by default |
 | `rim` | true | darken the outer ring |
 
-One bar (equilateral triangle, blade 30 degrees). Rows `freq` apart repeat the domes half a pattern
-along, so a board needs 2·`freq` row logs: expert work, but every log is short (one slice per three
-rows or so). Light to dark woods with clear steps: maple / canarywood / cherry / walnut.
+One bar (equilateral triangle, blade 30 degrees). Every row is a flat strip; with `freq` 3 the strip
+build finds 3 row logs. Light to dark woods with clear steps: maple / canarywood / cherry / walnut.
 
 ## kagome (trihexagonal star lattice)
 
@@ -108,14 +107,16 @@ Roles `hex`, `up`, `down`. Two row logs (one if `up` and `down` are the same woo
 
 Hexagons, squares and triangles of one edge length `side`: each hexagon framed by six squares with a
 triangle at every corner. A unit is a hexagon, three squares (right, upper right, upper left) and two
-triangles; units glue side by side into a zigzag row log and rows nest with a half-unit offset.
+triangles. The strip build cuts it into vertical strips through hexagon centres (half hexagons become
+60 degree trapezoids, half triangles 30/60 right triangles); pieces nest two across inside a strip,
+so each strip is tape-glued on a template and flattened before crosscutting (the single-file check warns).
 
 | param | default | meaning |
 |---|---|---|
 | `side` | 0.75 | every edge |
 | `split_tri` | false | roles `tri_up` and `tri_down` instead of `tri` |
 
-Roles `hex`, `square`, `tri`. One unit type and one log, three saw setups: hexagon (rip square to
+Roles `hex`, `square`, `tri`. One log, up to six saw setups: hexagon (rip square to
 2·side wide and across-flats thick, then four 30 degree bevels), square, triangle.
 
 ## checker

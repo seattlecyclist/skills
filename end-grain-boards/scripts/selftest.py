@@ -61,11 +61,17 @@ plan, errs = run(d); expect("red oak is refused", plan is None and "not a cuttin
 
 d = json.load(open(os.path.join(EX, "checkerboard", "design.json")))
 plan, _ = run(d)
-expect("checkerboard rows come from one log (every other row turned)",
+expect("checkerboard strips come from one log", len(plan["logs"]) == 1)
+d["build"] = {"method": "units"}; plan, _ = run(d)
+expect("checkerboard rows (units method) come from one log, every other row turned",
        len(plan["logs"]) == 1 and {s["xf"] for s in plan["slices"]} == {"id", "r180"})
-d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
+d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
 plan, _ = run(d)
-expect("LeMoyne quarters are one unit type", len(plan["units"]) == 1 and len(plan["bar_types"]) == 3)
+expect("tumbling blocks: one strip panel, bars single file, only the lids split",
+       len(plan["logs"]) == 1 and plan["strips"]["narrow"] == 0 and len(plan["bar_types"]) == 2)
+d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json"))); d["build"] = {"method": "units"}
+plan, _ = run(d)
+expect("LeMoyne quarters (units method) are one unit type", len(plan["units"]) == 1 and len(plan["bar_types"]) == 3)
 
 print("all good" if not fails else f"{fails} failed")
 sys.exit(1 if fails else 0)
