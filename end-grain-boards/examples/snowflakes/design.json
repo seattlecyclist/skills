@@ -23,9 +23,5 @@
  "options": {
   "edge": "1/8\" chamfer",
   "feet": true
- },
- "frame": {
-  "width": 0.5,
-  "species": "purpleheart"
  }
 }

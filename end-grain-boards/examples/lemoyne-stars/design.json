@@ -8,8 +8,8 @@
   "border": 0.75
  },
  "board": {
-  "width": 13.25,
-  "length": 18.25,
+  "width": 13,
+  "length": 17,
   "thickness": 1.5
  },
  "species": {
@@ -20,13 +20,5 @@
  "options": {
   "edge": "1/8\" chamfer",
   "handles": true
- },
- "frame": {
-  "width": 0.625,
-  "species": "maple",
-  "liner": {
-   "width": 0.375,
-   "species": "walnut"
-  }
  }
 }

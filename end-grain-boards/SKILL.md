@@ -67,10 +67,11 @@ Get, or ask once for only what you cannot infer:
 - **Size.** Default 12 x 16 x 1-1/2". Generators fit whole repeats, so the finished size moves to the
   nearest repeat; report the actual size. Piece size (`side`) sets how busy it looks, and the log it
   makes must pass under the saw (2-5/8" tall): cube and star diamonds up to 1", kagome and pinwheel 3/4", LeMoyne 3/4".
-- **Frame.** `"frame": {"width": 1.0, "species": "walnut"}` puts a plain end-grain frame round the
-  field (the finished size includes it). Use it by default on the 60 degree patterns: a repeat cut by a
-  bare edge reads as a swatch, the same crop inside a frame reads as composed. `stars8` has its own
-  `border` param instead. Never a long-grain frame.
+- **Frame (optional add-on).** The base design has no frame or border: the pattern runs to the edge,
+  and the trim is placed between motifs or on their line of symmetry so opposite edges match. Add
+  `"frame": {"width": 1.0, "species": "walnut"}` (with an optional `liner`) only when the user asks for
+  a border; it puts a plain end-grain frame round the field and the finished size includes it. You may
+  offer it, but never add it on your own. Never a long-grain frame.
 - **Whole motifs.** `stars6` and `snowflakes` leave out any star or flake the trim would cut through
   (`"whole_motifs": false` turns this off). Check the face: what is left should be a symmetric group.
 - **Extras:** edge treatment, feet, juice groove, handles (`options`), and the setting for the photo.
@@ -114,7 +115,7 @@ error: fix the design (usually `side` or `levels`), never the plan text. Explain
 Then look at `plan.html`:
 - **Face** (sheet 01): does it read as what the user described? Contrast between roles is the usual
   problem (two mid-browns merge; a dark wood on the largest pieces takes over). Is the crop balanced
-  and the same on opposite edges? Are motifs whole? If not, add a frame, change `side`, or move the size.
+  and the same on opposite edges? Are motifs whole? If not, change `side` or move the size so the trim lands on a line of symmetry; a frame is the user's choice, not a fix.
 - **Logs** (sheet 04): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
   down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
   a simpler variant and say why.

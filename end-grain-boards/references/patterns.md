@@ -180,7 +180,8 @@ Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern w
 "whole_motifs": true
 ```
 
-- `frame` glues rings of end-grain blocks round the trimmed field: an optional `liner` first, then
+- `frame` is an optional add-on, absent from every base design and example; add it only when the
+  user asks for a border. It glues rings of end-grain blocks round the trimmed field: an optional `liner` first, then
   the frame. The blocks are slices of a square bar, so the whole face stays end grain. Pick a liner
   wood that differs from both the frame and the pieces that touch it, or the line disappears. A
   ring under 3/8" wide is flagged: its blocks are too small to handle.

@@ -18,13 +18,5 @@
  "options": {
   "edge": "1/8\" chamfer",
   "feet": true
- },
- "frame": {
-  "width": 0.75,
-  "species": "maple",
-  "liner": {
-   "width": 0.375,
-   "species": "purpleheart"
-  }
  }
 }

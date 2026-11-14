@@ -73,6 +73,11 @@ plan, _ = run(d)
 expect("LeMoyne: bands, quarter, half and block logs plus a border bar; only the block and the border are sliced",
        [l["shape"] for l in plan["logs"]] == ["band", "band", "quarter", "half", "block", "border"] and [l["id"] for l in plan["logs"] if l["crosscut"]] == ["E", "F"])
 expect("the trimmed board is inside the slices with waste on every edge", min(plan["board"]["margins"]) >= 0.12)
+d = json.load(open(os.path.join(EX, "kagome-stars", "design.json")))
+plan, _ = run(d)
+expect("base designs carry no frame", all("frame" not in json.load(open(os.path.join(EX, n, "design.json"))) for n in os.listdir(EX)) and not plan["board"].get("frame"))
+d["frame"] = {"width": 0.75, "species": "walnut", "liner": {"width": 0.375, "species": "cherry"}}; plan, errs = run(d)
+expect("a frame is added when the design asks for one", plan is not None and bool(plan["board"].get("frame")))
 plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"width": 12, "length": 16, "thickness": 1.5},
                   "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
 expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
