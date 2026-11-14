@@ -105,7 +105,8 @@ which meant hundreds of small glue-ups.
 for end, turned over, or slid along by a few logs (the plank is then made a log or two wider, up to
 `shop.max_crosscut`). A lattice that repeats every row or two needs one or two planks. A pattern with
 no repeat from row to row needs a plank per row; the plan warns, and a different pattern or a
-symmetric colouring is the fix.
+symmetric colouring is the fix. Decide plank by plank: a plank earns its glue-up only when its row
+comes up again, as cut or as its mirror by turning. Sheet 05 states that count for each plank.
 
 Gluing a plank: on a flat taped base, in sections of three or four logs, then sections to each other.
 Triangle logs lie point down and point up in turn; a strip with a 30 degree bevel lies against the

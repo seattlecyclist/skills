@@ -23,8 +23,11 @@ machined flat** before anything else is glued to it. The long logs are then glue
 into *rows*, and the rows are glued into the board, which is flattened and then trimmed. **No row is
 ever assembled from loose slices.** `scripts/planks.py` finds which rows can come off the same plank
 (as cut, turned end for end, turned over, or slid along), so a repeating pattern needs one or two
-planks. A pattern whose rows do not repeat needs a plank per row and the checks say so: prefer
-patterns that repeat row to row. An optional *frame* of end-grain blocks is glued round the trimmed
+planks. **A plank is only worth making when its row is repeated**, as cut or as its mirror by turning
+(end for end, over, or rolled). The plan says so for every plank on sheet 05 ("Worth a plank?", with
+the count of rows as cut and turned), and the check "Planks are worth making" warns when most planks
+would be cut for a single row. When it warns, say so to the user and change the pattern, its colouring
+(a symmetric shading makes mirrored rows) or the board size before offering the plan as a good build. An optional *frame* of end-grain blocks is glued round the trimmed
 field. Every truing pass takes a skim, so the plan lays the pattern out at the trued sizes, not the drawn ones. `scripts/logs.py` works this out from the face: it lays the
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
@@ -134,6 +137,8 @@ Then look at `plan.html`:
   down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
   a simpler variant and say why.
 - **Planks & rows** (sheet 05): each plank's end view, letters, reference marks and primes must be legible; the row table says which plank each row comes from and how it is turned.
+- **Design for repeats at every level, and say what repeats.** The two-wood maze board plan is the model Mike pointed to: one slab made sixteen times, a log of four slabs with every other one rolled over, one plank of logs with every other one a quarter turn, and every row the same crosscut with every other one turned end for end. Get variety by turning a part, never by making a new part. Prefer a turn that keeps the same face up (end for end) to a flip. The overview states the counts ("What repeats"), sheet 05 answers "Worth a plank?" for each plank, each row carries a pencil arrow so its turn can be seen, and the checks confirm it. When a pattern needs many one-off planks, say so and offer a pattern that repeats.
+- **Name only the part in the builder's hands.** Each drawing and step talks about the pieces that exist at that stage. Log letters belong on the log and plank drawings; once the planks are cut, the row layout shows rows by plank and orientation (R2 is P1 turned end for end), never the logs inside them. Mike's comment on a row layout covered in log letters: "At this stage we do not need to know about the parts like A but rather the planks and their orientation."
 - **Jigs** (sheet 06, step 2): one V block per size and height of part. More than four blocks means many
   small bar shapes; a larger `side` or fewer roles usually removes some.
 - **Steps** (sheet 06): a builder who cannot picture a glue-up builds from the drawings beside the steps.

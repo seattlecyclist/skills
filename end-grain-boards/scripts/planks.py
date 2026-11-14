@@ -14,6 +14,7 @@ from logs import key_of, ccw
 # as cut; turned end for end (same face up); turned over sideways (like a page); rolled over about its length
 OPS = (("", 1, 1), ("r", -1, -1), ("m", -1, 1), ("f", 1, -1))
 OP_TEXT = {"": "as cut", "r": "turned end for end", "m": "turned over like a page", "f": "rolled over, far edge toward you"}
+OP_SHORT = {"": "as cut", "r": "end for end", "m": "turned over", "f": "rolled over"}
 
 
 def _moments(items):
@@ -86,9 +87,9 @@ def _fit(pl, lp, maxw):
 
 
 def plan(rows, angle=0.0, maxw=24.0):
-    planks = []
+    planks = []; ax = (math.cos(math.radians(angle)), math.sin(math.radians(angle)))
     for row in rows:
-        ax = (math.cos(math.radians(angle)), math.sin(math.radians(angle))); at = None
+        at = None
         for pl in planks:
             for name, su, sv in OPS:
                 at = _fit(pl, _local(row, ax, su, sv), maxw)
@@ -106,6 +107,22 @@ def plan(rows, angle=0.0, maxw=24.0):
             p["pts"] = ccw(p["pts"]); p["cells"] = [(r, ccw(q)) for r, q in p["cells"]]
         pl["n"] = len(pl["pucks"])
         pl["width"] = max(v[0] for p in pl["pucks"] for v in p["pts"]); pl["height"] = max(v[1] for p in pl["pucks"] for v in p["pts"])
+    # where each row's whole crosscut lies on the board, overhang included: plank coordinates -> board
+    for pl in planks:
         for u in pl["uses"]:
-            next(r for r in rows if r["n"] == u["row"])["at"] = u["at"]
+            row = next(r for r in rows if r["n"] == u["row"]); row["at"] = u["at"]
+            su, sv = next((a, b) for nm, a, b in OPS if nm == u["op"])
+            lp = _local(row, ax, su, sv); a = pl["pucks"][u["at"]]["pts"]; b = lp[0]["pts"]
+            du = sum(v[0] for v in a) / len(a) - lp[0]["cu"]; dv = sum(v[1] for v in a) / len(a) - lp[0]["cv"]
+            def back(p, su=su, sv=sv, du=du, dv=dv):
+                lu, lv = su * (p[0] - du), sv * (p[1] - dv)
+                return (lu * ax[0] - lv * ax[1], lu * ax[1] + lv * ax[0])
+            row["slice"] = {"cells": [(r, [back(v) for v in q]) for pk in pl["pucks"] for r, q in pk["cells"]],
+                            "outline": [back(v) for v in _hull_pts([v for pk in pl["pucks"] for v in pk["pts"]])],
+                            "mark": [back((0.3 * pl["height"], pl["height"] / 2)), back((0.3 * pl["height"] + min(1.6, pl["width"] / 5), pl["height"] / 2))], "face_up": su * sv > 0}
     return planks
+
+
+def _hull_pts(pts):
+    from logs import _hull
+    return _hull(pts)
