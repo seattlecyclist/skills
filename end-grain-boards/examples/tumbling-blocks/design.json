@@ -1,6 +1,6 @@
 {
  "name": "Tumbling Blocks End-Grain Board",
- "description": "3D tumbling blocks: a honeycomb of cubes seen corner-on, each cube a pale maple lid over a cherry left face and a walnut right face, inside a thin purpleheart line and a maple end-grain frame",
+ "description": "3D tumbling blocks: a honeycomb of cubes seen corner-on, each cube a pale maple lid over a cherry left face and a walnut right face",
  "pattern": "cubes",
  "params": {
   "side": 1.0

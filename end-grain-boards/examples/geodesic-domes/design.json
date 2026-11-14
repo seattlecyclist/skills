@@ -1,6 +1,6 @@
 {
  "name": "Geodesic Domes End-Grain Board",
- "description": "a honeycomb of domes: each hexagon steps from a pale maple crown through a cherry ring to a full walnut rim, so every dome is a closed figure; a thin maple line and a walnut end-grain frame hold the field",
+ "description": "a honeycomb of domes: each hexagon steps from a pale maple crown through a cherry ring to a full walnut rim, so every dome is a closed figure",
  "pattern": "geodomes",
  "params": {
   "side": 0.75,
