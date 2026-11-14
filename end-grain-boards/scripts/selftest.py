@@ -93,16 +93,34 @@ plan, _ = run(json.load(open(os.path.join(EX, "ziggurat", "design.json"))))
 expect("mirrored rows share a plank, turned over", len(plan["planks"]) * 2 == len(plan["rows"]) and {r["op"] for r in plan["rows"]} == {"", "f"})
 plan, _ = run(json.load(open(os.path.join(EX, "tumbling-blocks", "design.json"))))
 expect("hexagon pucks are not planks", not plan["planks"])
-plan, _ = run(json.load(open(os.path.join(EX, "six-point-stars", "design.json"))))
+d = json.load(open(os.path.join(EX, "six-point-stars", "design.json"))); d7 = copy.deepcopy(d); d7["board"]["width"] = 13
+plan, _ = run(d7)      # seven rows: an odd count has no mirror partner for most rows
 expect("a plank cut for one row is called not worth it, and the check warns", any(not p["worth"] and "Not repeated" in p["why"] for p in plan["planks"])
        and any(not c["ok"] and "worth making" in c["what"] for c in plan["checks"]))
-d = json.load(open(os.path.join(EX, "two-wood-maze", "design.json")))
-plan, errs = run(d)
+dm = json.load(open(os.path.join(EX, "two-wood-maze", "design.json")))
+plan, errs = run(dm)
 expect("maze: a plank build, one slab type, six rows from one plank", not errs and plan["method"] == "plank" and plan["N"]["nslab"] == 16 and len(plan["rows"]) == 6)
-d["params"]["cols"] = 7; plan, errs = run(d)
+dm["params"]["cols"] = 7; plan, errs = run(dm)
 expect("maze: an odd number of tiles across is caught", errs and any("even number" in e for e in errs))
-d["params"] = {"bar": 0.75, "cols": 6, "rows": 4}; plan, errs = run(d)
+dm["params"] = {"bar": 0.75, "cols": 6, "rows": 4}; plan, errs = run(dm)
 expect("maze: a blank too thick for the tilted blade is caught", errs and any("45 degrees" in e for e in errs))
+
+plan, _ = run(d); rep = plan["repeats"]
+expect("repeat math: the star field's rows pair up end for end about the middle of the board",
+       rep["rows"] % 2 == 0 and rep["orbits"] * 2 == rep["rows"] and any(t["op"] == "r" and t["centre"] == rep["rows"] / 2 + 0.5 for t in rep["turns"]))
+plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+expect("repeat math: chevron rows repeat every row", plan["repeats"]["row_period"] == 1 and plan["repeats"]["orbits"] == 1)
+import repeats as RP
+vs = RP.variants(plan, plan["planks"][0])
+expect("variants: one chevron plank makes 16 different faces, rolled rows carry every colour across the seams",
+       len(vs) == 16 and vs[0]["row2"] == "f" and vs[0]["carry"] == 1.0 and [v["name"] for v in vs] == [v["name"] for v in RP.variants(plan, plan["planks"][0])])
+import hashlib, subprocess
+def digest(seed):
+    with tempfile.TemporaryDirectory() as out:
+        subprocess.run([sys.executable, os.path.join(HERE, "cbplan.py"), os.path.join(EX, "faceted-gems", "design.json"), out],
+                       env=dict(os.environ, PYTHONHASHSEED=seed), capture_output=True, check=True)
+        return hashlib.md5(open(os.path.join(out, "plan.json"), "rb").read() + open(os.path.join(out, "plan.html"), "rb").read()).hexdigest()
+expect("deterministic: the same design builds the same plan, byte for byte", digest("1") == digest("2"))
 
 print("all good" if not fails else f"{fails} failed")
 sys.exit(1 if fails else 0)
