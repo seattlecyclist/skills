@@ -1,0 +1,9 @@
+{
+  "name": "Checkerboard End-Grain Board",
+  "description": "a classic checkerboard of 1-1/2 inch squares, walnut and maple",
+  "pattern": "checker",
+  "params": {"side": 1.5},
+  "board": {"width": 12, "length": 16, "thickness": 1.75},
+  "species": {"a": "maple", "b": "walnut"},
+  "options": {"edge": "1/8\" round-over", "juice_groove": false, "feet": true}
+}
