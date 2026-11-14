@@ -71,6 +71,54 @@ makes every block.
 Three bar shapes: 45 degree rhombus (blade 45), square, right isosceles triangle (blade 45, flip
 the blank each pass).
 
+## geodomes (geodesic domes)
+
+Equilateral-triangle tiling in row strips. Flat-top hexagons `freq` triangles a side tile it, each a
+faceted dome: six sectors (one per hexagon side) by `freq` rings. The two sides facing the light
+take the lightest tone, the next two the second, then the third, and the side away the darkest; the
+crown ring is a tone lighter and the rim ring a tone darker, so each dome bulges.
+
+| param | default | meaning |
+|---|---|---|
+| `side` | 0.8 | triangle side (1" with `freq` 3 makes 5.2" domes) |
+| `freq` | 4 | triangles per hexagon side (3 reads most clearly on a 12 x 16 board) |
+| `tones` | 4 | woods, roles `tone1` (lightest) to `toneN` |
+| `light` | [-0.55, 0.6, 0.58] | light direction (x, y, z); upper left by default |
+| `rim` | true | darken the outer ring |
+
+One bar (equilateral triangle, blade 30 degrees). Every row is a flat strip; with `freq` 3 the strip
+build finds 3 row logs. Light to dark woods with clear steps: maple / canarywood / cherry / walnut.
+
+## kagome (trihexagonal star lattice)
+
+Regular hexagons on a triangular grid with up and down triangles between them; every hexagon is
+ringed by six triangles, so it reads as interlocking six-point stars (a triaxial weave). Rows are flat
+strips of half-hexagon trapezoids (60 degrees, `2·side` by `side`) alternating with triangles; each
+hexagon is two trapezoids from neighbouring rows, so the rows must land exactly.
+
+| param | default | meaning |
+|---|---|---|
+| `side` | 0.9 | hexagon and triangle side |
+
+Roles `hex`, `up`, `down`. Two row logs (one if `up` and `down` are the same wood). Both bars rip at
+30 degrees, flipping the blank each pass.
+
+## rosettes (rhombitrihexagonal, 3.4.6.4)
+
+Hexagons, squares and triangles of one edge length `side`: each hexagon framed by six squares with a
+triangle at every corner. A unit is a hexagon, three squares (right, upper right, upper left) and two
+triangles. The strip build cuts it into vertical strips through hexagon centres (half hexagons become
+60 degree trapezoids, half triangles 30/60 right triangles); pieces nest two across inside a strip,
+so each strip is tape-glued on a template and flattened before crosscutting (the single-file check warns).
+
+| param | default | meaning |
+|---|---|---|
+| `side` | 0.75 | every edge |
+| `split_tri` | false | roles `tri_up` and `tri_down` instead of `tri` |
+
+Roles `hex`, `square`, `tri`. One log, up to six saw setups: hexagon (rip square to
+2·side wide and across-flats thick, then four 30 degree bevels), square, triangle.
+
 ## checker
 
 Square bars `side`, alternating `a`/`b`; rows are slices, every other one turned end for end.

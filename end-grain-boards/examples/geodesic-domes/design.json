@@ -1,0 +1,9 @@
+{
+  "name": "Geodesic Domes End-Grain Board",
+  "description": "a honeycomb of faceted geodesic domes built entirely from small equilateral-triangle pieces: each dome is a hexagon of triangles shaded from pale maple at its upper-left crown through golden canarywood and cherry to dark walnut at its lower-right foot, so every dome looks like a lit, triangulated hemisphere bulging out of the board",
+  "pattern": "geodomes",
+  "params": {"side": 1.0, "freq": 3, "tones": 4},
+  "board": {"width": 12, "length": 16, "thickness": 1.5},
+  "species": {"tone1": "maple", "tone2": "canarywood", "tone3": "cherry", "tone4": "walnut"},
+  "options": {"edge": "1/8\" chamfer", "feet": true, "juice_groove": false, "handles": false}
+}

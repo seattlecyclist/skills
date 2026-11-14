@@ -1,0 +1,9 @@
+{
+  "name": "Hex Rosettes End-Grain Board",
+  "description": "a rhombitrihexagonal grid like the hub-and-strut net of a geodesic frame: purpleheart hexagons, each framed by six pale maple squares, with small walnut triangles at every corner where three squares meet, so the board is a field of six-petal rosettes joined by square links",
+  "pattern": "rosettes",
+  "params": {"side": 0.75},
+  "board": {"width": 12, "length": 16, "thickness": 1.5},
+  "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"},
+  "options": {"edge": "1/8\" chamfer", "feet": true, "juice_groove": false, "handles": false}
+}
