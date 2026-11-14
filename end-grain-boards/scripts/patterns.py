@@ -322,8 +322,8 @@ def geodomes(p, board):
     return {"polygons": polys, "trim": trim, "roles": roles,
             "notes": [f"{rows} rows of equilateral triangles ({s:g}\" sides). Domes are hexagons {n} triangles a side "
                       f"({6 * n * n} facets, {2 * n * s:.2f}\" across), shaded in {K} woods as if lit from the upper left.",
-                      f"Every bar is the same equilateral triangle: one saw setup for the whole board. The dome pattern "
-                      f"repeats every {n} rows (shifted along), so with the rows a whole board wide there are {2 * n} different row logs (rows {n} apart repeat the domes half a pattern along)."]}
+                      "Every bar is the same equilateral triangle: one saw setup for the whole board. Each row is a flat-sided "
+                      "strip; rows that differ get their own log."]}
 
 
 def kagome(p, board):
