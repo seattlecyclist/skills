@@ -1,11 +1,12 @@
 {
  "name": "Geodesic Domes End-Grain Board",
- "description": "a honeycomb of faceted domes: each dome is a hexagon shaded in bands from pale maple at its upper-left crown through golden canarywood and cherry to dark walnut at its lower-right foot, so it reads as a lit hemisphere bulging out of the board",
+ "description": "a honeycomb of domes: each hexagon steps from a pale maple crown through a cherry ring to a full walnut rim, so every dome is a closed figure; a thin maple line and a walnut end-grain frame hold the field",
  "pattern": "geodomes",
  "params": {
-  "side": 1.0,
+  "side": 0.75,
   "freq": 3,
-  "tones": 4
+  "tones": 3,
+  "shade": "rings"
  },
  "board": {
   "width": 12,
@@ -14,12 +15,19 @@
  },
  "species": {
   "tone1": "maple",
-  "tone2": "canarywood",
-  "tone3": "cherry",
-  "tone4": "walnut"
+  "tone2": "cherry",
+  "tone3": "walnut"
  },
  "options": {
   "edge": "1/8\" chamfer",
   "feet": true
+ },
+ "frame": {
+  "width": 0.75,
+  "species": "walnut",
+  "liner": {
+   "width": 0.375,
+   "species": "cherry"
+  }
  }
 }

@@ -173,6 +173,24 @@ finds which cells are the same log turned or flipped. Choose the grid so that:
 
 Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern will be reused; add a
 `design.json` to `examples/` and run `scripts/selftest.py`.
+## Options every design takes
+
+```json
+"frame": {"width": 0.75, "species": "walnut", "liner": {"width": 0.375, "species": "cherry"}},
+"whole_motifs": true
+```
+
+- `frame` glues rings of end-grain blocks round the trimmed field: an optional `liner` first, then
+  the frame. The blocks are slices of a square bar, so the whole face stays end grain. Pick a liner
+  wood that differs from both the frame and the pieces that touch it, or the line disappears. A
+  ring under 3/8" wide is flagged: its blocks are too small to handle.
+- `whole_motifs` (default true) moves the trim so it runs between motifs, or through their line of
+  symmetry, instead of through an arbitrary point. Generators say where with `centers` (motif
+  centres) and `period` (the repeat along the board, for patterns with no mirror line across the
+  rows).
+- `stars8` takes `params.border`: a plain border in the ground wood, cut as a border bar, so no
+  star point is cut by the edge.
+
 ## Ideas that map onto these
 
 - Chevron / herringbone: parallelogram bars (45 or 60 degrees), rows of alternating lean.

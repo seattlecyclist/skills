@@ -225,7 +225,7 @@ def recipe(key, p, L, A, shop, outside=False):
             st.append(f"Machine the two sawn faces: lay the bars on a sawn face, packed tight side by side between two fences on a flat carrier board (they lean on each other like roof tiles; "
                       f"tape across both ends), and plane or drum-sand to {dim(d2)}, half from each sawn face"
                       + (", which is the setting the blank was milled at." if kind == "rhombus" else "."))
-        st.append(f"Check: corners {th:.0f} and {180 - th:.0f} degrees, " + (f"all four faces {dim(pside)}." if kind == "rhombus" and not outside else f"planed faces {dim(pside)}."))
+        st.append(f"Check: corners {th:.0f} and {180 - th:.0f} degrees, " + (f"all four faces {dim(pside)}." if kind == "rhombus" and not outside else f"the two planed faces measure {dim(stop)} as sawn and come to {dim(pside)} once the sawn faces are machined."))
         return {"kind": kind, "label": f"{th:.0f}-degree {'diamond' if kind == 'rhombus' else 'parallelogram'}, {short(pside)} faces" + ("" if kind == "rhombus" else f" x {short(qside)}"),
                 "dims": {"side": pside, "slant": qside, "angle": th, "thick": t}, "stock": t, "stop": stop, "setup": "para", "lead": 0.0, "strip": strip,
                 "per_bar": strip + kerf, "tilt": tilt, "steps": st, "warn": warn}
@@ -273,7 +273,7 @@ def recipe(key, p, L, A, shop, outside=False):
                       f"Tilt the blade {tilt:.1f} degrees from vertical (digital angle gauge). " + RIP + " Clamp the blank on the fence deck with its free edge over the slot and rip one bevel along it; that strip is waste." + deep(H + dH, tilt),
                       f"For every bar: turn the blank over end for end (the same edge stays toward the blade, the other face goes down), slide it across until its sharp lower edge touches the landing stop, "
                       f"close the clamps on it and push the sled through. The bar is left on the landing deck, base down and point up, between the stop and the blade. "
-                      f"Screw the landing stop with its sharp lower edge {dim(base + e_)} from the blade at the deck, then confirm on a test bar. The blank's bevelled edge slides in under the stop's leaning face until the two faces meet. Back the blank for every pass: fill the gap between its rear edge and the locating fence with spacer strips (rip a few to 1\" and 1/2\"), so the clamps are not the only thing holding it in place. Stop when less than {short(shop['blank_remainder'])} of blank is left; that strip is waste."]
+                      f"Screw the landing stop with its sharp lower edge {dim(base + e_)} from the blade at the deck, then confirm on a test bar. Plane the stop strip to {short(max(0.25, math.floor((H + dH - 0.125) * 16) / 16))} thick, lower than this bar, so the blade passes over it. The blank's bevelled edge slides in under the stop's leaning face until the two faces meet. Back the blank for every pass: fill the gap between its rear edge and the locating fence with spacer strips ripped from scrap to suit (the gap grows by about one bar's width every pass, so keep the offcut strips and add one each time), so the clamps are not the only thing holding it in place. Stop when less than {short(shop['blank_remainder'])} of blank is left; that strip is waste."]
                 if outside or not equi:
                     st.append(f"Leave the two sawn faces as they are. They end up on the outside of the glue-up and are machined with it; the planed base is the glue face.")
                 else:
@@ -688,6 +688,9 @@ def build(design, out, photo=None):
                                         "yield": f'{bl["bars"]} + {bl["spares"]} spare'} for bl in b["lengths"]]})
         st["bf"] += bf
         if not q: check(False, f"Bar {b['bar']} stock", f"{b['stock']:.2f}\" thick is more than 16/4; laminate blanks first")
+    if frame:
+        thin = [r for r in frame_out["rings"] if r["width"] < 0.375 - 1e-6]
+        check(not thin, "Frame rings at least 3/8\" wide", ", ".join(f'{r["role"]} {short(r["width"])}' for r in thin) + ("; a thinner end-grain strip breaks before it is glued on" if thin else ""), "warn")
     if frame:       # each ring: a board planed to the ring's width, crosscut into blocks that stand on end
         sw = shop["stock_width"] - 0.25
         for r in frame_out["rings"]:
@@ -1025,7 +1028,7 @@ def steps(plan, design):
 
     # crosscut
     ns = sum(lg["slices"] + lg["spares"] for lg in sliced)
-    lay = ("Lay the log in the sled cradle on its reference face, marked end away from the stop. Push the second strip hard against the log and put two bar clamps across the sled fence and that strip, both on the side of the blade away from the stop (clamp jaws cannot reach under a sled, so the clamps squeeze fence, log and strip together above the base): the log is pinched between the two strips, and that is what holds it for every cut. To move the log on, slacken one clamp, slide the log, tighten." if kind == "tri"
+    lay = ("Lay the log in the sled cradle on its reference face, marked end away from the stop. Push the second strip hard against the log and put two bar clamps across the sled fence and that strip, both on the side of the blade away from the stop (clamp jaws cannot reach under a sled, so the clamps squeeze fence, log and strip together above the base): the log is pinched between the two strips. Add a hold-down on the sled fence (a toggle clamp or a hand screw) pressing on the log's top edge through a scrap, so neither the log nor the loose strip can ride up. To move the log on, slacken one clamp, slide the log, tighten." if kind == "tri"
            else "Lay the log on its chalked face against the sled fence, marked end away from the stop, and clamp it down." if kind == "blocks"
            else "Lay the panel against the sled fence and clamp it down.")
     tx = [f"Square the unmarked end of each log first. {lay}" if kind != "panel" else f"Square one end of each panel first. {lay}",

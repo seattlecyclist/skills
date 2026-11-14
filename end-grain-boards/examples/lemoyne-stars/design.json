@@ -1,14 +1,15 @@
 {
  "name": "LeMoyne Star End-Grain Board",
- "description": "eight-point quilt stars: each star has eight diamond points alternating red padauk and dark walnut on a hard maple ground, the stars set in a grid inside a plain maple border",
+ "description": "eight-point quilt stars: each star has eight diamond points alternating red padauk and dark walnut on a hard maple ground, the stars set in a grid with a maple margin, a thin walnut line and a maple end-grain frame",
  "pattern": "stars8",
  "params": {
   "side": 0.75,
-  "alternate": true
+  "alternate": true,
+  "border": 0.75
  },
  "board": {
-  "width": 12,
-  "length": 17,
+  "width": 13.25,
+  "length": 18.25,
   "thickness": 1.5
  },
  "species": {
@@ -19,5 +20,13 @@
  "options": {
   "edge": "1/8\" chamfer",
   "handles": true
+ },
+ "frame": {
+  "width": 0.625,
+  "species": "maple",
+  "liner": {
+   "width": 0.375,
+   "species": "walnut"
+  }
  }
 }

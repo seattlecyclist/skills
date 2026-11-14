@@ -1,6 +1,6 @@
 """Every drawing on the plan page, from the computed plan.
 
-  make(plan) -> {"face", "layout", "bars", "log_<id>", "asm_log_<id>", "asm_rip", "jigs", "asm_true", "asm_cut", "row", "board", "trim"}
+  make(plan) -> {"face", "layout", "bars", "log_<id>", "asm_log_<id>", "ripsled", "jigs", "asm_true", "asm_cut", "row", "board", "trim"}
 
 Flat drawings (end views, layouts) use cbplan.Svg; the exploded glue-ups and the crosscut are drawn in 3D with
 assembly.Scene. One look throughout: woods in their end-grain colours, glue faces blue, clamp pressure as orange
@@ -138,7 +138,7 @@ def layout(plan):
 
 def bars(plan):
     """One card per bar shape: the cross-section with sizes and angles, and the table saw seen from the front."""
-    bts = plan["bar_types"]; W, H = 470, 520
+    bts = plan["bar_types"]; W, H = 470, 536
     used = {}; out = {}
     for b in plan["bars"]: used.setdefault(b["bar"], []).append(b)
     wood = {w["key"]: w for w in plan["woods"]}
@@ -178,7 +178,7 @@ def bars(plan):
             else:
                 xf = K + w if mode == "para" else K - tt + w
                 x_lo, x_hi = -tt - 1.5, xf + 3.3; fh = t + 1.2
-            kk = min((W - 60) / (x_hi - x_lo), 182 / (fh + 0.5 + D)); y0 = H - 86 - D * kk
+            kk = min((W - 60) / (x_hi - x_lo), 182 / (fh + 0.5 + D)); y0 = H - 102 - D * kk
             X = lambda x: 30 + ((W - 60) - (x_hi - x_lo) * kk) / 2 + (x - x_lo) * kk
             Y = lambda y: y0 - y * kk
             pg = lambda q, f, st=INK, sw=1.2, dash="": ('<polygon points="' + " ".join(f"{X(x):.1f},{Y(y):.1f}" for x, y in q) + f'" fill="{f}" stroke="{st}" stroke-width="{sw}"'
@@ -228,20 +228,29 @@ def bars(plan):
             if dimy:
                 yd = Y(dimy) - 30
                 el.append(f'<path d="M{X(d0):.1f},{yd - 4} v8 M{X(d1):.1f},{yd - 4} v8 M{X(d0):.1f},{yd} H{X(d1):.1f}" stroke="{REF}" stroke-width="1.1" fill="none"/>')
-                el.append(f'<rect x="{X((d0 + d1) / 2) - 24:.1f}" y="{yd - 8}" width="48" height="16" fill="#fff"/>' + T(X((d0 + d1) / 2), yd + 4, short(w), 11, fill=REF, weight="600"))
+                el.append(_dimlab(T, X(d0), X(d1), yd, short(w)))
             else:
                 yd = Y(-D) + 9
                 el.append(f'<path d="M{X(d0):.1f},{yd - 4} v8 M{X(d1):.1f},{yd - 4} v8 M{X(d0):.1f},{yd} H{X(d1):.1f}" stroke="{REF}" stroke-width="1.1" fill="none"/>')
-                el.append(f'<rect x="{X((d0 + d1) / 2) - 24:.1f}" y="{yd - 8}" width="48" height="16" fill="#fff"/>' + T(X((d0 + d1) / 2), yd + 4, short(w), 11, fill=REF, weight="600"))
+                el.append(_dimlab(T, X(d0), X(d1), yd, short(w)))
             cap = {"para": "roll the strip over for the second bevel", "trap": "turn the strip end for end for the second bevel", "flip": "turn the blank end for end every pass",
                    "square": "bar between blade and fence"}[mode]
             el.append(T(W / 2, 240, "The saw from the front" + ("" if mode == "square" else ", second bevel" if mode != "flip" else ""), 11, weight="600"))
-            el.append(T(W / 2, H - 26, (f"strip {short(bt['strip'])} wide, {short(t)} thick · " if bt.get("strip") else f"blank {short(t)} thick · ") + cap, 10.5))
+            el.append(T(W / 2, H - 42, f"strip {short(bt['strip'])} wide, {short(t)} thick" if bt.get("strip") else f"blank {short(t)} thick", 10.5, weight="600"))
+            el.append(T(W / 2, H - 26, cap, 10.5))
             el.append(T(W / 2, H - 10, "red figure: " + lab, 10.5, fill="#5b6167"))
         else:
             el.append(T(W / 2, 300, f"blank {short(t)} thick · see the steps beside this drawing", 11))
         el.append("</svg>"); out[f"bar_{bt['id']}"] = "".join(el)
     return out
+
+
+def _dimlab(T, xa, xb, yd, txt):
+    """Dimension figure: on the line when the line is long enough, beside it when it is not."""
+    if abs(xb - xa) >= 64:
+        xm = (xa + xb) / 2
+        return f'<rect x="{xm - 24:.1f}" y="{yd - 8}" width="48" height="16" fill="#fff"/>' + T(xm, yd + 4, txt, 11, fill=REF, weight="600")
+    return T(max(xa, xb) + 8, yd + 4, txt, 11, fill=REF, weight="600", anchor="start")
 
 
 def _flat(pts):
@@ -646,23 +655,6 @@ def _on_any(a, b, outline, keys):
         db = abs((q[0] - p[0]) * (b[1] - p[1]) - (q[1] - p[1]) * (b[0] - p[0])) / ln
         if da < 2e-3 and db < 2e-3: return True
     return False
-
-
-def asm_rip(plan):
-    bt = plan["bar_types"][0]; b0 = next(b for b in plan["bars"] if b["bar"] == bt["id"])
-    col = next(w for w in plan["woods"] if w["key"] == b0["species"])
-    s = Scene(az=50, el=26)
-    sect = _flat(bt["pts"]); th = max(y for _, y in sect); wdt = max(x for x, _ in sect) - min(x for x, _ in sect)
-    x0 = min(x for x, _ in sect); sect = [(x - x0, y) for x, y in sect]
-    Lb = 9.0; gap = 0.5
-    lean = sect[-1][0] if len(sect) == 4 else 0
-    blank = [(0, 0), (3.2 * wdt, 0), (3.2 * wdt, th), (max(0.0, sect[-1][0] if len(sect) == 4 else 0), th)]
-    s.prism([(x + 3 * (wdt + gap) + 0.2, y) for x, y in blank], Lb, _along(), col["end"], col["long"])
-    for k in range(3):
-        s.prism([(x + k * (wdt + gap), y) for x, y in sect], Lb, _along(), col["end"], col["long"])
-        s.mark("label", (Lb, k * (wdt + gap) + wdt / 2, th * 0.5), bt["id"], (-30 - 6 * k, 38 + 10 * k))
-    s.mark("grain", (1.0, -1.2, 0), (Lb - 1.0, -1.2, 0))
-    return s.svg(title=f"Bars ripped from the blank")
 
 
 def asm_cut(plan):
