@@ -25,6 +25,10 @@ field. Every truing pass takes a skim, so the plan lays the pattern out at the t
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
 
+`maze` is a plank build (`scripts/planks.py`): nothing is assembled from small pieces. Long two-ply blanks are ripped into
+slabs, slabs are stacked into square logs, logs are glued into one plank, and every row is a crosscut slice of
+that plank. Prefer this shape of build wherever a pattern allows it: long glued planks, rows cut from the plank.
+
 One board is the exception: `cubes` (tumbling blocks) is built the way makers build it, three diamond
 bars taped into a hexagon log, the logs sliced into pucks and all the pucks glued at once in a clamped
 frame. Its logs are not machined, so its plan stresses one-setup bars and keeps a gap-filling step.
@@ -37,6 +41,7 @@ has the rules and the reasons.
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
 | `scripts/logs.py` | The build: face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
+| `scripts/planks.py` | The plank build, used by `maze`: a two-ply blank, slabs ripped off it at 45 degrees, four slabs to a square log, logs glued into one plank, rows crosscut from the plank. Its own checks, drawings and plan sheets (pattern, blanks & slabs, plank & rows, flattening & border, sources). |
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
 | `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
@@ -47,7 +52,7 @@ has the rules and the reasons.
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
 | `references/technique.md` | The five rules, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Thirteen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`; each with `design.json`, `plan.html`, `guide.jpg` and (all but the checkerboard) `photo.jpg`. |
+| `examples/` | Fourteen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, `two-wood-maze` (the plank build), and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`; each with `design.json`, `plan.html`, `guide.jpg` and (all but the checkerboard) `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in
@@ -57,7 +62,7 @@ missing, the full skill is in `end-grain-boards/` of that repo.
 ## 1. Brief
 
 Get, or ask once for only what you cannot infer:
-- **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`; pinwheels, chevron chains → `chevrons`; cut gems, faceted hexagons → `gems`; stepped pyramid, concentric hexagons → `ziggurat`; pleats, folded ribbons → `ribbons`; cubes with a notch → `notched`;
+- **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`; pinwheels, chevron chains → `chevrons`; cut gems, faceted hexagons → `gems`; stepped pyramid, concentric hexagons → `ziggurat`; pleats, folded ribbons → `ribbons`; cubes with a notch → `notched`; a two-wood maze of stepped bars that seem to weave (Stammherz's "just 2 woods" board) → `maze` (roles light, dark; `params.bar` is the bar width, 1/2" by default, and the tile is four bars square);
   stars, Star of David, hexagram → `stars6`; snowflakes → `snowflakes`; eight-point, quilt or LeMoyne star, compass star →
   `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`; geodesic, domes, triangulated
   spheres → `geodomes`; kagome, trihexagonal, triaxial weave, star lattice → `kagome`; rosettes, hexagons ringed

@@ -86,5 +86,13 @@ plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"wi
                   "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
 expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
 
+d = json.load(open(os.path.join(EX, "two-wood-maze", "design.json")))
+plan, errs = run(d)
+expect("maze: a plank build, one slab type, six rows from one plank", not errs and plan["method"] == "plank" and plan["N"]["nslab"] == 16 and len(plan["rows"]) == 6)
+d["params"]["cols"] = 7; plan, errs = run(d)
+expect("maze: an odd number of tiles across is caught", errs and any("even number" in e for e in errs))
+d["params"] = {"bar": 0.75, "cols": 6, "rows": 4}; plan, errs = run(d)
+expect("maze: a blank too thick for the tilted blade is caught", errs and any("45 degrees" in e for e in errs))
+
 print("all good" if not fails else f"{fails} failed")
 sys.exit(1 if fails else 0)
