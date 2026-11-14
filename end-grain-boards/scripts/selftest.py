@@ -105,6 +105,13 @@ expect("maze: an odd number of tiles across is caught", errs and any("even numbe
 dm["params"] = {"bar": 0.75, "cols": 6, "rows": 4}; plan, errs = run(dm)
 expect("maze: a blank too thick for the tilted blade is caught", errs and any("45 degrees" in e for e in errs))
 
+ds = json.load(open(os.path.join(EX, "star-lattice", "design.json")))
+plan, errs = run(ds)
+expect("star lattice: a plank build, one log, two planks each cut for half the rows", not errs and plan["method"] == "plank" and len(plan["planks"]) == 2
+       and all(p["rows"] == 4 for p in plan["planks"]) and plan["repeats"]["log_types"] == 1)
+ds["params"]["star"] = 0.25; plan, errs = run(ds)
+expect("star lattice: a strip that would miss its star is caught", errs and any("land on a star" in e for e in errs))
+
 plan, _ = run(d); rep = plan["repeats"]
 expect("repeat math: the star field's rows pair up end for end about the middle of the board",
        rep["rows"] % 2 == 0 and rep["orbits"] * 2 == rep["rows"] and any(t["op"] == "r" and t["centre"] == rep["rows"] / 2 + 0.5 for t in rep["turns"]))

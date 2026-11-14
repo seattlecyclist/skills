@@ -498,14 +498,15 @@ GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cube
               "rosettes": rosettes, "rhombitrihex": rosettes}
 
 
-PLANK = {"maze", "two-wood-maze"}      # built by twoply.py: slabs ripped from a two-ply blank, logs, one plank, rows
+# plank builds, each with its own module: slabs ripped from a laminated blank, logs, planks, rows
+PLANK = {"maze": "twoply", "two-wood-maze": "twoply", "starlattice": "starlattice", "star-lattice": "starlattice", "hex-lattice": "starlattice"}
 
 
 def generate(design):
     pat = design["pattern"]
     if pat in PLANK:
-        import twoply
-        return twoply.generate(design.get("params", {}), design["board"])
+        import importlib
+        return importlib.import_module(PLANK[pat]).generate(design.get("params", {}), design["board"])
     if pat == "custom":
         return {"polygons": design["polygons"], "trim": design["trim"],
                 "roles": sorted({p["role"] for p in design["polygons"]}), "notes": design.get("notes", [])}
