@@ -200,10 +200,10 @@ def page(plan, svgs, photo, guide=None):
     tools = ["Table saw" + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in tilts)})" if tilts else "") + ", rip sled with three toggle clamps",
              "Jointer and planer for the blanks and bars",
              {"tri": "Drum sander or thickness planer (helical head is best) to true bars and logs in the V blocks", "blocks": "Jointer and planer to true the logs",
-              "panel": "Planer to true the panels", "hex": "Sanding board: 120 grit on a flat base, for the faces of the pucks"}[kind],
+              "panel": "Planer to true the panels", "hex": "Sanding board: 120 grit on a flat base, for the sides of the pucks"}[kind],
              "Crosscut sled with a stop block, spacer and hold-down", "Band saw (to halve one spare slice for end blocks)" if kind == "tri" else "Band saw or hand saw to halve the edge pucks, calipers" if kind == "hex" else "Calipers and a straightedge",
              {"tri": "Shop-made V blocks, row jig and sled cradle (step 2)", "blocks": "Shop-made band cradle, corner cauls and row jig (step 2)", "panel": "Flat cauls", "hex": "Flat glue-up base with a clamped frame of four straight boards (step 2), blue tape"}[kind],
-             "Bar clamps, taped cauls, Titebond III", "Router sled or drum sander to flatten the board; never a planer on the finished end grain",
+             "Bar clamps, taped cauls, Titebond III" + (" and Titebond II Extend for the puck glue-up" if kind == "hex" else ""), "Router sled or drum sander to flatten the board; never a planer on the finished end grain",
              "Random-orbit sander, mineral oil and board butter"]
     how = {"tri": "Bars are glued two to four at a time into small triangular logs in a V block. Every face of every log is sanded flat, the logs are sliced, "
                   "the triangular slices are glued into straight rows, and the rows are glued into the board. No glue-up ever has a face that cannot be machined.",
@@ -277,7 +277,7 @@ def page(plan, svgs, photo, guide=None):
                   f'<div><h4>{e(l["name"])}: {fr(short(l["w"]))} {e(l["what"])}{(", finishes about " + fr(dim(l["trued"]))) if l["kind"] == "tri" else ""}</h4><div class="jsub">{"one solid bar, trued like the other logs" if sum(len(s_["parts"]) for s_ in l["stages"]) == 1 else pl(len(l["stages"]), "glue-up") + " · " + e(l["stages"][0]["jig"])}</div></div></div>'
                   + f'<div class="ph">{svgs[f"log_{l["id"]}"]}</div>'
                   + f'<dl class="kv"><dt>Parts</dt><dd class="m">{e(ptxt)}</dd><dt>Make</dt><dd class="m">{made} long</dd><dt>Use</dt><dd class="m">{use}</dd></dl></div>')
-    H.append(f'<article class="sheet" id="logs">{tb("04", "Logs", "End views, as the parts sit in the jig: blue is glue, orange is clamp pressure, numbers are bars from sheet 03, faded parts are already glued", f"<div class=dims>{pl(len(logs), "log type")}</div>")}'
+    H.append(f'<article class="sheet" id="logs">{tb("04", "Logs", "End view: blue lines are glue, the blue band is tape, numbers are bars from sheet 03" if kind == "hex" else "End views, as the parts sit in the jig: blue is glue, orange is clamp pressure, numbers are bars from sheet 03, faded parts are already glued", f"<div class=dims>{pl(len(logs), "log type")}</div>")}'
              f'<div class="jgrid logs">{cards}</div></article>')
 
     # 05 layout

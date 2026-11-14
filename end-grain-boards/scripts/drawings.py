@@ -585,13 +585,13 @@ def hexboard_fig(plan):
         _arrow(s, (b[0] - fw - 1.3, y), (b[0] - fw - 0.08, y)); _arrow(s, (b[2] + fw + 1.3, y), (b[2] + fw + 0.08, y))
         if f != 0.5: continue
         _arrow(s, (x, b[1] - fw - 1.3), (x, b[1] - fw - 0.08)); _arrow(s, (x, b[3] + fw + 1.3), (x, b[3] + fw + 0.08))
-    for f in (0.3, 0.7):
-        y = b[1] + f * (b[3] - b[1])
-        s.poly([(b[0] - fw - 0.5, y - 0.3), (b[2] + fw + 0.5, y - 0.3), (b[2] + fw + 0.5, y + 0.3), (b[0] - fw - 0.5, y + 0.3)], MDF, MDF_E, 1.2, dash="6 4", op=0.25)
+    for f in (0.27, 0.73):
+        x = b[0] + f * (b[2] - b[0])
+        s.poly([(x - 0.3, b[1] - fw - 1.2), (x + 0.3, b[1] - fw - 1.2), (x + 0.3, b[3] + fw + 1.2), (x - 0.3, b[3] + fw + 1.2)], MDF, MDF_E, 1.2, dash="6 4", op=0.25)
     c = max((pk for r in rows for pk in r["pucks"] if not pk.get("half")), key=lambda pk: -math.dist(_cen(pk["pts"]), (cx, cy)))
     _chip(s, _cen(c["pts"]), "1", r=11, fill="#ffe9a8")
-    s.text((cx, b[3] + fw + 1.75), "frame of four 1x3 boards, clamped both ways; start at puck 1 and work outward", 11)
-    s.text((cx, b[1] - fw - 1.75), "dashed: cauls across the top, clamped down to the base", 11)
+    s.text((cx, b[3] + fw + 1.75), "four 1x3 boards lying flat, bar clamps over the top at the arrows; start at puck 1", 11)
+    s.text((cx, b[1] - fw - 1.75), "dashed: two cauls lengthwise on the pucks, ends clamped down to the base", 11)
     return s.svg()
 
 

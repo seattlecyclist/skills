@@ -889,12 +889,13 @@ def steps(plan, design):
     elif kind == "hex":
         bd_ = plan["board"]; gw = bd_["glued"][2] - bd_["glued"][0]; gl = bd_["glued"][3] - bd_["glued"][1]; lgh = sliced[0]
         jig += ["Sanding board: a flat offcut of MDF or melamine about 12\" x 18\" with a sheet of 120 grit paper stuck down with spray adhesive. The sides of the pucks are cleaned on it, and the sawn faces of the half pucks.",
-                f"Glue-up base: a flat piece of melamine or MDF about {math.ceil(gw + 8)}\" x {math.ceil(gl + 8)}\", covered with packing tape so glue lets go. Stand it on two battens so clamp jaws reach under it.",
+                f"Glue-up base: a flat piece of melamine or MDF about {math.ceil(gw + 8)}\" x {math.ceil(gl + 8)}\", covered with packing tape so glue lets go. Stand it on two battens so the caul clamps can reach under it.",
                 f"Frame boards: four straight boards of 1x3, the frame Tom Silva clamps round his pucks. Two are {math.ceil(gl + 4)}\" long for the long sides. Two are cut to {dim(gw - 0.125)}, a hair under the width of the glue-up, "
-                "so they fit between the long boards and push on the two end rows. Tape the inside edges. They lie loose on the base round the pucks; bar clamps squeeze them in both directions.",
-                "Two cauls: straight 2x2s with packing tape on one face, longer than the base is wide, to hold the pucks flat while the frame closes.",
+                "so they fit between the long boards and push on the two end rows. Tape the inside edges. They lie flat on the base, loose, round the pucks, and stand lower than the pucks. "
+                "Bar clamps go over the top of the pucks with their jaws on the outside edges of the frame boards: three across the width, one along the length down the middle.",
+                f"Two cauls: straight 2x2s with packing tape on one face, about {math.ceil(gl + 8)}\" long, to hold the pucks flat while the frame closes. They lie lengthwise on the pucks, one each side of the long clamp, and are clamped down to the base at their ends, beyond the frame.",
                 f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. Its base must be {short(sh['sled_base'])} or thinner: the log lies on one flat and stands {short(min(lgh['w'], lgh['h']))} tall on it, and the blade, fully raised, clears {short(sh['max_cut_height'])}. "
-                "Raise the blade and check it clears the top of the log before the first cut. Silva cuts his pucks on a miter saw against a stop block instead; either works if the log is clamped and the stop is set once."]
+                "That leaves little to spare: measure your own blade's height above the sled base before the first cut. If it does not clear the log by 1/16\", cut the pucks on a miter saw instead, as Silva does: log clamped to the saw's fence, stop block set once, the same 1\" spacer."]
     elif kind == "blocks":
         hq = min(min(lg["w"], lg["h"]) for lg in logs if lg["shape"] == "quarter")
         jig += ["Band cradle: a flat base of 3/4\" MDF with packing tape on it, and a stop strip screwed along one side whose inner edge is ripped at 45 degrees so it leans over the work. "
@@ -977,7 +978,7 @@ def steps(plan, design):
                    "Roll a thin, even coat of Titebond III on one face of each of the three joints. Bring the bars together and wrap painter's tape tightly round the bundle every 3 inches along its length, as Silva does; "
                    "thick rubber bands or band clamps do the same job. Tape pulls evenly toward the centre, where a bar clamp would make the bevels slide.",
                    "Check both ends before the glue grabs: three joints meeting at one point in the centre, the six outside corners sharp, nothing slid along its length. Wipe the squeeze-out and lay the log on a flat taped surface so it cures straight.",
-                   "Silva unwraps after 30 minutes. Leave the logs overnight before sawing them. " + END]
+                   "Glue the three spare bars into one more log in the same session: it replaces a log that measures out in the next step, and gives spare pucks. Silva unwraps after 30 minutes. Leave the logs overnight before sawing them. " + END]
             dont = "clamp a hexagon bundle with bar clamps. Bevelled faces slide under a clamp; tape or bands pull every joint closed at once."
         elif main["shape"] == "band":
             tx += ["Dry-fit in the band cradle: the diamond bar lies on a sawn face with its free bevel tucked under the 45 degree stop; the triangle bar sits beside it on a sawn face, "
@@ -1023,9 +1024,9 @@ def steps(plan, design):
                   f"The exact figure does not matter; that all the logs match within a few thousandths does. Sizes from here on are these finished sizes.",
                   "Check each log: the 60 degree triangle fits every corner, a straightedge shows no light along any face, and calipers read the same at both ends."]
         elif main["kind"] == "hex":
-            tx = ["Scrape the dried glue off all six faces with a card scraper. Do not plane or sand the faces: the makers who build this way do not machine the log, and its six faces are the planed faces of the bars.",
+            tx = ["Scrape the dried glue off all six faces with a card scraper. The makers who build this way do not machine the log: its six faces are the planed faces of the bars. If you have a drum sander, one very light pass over each of the three pairs of flats, every log at the same setting, is this plan's own optional addition; no published build does it, so skip it if the logs already measure alike.",
                   f"Check each log with calipers across all three pairs of flats, at both ends. Every reading should be {dim(min(main['w'], main['h']))} and the logs should match each other within a few thousandths. "
-                  "A log that is out goes to the spares: its pucks would hold their neighbours apart.",
+                  "A log that is out is set aside, and the spare log takes its place: its pucks would hold their neighbours apart.",
                   "This is the known weak point of the method. Nothing is machined between this glue-up and the board, so any error in the bars arrives at the board. Silva's own build ends by filling small gaps, and this plan keeps that step."]
         elif main["shape"] == "band":
             tx = [f"Plane both broad faces of each band, equal cuts from each face, all bands at one planer setting, down to {dim(main['trued'][1])} thick. "
@@ -1063,7 +1064,7 @@ def steps(plan, design):
     # crosscut
     ns = sum(lg["slices"] + lg["spares"] for lg in sliced)
     lay = ("Lay the log in the sled cradle on its reference face, marked end away from the stop. Push the second strip hard against the log and put two bar clamps across the sled fence and that strip, both on the side of the blade away from the stop (clamp jaws cannot reach under a sled, so the clamps squeeze fence, log and strip together above the base): the log is pinched between the two strips. Add a hold-down on the sled fence (a toggle clamp or a hand screw) pressing on the log's top edge through a scrap, so neither the log nor the loose strip can ride up. To move the log on, slacken one clamp, slide the log, tighten." if kind == "tri"
-           else "Lay the log on one flat against the sled fence, marked end away from the stop, and clamp it down with the hold-down on its top flat." if kind == "hex"
+           else "Lay the log on one flat with a corner touching the sled fence, marked end away from the stop, and clamp it down with the hold-down on its top flat. The squaring cut was made after the glue-up; repeat it only if the end is not clean." if kind == "hex"
            else "Lay the log on its chalked face against the sled fence, marked end away from the stop, and clamp it down." if kind == "blocks"
            else "Lay the panel against the sled fence and clamp it down.")
     tx = [f"Square the unmarked end of each log first. {lay}" if kind != "panel" else f"Square one end of each panel first. {lay}",
@@ -1085,18 +1086,19 @@ def steps(plan, design):
         tx = ["Sand the sides of each puck lightly with 120 grit, as Silva does: stand the puck on one side on the sanding board and take two or three light strokes, then the next side, the same count on all six. "
               "This takes off saw fuzz and any glue. It must not change the shape, so keep the puck flat on the board and stop as soon as the side is clean.",
               f"Set aside {nh} good pucks for the half pucks along the two long edges (sheet 05 marks them with a half sign). Saw each one in two from point to point: the cut starts at the outer corner of the {names[0]} diamond, "
-              f"passes through the centre and runs out along the joint between the {names[1]} and the {names[2]}. Use a band saw with the puck held against a square block, and saw just beside the line so the half you keep is a full half. "
-              f"Keep the half with the {names[2]} for {nr_} of them and the half with the {names[1]} for the other {nh - nr_}: sheet 05 shows which edge each goes on. Take two strokes on the sanding board to flatten the sawn face."]
+              f"passes through the centre and runs out along the joint between the {names[1]} and the {names[2]}. Stand the puck on one flat on the band saw table, clamped in a wooden hand screw so fingers stay away from the blade, and saw just on the waste side of the line. "
+              f"Keep the half with the {names[2]} for {nr_} of them and the half with the {names[1]} for the other {nh - nr_}: sheet 05 shows which edge each goes on. Then rub the sawn face on the sanding board until the half measures {dim(lgh['w'] / 2)} from sawn face to the opposite flat, never more: a half that is over holds the frame board off the whole pucks beside it."]
         S.append({"title": "Sand the pucks and make the half pucks", "text": tx, "figs": [], "see": ["layout"],
                   "dont": "sand a side until it looks perfect. Every stroke changes the hexagon; a few strokes clean it, a dozen make a gap."})
         tx = [f"Dry-lay the whole board on the taped base from sheet 05: {nrow} rows, {npuck - nh} whole pucks and {nh} halves, every puck X up and turned so its {names[0]} diamond is at the top. "
               "The half pucks go at the ends of every other row with their sawn faces outward, so both long sides are straight.",
               "Close the four frame boards round the pucks and snug the clamps with no glue. Look at every joint. Swap or turn pucks until the layout closes, then pencil a number on each puck, row by row, and lift them off in order.",
-              f"Use a glue with a long open time: there are {npuck} pieces to place. Titebond III gives about ten minutes; Titebond II Extend, which Dillen chose for his board for this reason, gives more. A second pair of hands helps.",
+              f"Use a glue with a long open time: there are {npuck} pieces to place. Use Titebond II Extend, which Dillen chose for his board for this reason; ordinary Titebond III gives only about ten minutes. Work with a second person. "
+              "Working alone, glue the board in two sessions instead: glue the rows of one half, leave the other half in the frame dry as packing with a strip of packing tape on the joint between the halves, clamp, and glue the second half the next day. That split is this plan's suggestion, not Silva's; he glues every puck at once.",
               "Start at the centre of the board and work outward, as Silva does: brush a thin coat on the sides of each puck that meet pucks already down, and press it home. Keep the coat thin. Too much glue holds the joints open.",
               "Close the frame boards and bring up the clamps a little at a time, across the width and along the length in turn, until every board bears. The long boards push on the straight sides. "
               "The end boards push on the points of the end rows, which seats each of those pucks into the V of the two behind it.",
-              "Before the clamps are tight, lay the two cauls across the top, clamp them lightly down to the base, and tap any proud puck level with a mallet. Then tighten the frame clamps firmly, not hard, and wipe the squeeze-out.",
+              "Before the clamps are tight, lay the two cauls lengthwise on the pucks, clamp their ends lightly down to the base, and tap any proud puck level with a mallet. Then tighten the frame clamps firmly, not hard, and wipe the squeeze-out.",
               "Leave the board in the frame overnight and out of clamps a day before flattening."]
         S.append({"title": "Glue the pucks into the board", "text": tx, "figs": ["board"], "see": ["layout"], "glue": True,
                   "dont": "tighten one direction fully before the other. The honeycomb locks, and a puck that has not seated cannot move afterwards."})
@@ -1150,14 +1152,14 @@ def steps(plan, design):
     tx = ["Flatten first, trim second. Flatten both faces with a drum sander (60 or 80 grit, light passes) or a router sled (wedge the board in a frame, spoilboard bit, passes of 1/32\" or less, outside edges first), "
           "then a random-orbit sander; a router sled does the whole job if there is no drum sander. "
           f"The slices were cut {short(sh['flatten_allowance'])} thick of finished for this. "
-          + (f"Stop as soon as both faces are clean and the board is an even thickness; leave it over {short(T)}, because it is flattened once more with its frame on." if fr_ else f"Stop at {short(T)}."),
+          + (f"Stop as soon as both faces are clean and the board is an even thickness; leave it over {short(T)}, because it is flattened once more with its frame on." if fr_ else (f"Stop about 1/32\" over {short(T)}; the last pass after filling brings it to size." if kind == "hex" else f"Stop at {short(T)}.")),
           f"Then trim to {dim(W)} x {dim(L)} with a track saw or on a crosscut sled. The trim lines are centred on the pattern (sheet 05 shows them against the slices): "
           f"make {cutline(0, 'left')} and {cutline(2, 'bottom')}, square to each other, then cut the right and top edges parallel to them at the finished size. "
           f"That leaves about {short(m[1])} of waste on the right and {short(m[3])} at the top. "
           "Tape the cut line and back the exit edge with scrap so the end grain does not chip.",
           ] + ([] if fr_ else ["Sand both faces 80, 120, 180; wipe with a damp cloth to raise the grain, let it dry, then sand 220."])
     if kind == "hex":
-        tx.insert(1, "Fill before the last pass. Silva lists this as a step: mix fine sanding dust from the board with glue to the thickness of peanut butter, pack it into any open joint, let it cure, then take one more light flattening pass over both faces.")
+        tx.insert(1, "Fill before the last pass. Silva lists this as a step: mix fine sanding dust from the board with glue to the thickness of peanut butter, pack it into any open joint, let it cure, then take one more light flattening pass over both faces, down to " + short(T) + ".")
     S.append({"title": "Flatten, fill, then trim" if kind == "hex" else "Flatten, then trim", "text": tx, "figs": ["trim"], "see": [],
               "dont": "run the board through a thickness planer. End grain breaks out at the trailing edge and the planer can throw pieces."})
     if fr_:
