@@ -242,8 +242,168 @@ def brick(p, board):
             "notes": [f"{rows} courses; even rows carry a half brick past each end that is trimmed off."]}
 
 
+# --------------------------------------------------------------------------------------------
+# Triangle tiling helpers: lattice points (i, j) -> ((i + j/2)·s, j·s·√3/2). Row j holds the up
+# triangles (i,j),(i+1,j),(i,j+1) and down triangles (i+1,j),(i+1,j+1),(i,j+1).
+# --------------------------------------------------------------------------------------------
+def _tri_rows(s, board, p):
+    h = s * S3 / 2
+    rows = int(p.get("rows") or _fit(board["length"], h))
+    width = float(p.get("width") or board["width"])
+    cols = int(p.get("cols") or max(1, round(width / s)))
+    L = lambda i, j: ((i + j / 2) * s, j * h)
+    out = []
+    for j in range(rows):
+        i0 = -((j + 1) // 2) - 1
+        for i in range(i0, i0 + cols + 3):
+            out.append(("up", j, [L(i, j), L(i + 1, j), L(i, j + 1)]))
+            out.append(("down", j, [L(i + 1, j), L(i + 1, j + 1), L(i, j + 1)]))
+    return out, [0.0, 0.0, cols * s, rows * h], rows, cols, h
+
+
+def geodomes(p, board):
+    """Geodesic domes: the board is an equilateral-triangle tiling. Flat-top hexagons of 'freq'
+    triangles a side tile it (6·freq² triangles each), and every triangle is a flat facet of a
+    sphere over its hexagon: lit by a light from the upper left, its brightness picks one of the
+    tone woods (roles tone1 = lightest ... toneN = darkest): the two sides facing the light lightest,
+    the side away from it darkest, the crown a tone lighter and the rim a tone darker ('rim': false
+    to skip). Rows of triangles are the slices; the domes repeat every 2·'freq' rows, so 2·'freq' row logs."""
+    s = float(p.get("side", 0.8)); n = int(p.get("freq", 4)); K = int(p.get("tones", 4))
+    lx, ly, lz = p.get("light", [-0.55, 0.6, 0.58])
+    ln = math.sqrt(lx * lx + ly * ly + lz * lz); lx, ly, lz = lx / ln, ly / ln, lz / ln
+    tris, trim, rows, cols, h = _tri_rows(s, board, p)
+    # dome centres: lattice spanned by A = n(1,1) and B = n(-1,2) in (i, j); shift so a dome sits mid-board
+    ox, oy = trim[2] / 2, trim[3] / 2
+    jc = round(oy / h / n) * n; ic = round(ox / s - jc / 2)
+    cen = lambda i, j: ((i + j / 2) * s, j * h)
+    A, B = (n, n), (-n, 2 * n)
+    def dome_of(c):
+        best = None
+        # solve approx lattice coords then search neighbours
+        x, y = c; jj = y / h; ii = x / s - jj / 2
+        di, dj = ii - ic, jj - jc
+        # (di, dj) = a·A + b·B  ->  a = (2di + dj)/(3n), b = (dj - di)/(3n)
+        a0 = (2 * di + dj) / (3 * n); b0 = (dj - di) / (3 * n)
+        for a in range(math.floor(a0) - 1, math.floor(a0) + 3):
+            for b in range(math.floor(b0) - 1, math.floor(b0) + 3):
+                ci, cj = ic + a * A[0] + b * B[0], jc + a * A[1] + b * B[1]
+                cx, cy = cen(ci, cj)
+                d = math.hypot(x - cx, y - cy)
+                if best is None or d < best[0] - 1e-9: best = (d, cx, cy)
+        return best[1], best[2]
+    # each dome is faceted like a geodesic dome: six sectors (one per hexagon side) and 'freq' rings of
+    # triangles, every sector-ring band a flat facet tilted more steeply towards the rim
+    def facet(dx, dy):
+        ang = math.degrees(math.atan2(dy, dx))
+        k = int(((ang - 0) % 360) // 60)                  # sector k spans 60k .. 60k+60, its side's normal at 60k+30
+        nrm = math.radians(60 * k + 30)
+        d = dx * math.cos(nrm) + dy * math.sin(nrm)       # distance towards that side
+        ring = min(n - 1, int(d / h))
+        return k, ring
+    offs = []
+    for kind, j, pts in tris:
+        c = (sum(q[0] for q in pts) / 3, sum(q[1] for q in pts) / 3)
+        cx, cy = dome_of(c)
+        offs.append(facet(c[0] - cx, c[1] - cy))
+    # the six sides lit in order of how squarely they face the light: lit pair, half-lit pair, shade, dark;
+    # the crown (centre ring) one tone lighter and the rim (outer ring) one darker, so each dome bulges
+    la = math.atan2(ly, lx)
+    order = sorted(range(6), key=lambda k: -math.cos(math.radians(60 * k + 30) - la))
+    base = {4: [1, 1, 2, 2, 3, 4], 3: [1, 1, 2, 2, 3, 3], 5: [1, 2, 2, 3, 4, 5]}.get(K, [1 + i * (K - 1) // 5 for i in range(6)])
+    sector_tone = {k: base[r] for r, k in enumerate(order)}
+    def tone_of(f):
+        k, ring = f; t = sector_tone[k]
+        if ring == 0 and n > 2: t -= 1
+        if ring == n - 1 and n > 2 and p.get("rim", True): t += 1
+        return max(1, min(K, t))
+    tone = {o: tone_of(o) for o in set(offs)}
+    polys = [_poly(pts, f"tone{tone[o]}", f"r{j}") for (kind, j, pts), o in zip(tris, offs)]
+    roles = [f"tone{k}" for k in range(1, K + 1)]
+    return {"polygons": polys, "trim": trim, "roles": roles,
+            "notes": [f"{rows} rows of equilateral triangles ({s:g}\" sides). Domes are hexagons {n} triangles a side "
+                      f"({6 * n * n} facets, {2 * n * s:.2f}\" across), shaded in {K} woods as if lit from the upper left.",
+                      f"Every bar is the same equilateral triangle: one saw setup for the whole board. The dome pattern "
+                      f"repeats every {n} rows (shifted along), so with the rows a whole board wide there are {2 * n} different row logs (rows {n} apart repeat the domes half a pattern along)."]}
+
+
+def kagome(p, board):
+    """Kagome (trihexagonal) star lattice: regular hexagons on a triangular grid, the gaps between
+    them up- and down-pointing triangles; every hexagon is ringed by six triangles, so the board
+    reads as interlocking six-point stars. Hexagons are made from two trapezoid bars (half-hexagons)
+    in adjacent row slices, so each row is a flat-sided strip: trapezoids alternating with triangles.
+    Roles: hex, up, down (use one wood for up and down for a single row log)."""
+    a = float(p.get("side", 0.9)); h = a * S3 / 2
+    rows = int(p.get("rows") or _fit(board["length"], h))
+    cols = int(p.get("cols") or max(1, round(board["width"] / (2 * a))))
+    polys = []
+    for j in range(rows):
+        y0, y1 = j * h, (j + 1) * h
+        # hexagon rows sit on even lines y = 2kh with centres every 2a, odd hexagon rows shifted by a
+        if j % 2 == 0:      # tops of the hexagons centred on y0 (wide at the bottom), down triangles between
+            off = (j // 2 % 2) * a
+            for k in range(-1, cols + 1):
+                cx = off + 2 * k * a
+                polys.append(_poly([(cx - a, y0), (cx + a, y0), (cx + a / 2, y1), (cx - a / 2, y1)], "hex", f"r{j}"))
+                polys.append(_poly([(cx + a, y0), (cx + 1.5 * a, y1), (cx + a / 2, y1)], "down", f"r{j}"))
+        else:               # bottoms of the hexagons centred on y1 (wide at the top), up triangles between
+            off = ((j + 1) // 2 % 2) * a
+            for k in range(-1, cols + 1):
+                cx = off + 2 * k * a
+                polys.append(_poly([(cx - a / 2, y0), (cx + a / 2, y0), (cx + a, y1), (cx - a, y1)], "hex", f"r{j}"))
+                polys.append(_poly([(cx + a / 2, y0), (cx + 1.5 * a, y0), (cx + a, y1)], "up", f"r{j}"))
+    trim = [0.0, 0.0, cols * 2 * a, rows * h]
+    return {"polygons": polys, "trim": trim, "roles": ["hex", "up", "down"],
+            "notes": [f"{rows} row strips {h:.3f}\" tall: half-hexagon trapezoids ({2 * a:g}\" and {a:g}\" across) "
+                      f"alternating with {a:g}\" triangles. Each hexagon is two trapezoids from neighbouring rows; "
+                      "their glue line is same-species and disappears in end grain, but only if the rows land exactly.",
+                      "Trapezoids and triangles are both ripped at a 30 degree tilt, flipping the blank every pass."]}
+
+
+def rosettes(p, board):
+    """Rhombitrihexagonal (3.4.6.4) rosettes: regular hexagons, squares and equilateral triangles of
+    one edge length 'side', every corner a triangle, square, hexagon and square. Each hexagon carries
+    a unit of three squares (right, upper right, upper left) and two triangles; units glue into
+    zigzag row logs that nest with a half-unit offset. Roles: hex, square, tri (or 'tri_up' and
+    'tri_down' with 'split_tri': true)."""
+    a = float(p.get("side", 0.75)); D = a * (1 + S3); V = D * S3 / 2
+    split = bool(p.get("split_tri", False))
+    cols = int(p.get("cols") or _fit(board["width"], D))
+    rows = int(p.get("rows") or _fit(board["length"], V))
+    def P(r, deg): return (r * math.cos(math.radians(deg)), r * math.sin(math.radians(deg)))
+    hexv = [P(a, 30 + 60 * k) for k in range(6)]          # pointy top: 30 (upper right), 90 (top), 150, ...
+    def sq_on(p0, p1):
+        # square built outward on edge p0->p1 of a CCW polygon (outward = right-hand side)
+        dx, dy = p1[0] - p0[0], p1[1] - p0[1]
+        nx, ny = dy, -dx
+        return [p0, (p0[0] + nx, p0[1] + ny), (p1[0] + nx, p1[1] + ny), p1]
+    sqR = sq_on(hexv[5], hexv[0])     # right edge (330 -> 30)
+    sqUR = sq_on(hexv[0], hexv[1])    # upper right edge (30 -> 90)
+    sqUL = sq_on(hexv[1], hexv[2])    # upper left edge (90 -> 150)
+    triT = [hexv[1], sqUR[2], sqUL[1]]                    # above the top corner: points down
+    triR = [hexv[0], sqR[2], sqUR[1]]                     # at the upper right corner: points up
+    polys = []
+    for j in range(0, rows + 1):
+        for i in range(-1, cols + 1):
+            cx, cy = i * D + (D / 2 if j % 2 else 0), j * V
+            u = f"r{j}/u{i}"
+            mv = lambda pts: [(x + cx, y + cy) for x, y in pts]
+            polys.append(_poly(mv(hexv), "hex", f"r{j}", u))
+            for q in (sqR, sqUR, sqUL): polys.append(_poly(mv(q), "square", f"r{j}", u))
+            polys.append(_poly(mv(triT), "tri_down" if split else "tri", f"r{j}", u))
+            polys.append(_poly(mv(triR), "tri_up" if split else "tri", f"r{j}", u))
+    trim = [0.0, 0.0, cols * D, rows * V]
+    roles = ["hex", "square"] + (["tri_up", "tri_down"] if split else ["tri"])
+    return {"polygons": polys, "trim": trim, "roles": roles,
+            "notes": [f"{rows} rows of {cols} rosette units; every edge is {a:g}\". A unit is a hexagon, three squares "
+                      "and two triangles glued around it; units glue side by side into a zigzag row log, and the row "
+                      "slices nest with a half-unit offset.",
+                      "Three bar shapes and three saw setups: hexagon (four 30 degree bevels), square, triangle (30 degrees)."]}
+
+
 GENERATORS = {"cubes": cubes, "tumbling-blocks": cubes, "stars6": stars6, "snowflakes": snowflakes, "snowflake": snowflakes, "stars8": stars8,
-              "lemoyne": stars8, "checker": checker, "checkerboard": checker, "brick": brick}
+              "lemoyne": stars8, "checker": checker, "checkerboard": checker, "brick": brick,
+              "geodomes": geodomes, "geodesic": geodomes, "kagome": kagome, "trihex": kagome,
+              "rosettes": rosettes, "rhombitrihex": rosettes}
 
 
 def generate(design):

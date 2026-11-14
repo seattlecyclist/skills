@@ -195,6 +195,30 @@ def recipe(key, p, L, A, shop):
         return {"kind": kind, "label": f"{th:.0f}-degree {kind}, {short(pside)} side" + ("" if kind == "rhombus" else f" x {short(qside)}"),
                 "dims": {"side": pside, "slant": qside, "angle": th, "thick": t}, "stock": t,
                 "per_bar": pside + kerf / math.cos(math.radians(tilt)), "tilt": tilt, "steps": st, "warn": warn}
+    if n == 4:   # isosceles trapezoid: two parallel sides, equal legs, equal base angles
+        for i in range(4):
+            if eq(A[i], A[(i + 1) % 4], 0.05) and eq(A[i] + A[(i + 2) % 4], 180, 0.05) and eq(L[i - 1], L[(i + 1) % 4]) and A[i] < 89.9:
+                th = A[i]; long_, short_, leg = L[i], L[(i + 2) % 4], L[i - 1]
+                H = leg * math.sin(math.radians(th)); tilt = 90 - th
+                if tilt > 45.01:
+                    warn.append(f"Needs a {tilt:.1f} degree tilt; cut it on a sled.")
+                st = [f"Mill the blank to {dim(H)} thick (the trapezoid's height).",
+                      f"Tilt the blade {tilt:.1f} degrees from vertical (digital angle gauge) and rip the first bevel; discard the strip.",
+                      f"Flip the blank over (face for face) before every pass so the bevels alternate; set the fence so each pass "
+                      f"releases a trapezoid {dim(long_)} across its wide face and {dim(short_)} across its narrow face.",
+                      f"Check: {th:.1f} degree base corners, slanted sides {dim(leg)}."]
+                return {"kind": "trapezoid", "label": f"{th:.0f}-degree trapezoid, {short(long_)} x {short(short_)}",
+                        "dims": {"long": long_, "short": short_, "leg": leg, "angle": th, "thick": H}, "stock": H,
+                        "per_bar": (long_ + short_) / 2 + kerf / math.cos(math.radians(tilt)), "tilt": tilt, "steps": st, "warn": warn}
+    if n == 6 and all(eq(a, 120, 0.05) for a in A) and all(eq(l, L[0]) for l in L):
+        s_ = L[0]; ff = s_ * math.sqrt(3)
+        st = [f"Mill the blank to {dim(ff)} thick (the hexagon across its flats) and rip strips {dim(2 * s_)} wide, blade square.",
+              "Tilt the blade 30.0 degrees from vertical (digital angle gauge).",
+              f"Bevel all four long corners of each strip: with a flat face on the table and the fence set so the cut meets "
+              f"the edge at mid-thickness, rip, turn the strip end for end, rip, then flip it over and repeat. Every face is then {dim(s_)}.",
+              "Make a test bar first and check every corner is 120 degrees; a hexagon that is off shows at every joint."]
+        return {"kind": "hexagon", "label": f"regular hexagon, {short(s_)} side", "dims": {"side": s_, "flats": ff, "thick": ff},
+                "stock": ff, "per_bar": 2 * s_ + kerf, "tilt": 30.0, "steps": st, "warn": warn}
     if n == 3:
         for i in range(3):   # apex i: the two sides meeting there equal
             a_, b_ = L[i - 1], L[i]

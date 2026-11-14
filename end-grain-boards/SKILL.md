@@ -1,6 +1,6 @@
 ---
 name: end-grain-boards
-description: Design end-grain cutting boards with geometric patterns (3D tumbling blocks or cubes, six-point and eight-point LeMoyne stars, checkerboard, brick, or any custom pattern of convex pieces) from a described pattern and wood species, and produce a checked shop plan with a material list in board feet, a cut list with exact bar sizes and blade tilts, step-by-step rip, glue-up, crosscut and re-glue instructions, SVG diagrams of every stage, and a photorealistic render through plan-to-photo. Use whenever the user wants a cutting board or butcher block pattern, asks how to make a 3D or star or checkerboard end grain board, gives a pattern and woods ("tumbling blocks in maple, cherry and walnut"), wants a cut list or glue-up sequence for a board, or asks to change the pattern, size, piece size or species of an existing board plan.
+description: Design end-grain cutting boards with geometric patterns (3D tumbling blocks or cubes, six-point and eight-point LeMoyne stars, snowflakes, geodesic domes, kagome star lattice, hexagon-square-triangle rosettes, checkerboard, brick, or any custom pattern of convex pieces) from a described pattern and wood species, and produce a checked shop plan with a material list in board feet, a cut list with exact bar sizes and blade tilts, step-by-step rip, glue-up, crosscut and re-glue instructions, SVG diagrams of every stage, and a photorealistic render through plan-to-photo. Use whenever the user wants a cutting board or butcher block pattern, asks how to make a 3D or star or checkerboard end grain board, gives a pattern and woods ("tumbling blocks in maple, cherry and walnut"), wants a cut list or glue-up sequence for a board, or asks to change the pattern, size, piece size or species of an existing board plan.
 ---
 
 # End-grain boards
@@ -24,7 +24,7 @@ makes as few logs as it can.
 | Path | What it is |
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
-| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `checker`, `brick`) and the polygon format for `custom`. |
+| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `rosettes`, `checker`, `brick`) and the polygon format for `custom`. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, units & logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
@@ -32,7 +32,7 @@ makes as few logs as it can.
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
 | `references/technique.md` | Bevel ripping, tape glue-ups, crosscutting slices, flattening, finishing, safety. **Read before writing advice the plan doesn't already give.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Five worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, each with `design.json`, `plan.html`, `guide.jpg` and (four) `photo.jpg`. |
+| `examples/` | Eight worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, and three expert ones, `geodesic-domes`, `kagome-stars`, `hex-rosettes`; each with `design.json`, `plan.html`, `guide.jpg` and (all but the checkerboard) `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in
@@ -44,10 +44,13 @@ missing, the full skill is in `end-grain-boards/` of that repo.
 Get, or ask once for only what you cannot infer:
 - **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`;
   stars, Star of David, hexagram → `stars6`; snowflakes → `snowflakes`; eight-point, quilt or LeMoyne star, compass star →
-  `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`. Anything else (chevrons,
+  `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`; geodesic, domes, triangulated
+  spheres → `geodomes`; kagome, trihexagonal, triaxial weave, star lattice → `kagome`; hexagons with squares
+  and triangles, rosettes, rhombitrihexagonal → `rosettes`. Anything else (chevrons,
   hexagons, diamonds, a logo-like motif) → `custom` polygons (`references/patterns.md`). Say which you chose.
 - **Woods**, one per role the pattern has (`cubes`: lid, left, right; `stars6`: star, field; `snowflakes`: flake, field; `stars8`:
-  star_a, star_b, field; `checker` and `brick`: a, b). For 3D effects, light-medium-dark
+  star_a, star_b, field; `geodomes`: tone1 (lightest) to tone4 (darkest); `kagome`: hex, up, down;
+  `rosettes`: hex, square, tri; `checker` and `brick`: a, b). For 3D effects, light-medium-dark
   matters more than the species: maple / cherry / walnut is the classic. Fill gaps from
   `references/species.md` and say so. Refuse red oak, softwoods, spalted wood, cocobolo (it explains why).
 - **Size.** Default 12 x 16 x 1-1/2". Generators fit whole repeats, so the finished size moves to the
