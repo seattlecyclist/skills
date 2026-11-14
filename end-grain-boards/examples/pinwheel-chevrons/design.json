@@ -1,0 +1,22 @@
+{
+ "name": "Pinwheel Chevrons End-Grain Board",
+ "description": "interlocking three-armed pinwheels in maple, cherry and walnut that run into zigzag chains, every piece the same trapezoid",
+ "pattern": "chevrons",
+ "params": {
+  "side": 0.75
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "a": "maple",
+  "b": "cherry",
+  "c": "walnut"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

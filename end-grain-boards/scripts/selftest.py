@@ -61,17 +61,59 @@ plan, errs = run(d); expect("red oak is refused", plan is None and "not a cuttin
 
 d = json.load(open(os.path.join(EX, "checkerboard", "design.json")))
 plan, _ = run(d)
-expect("checkerboard strips come from one log", len(plan["logs"]) == 1)
-d["build"] = {"method": "units"}; plan, _ = run(d)
-expect("checkerboard rows (units method) come from one log, every other row turned",
-       len(plan["logs"]) == 1 and {s["xf"] for s in plan["slices"]} == {"id", "r180"})
+expect("checkerboard: one strip panel, every other slice turned", len(plan["logs"]) == 1 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False, True})
 d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
 plan, _ = run(d)
-expect("tumbling blocks: one strip panel, bars single file, only the lids split",
-       len(plan["logs"]) == 1 and plan["strips"]["narrow"] == 0 and len(plan["bar_types"]) == 2)
-d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json"))); d["build"] = {"method": "units"}
+expect("tumbling blocks: one hexagon log of three diamond bars, no triangle bar, half pucks on both long sides",
+       len(plan["logs"]) == 1 and plan["logs"][0]["shape"] == "hex" and len(plan["bar_types"]) == 1 and "triangle" not in plan["bar_types"][0]["kind"]
+       and {pk.get("half") for r in plan["rows"] for pk in r["pucks"]} == {None, "left", "right"})
+t = copy.deepcopy(d); t["params"] = {"side": 1.0, "build": "triangle"}; plan, errs = run(t)
+expect("tumbling blocks, build triangle: one triangle log, two bar shapes, no glue-up over four parts",
+       not errs and len(plan["logs"]) == 1 and len(plan["bar_types"]) == 2 and max(len(s["parts"]) for s in plan["logs"][0]["stages"]) <= 4)
+d["params"]["side"] = 1.75; plan, errs = run(d)
+expect("a log too tall for the saw is caught", errs and any("fits under the saw" in e for e in errs))
+d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
 plan, _ = run(d)
-expect("LeMoyne quarters (units method) are one unit type", len(plan["units"]) == 1 and len(plan["bar_types"]) == 3)
+expect("LeMoyne: bands, quarter, half and block logs plus a border bar; only the block and the border are sliced",
+       [l["shape"] for l in plan["logs"]] == ["band", "band", "quarter", "half", "block", "border"] and [l["id"] for l in plan["logs"] if l["crosscut"]] == ["E", "F"])
+expect("the trimmed board is inside the slices with waste on every edge", min(plan["board"]["margins"]) >= 0.12)
+d = json.load(open(os.path.join(EX, "kagome-stars", "design.json")))
+plan, _ = run(d)
+expect("base designs carry no frame", all("frame" not in json.load(open(os.path.join(EX, n, "design.json"))) for n in os.listdir(EX)) and not plan["board"].get("frame"))
+d["frame"] = {"width": 0.75, "species": "walnut", "liner": {"width": 0.375, "species": "cherry"}}; plan, errs = run(d)
+expect("a frame is added when the design asks for one", plan is not None and bool(plan["board"].get("frame")))
+plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"width": 12, "length": 16, "thickness": 1.5},
+                  "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
+expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
+
+plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+expect("a repeating lattice is one plank, every row a crosscut of it", len(plan["planks"]) == 1 and plan["planks"][0]["rows_cut"] == len(plan["rows"])
+       and all(r["plank"] == "P1" for r in plan["rows"]) and any("planks into rows" in s["title"] for s in plan["steps"]))
+plan, _ = run(json.load(open(os.path.join(EX, "ziggurat", "design.json"))))
+expect("mirrored rows share a plank, turned over", len(plan["planks"]) * 2 == len(plan["rows"]) and {r["op"] for r in plan["rows"]} == {"", "f"})
+plan, _ = run(json.load(open(os.path.join(EX, "tumbling-blocks", "design.json"))))
+expect("hexagon pucks are not planks", not plan["planks"])
+d = json.load(open(os.path.join(EX, "six-point-stars", "design.json"))); d7 = copy.deepcopy(d); d7["board"]["width"] = 13
+plan, _ = run(d7)      # seven rows: an odd count has no mirror partner for most rows
+expect("a plank cut for one row is called not worth it, and the check warns", any(not p["worth"] and "Not repeated" in p["why"] for p in plan["planks"])
+       and any(not c["ok"] and "worth making" in c["what"] for c in plan["checks"]))
+
+plan, _ = run(d); rep = plan["repeats"]
+expect("repeat math: the star field's rows pair up end for end about the middle of the board",
+       rep["rows"] % 2 == 0 and rep["orbits"] * 2 == rep["rows"] and any(t["op"] == "r" and t["centre"] == rep["rows"] / 2 + 0.5 for t in rep["turns"]))
+plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+expect("repeat math: chevron rows repeat every row", plan["repeats"]["row_period"] == 1 and plan["repeats"]["orbits"] == 1)
+import repeats as RP
+vs = RP.variants(plan, plan["planks"][0])
+expect("variants: one chevron plank makes 16 different faces, rolled rows carry every colour across the seams",
+       len(vs) == 16 and vs[0]["row2"] == "f" and vs[0]["carry"] == 1.0 and [v["name"] for v in vs] == [v["name"] for v in RP.variants(plan, plan["planks"][0])])
+import hashlib, subprocess
+def digest(seed):
+    with tempfile.TemporaryDirectory() as out:
+        subprocess.run([sys.executable, os.path.join(HERE, "cbplan.py"), os.path.join(EX, "faceted-gems", "design.json"), out],
+                       env=dict(os.environ, PYTHONHASHSEED=seed), capture_output=True, check=True)
+        return hashlib.md5(open(os.path.join(out, "plan.json"), "rb").read() + open(os.path.join(out, "plan.html"), "rb").read()).hexdigest()
+expect("deterministic: the same design builds the same plan, byte for byte", digest("1") == digest("2"))
 
 print("all good" if not fails else f"{fails} failed")
 sys.exit(1 if fails else 0)

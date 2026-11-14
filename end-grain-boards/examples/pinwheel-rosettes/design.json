@@ -1,0 +1,23 @@
+{
+ "name": "Pinwheel Rosettes End-Grain Board",
+ "description": "dark walnut hexagons, each ringed by six pale maple diamonds leaning the same way like a pinwheel, with small cherry triangles where the rings meet",
+ "pattern": "pinwheel",
+ "params": {
+  "side": 0.75,
+  "levels": 2
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "hex": "walnut",
+  "diamond": "maple",
+  "tri": "cherry"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

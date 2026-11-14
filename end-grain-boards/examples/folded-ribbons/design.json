@@ -1,0 +1,23 @@
+{
+ "name": "Folded Ribbons End-Grain Board",
+ "description": "zigzag ribbons of diamonds running the length of the board like pleated paper, pale ribbons in maple and white oak beside dark ribbons in sapele and walnut",
+ "pattern": "ribbons",
+ "params": {
+  "side": 0.75
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "a_lit": "maple",
+  "a_shade": "white-oak",
+  "b_lit": "sapele",
+  "b_shade": "walnut"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

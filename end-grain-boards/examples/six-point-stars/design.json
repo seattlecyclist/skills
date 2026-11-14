@@ -1,9 +1,22 @@
 {
-  "name": "Star Field End-Grain Board",
-  "description": "repeating six-point stars in black walnut on a hard maple ground; each star is six diamond-shaped pieces, and the maple between the stars forms small hexagons",
-  "pattern": "stars6",
-  "params": {"side": 1.0, "spacing": "open"},
-  "board": {"width": 13, "length": 18, "thickness": 1.5},
-  "species": {"star": "walnut", "field": "maple"},
-  "options": {"edge": "1/8\" round-over", "feet": true}
+ "name": "Star Field End-Grain Board",
+ "description": "a cluster of whole black walnut six-point stars standing a diamond apart on a hard maple ground; each star is six diamond-shaped pieces around a point",
+ "pattern": "stars6",
+ "params": {
+  "side": 0.75,
+  "spacing": "open"
+ },
+ "board": {
+  "width": 11.5,
+  "length": 18,
+  "thickness": 1.5
+ },
+ "species": {
+  "star": "walnut",
+  "field": "maple"
+ },
+ "options": {
+  "edge": "1/8\" round-over",
+  "feet": true
+ }
 }

@@ -1,0 +1,9 @@
+{
+ "name": "Swell End-Grain Board",
+ "description": "a maple and walnut checkerboard whose squares grow from the edges to the middle, so the flat board looks as if it bulges toward you",
+ "pattern": "swell",
+ "params": {"cols": 16, "rows": 22, "min": 0.375},
+ "board": {"width": 12.5, "length": 17.25, "thickness": 1.5},
+ "species": {"a": "maple", "b": "walnut"},
+ "options": {"edge": "1/8\" chamfer", "feet": true}
+}
