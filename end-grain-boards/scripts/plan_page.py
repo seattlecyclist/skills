@@ -144,6 +144,7 @@ def page(plan, svgs, photo, guide=None):
     sh = plan["shop"]; logs = plan["logs"]; bars = plan["bars"]; rows = plan["rows"]
     nbars = sum(b["total_bars"] for b in bars); nlogs = sum(l["count"] for l in logs); nsl = plan["n_slices"]
     bf = sum(s["bf_buy"] for s in plan["stock"])
+    planks = plan.get("planks") or []; npl = sum(p_["count"] for p_ in planks)
     nglued = sum(l["count"] for l in logs if sum(len(s_["parts"]) for s_ in l["stages"]) > 1)
     errors = [c for c in plan["checks"] if not c["ok"] and c["level"] != "warn"]
     warns = [c for c in plan["checks"] if not c["ok"] and c["level"] == "warn"]
@@ -169,12 +170,12 @@ def page(plan, svgs, photo, guide=None):
         (fr(f'{size.replace(chr(34), "")}"'), "W × L × T, finished"),
         (str(nbars), f'bars in {pl(len(plan["bar_types"]), "shape")}'),
         (str(nglued), f'logs glued, {pl(len(logs), "kind")}' + (f' ({nlogs - nglued} more are solid bars)' if nlogs > nglued else "")),
-        (str(nsl), f"slices in {pl(len(rows), 'row')}"),
+        ((str(npl), f"plank{'s' if npl > 1 else ''}, crosscut into {pl(len(rows), 'row')}") if planks else (str(nsl), f"slices in {pl(len(rows), 'row')}")),
         (f"{bf:g}", "board feet to buy")))
 
     sheets = [("overview", "Overview", short(W) + " × " + short(L)), ("materials", "Material list", f"{bf:g} bd ft"),
               ("bars", "Bars & rip setups", pl(len(plan["bar_types"]), "shape")), ("logs", "Logs", pl(len(logs), "kind")),
-              ("layout", "Slice layout", f"{nsl} slices"), ("build", "Building it", f'{len(plan["steps"])} steps')]
+              (("layout", "Planks & rows", pl(npl, "plank")) if planks else ("layout", "Slice layout", f"{nsl} slices")), ("build", "Building it", f'{len(plan["steps"])} steps')]
     index = "".join(f'<a href="#{i}"><span class="n">{n:02d}</span><span class="t">{e(t)}</span><span class="s">{fr(s)}</span></a>'
                     for n, (i, t, s) in enumerate(sheets, 1))
     index += (f'<a href="#checks"><span class="n">R</span><span class="t">Checks</span><span class="s" style="color:var(--{"weak" if errors else "good"})">'
@@ -192,7 +193,7 @@ def page(plan, svgs, photo, guide=None):
         hero = fig(svgs["face"], "Top face · finished size")
         top = max((l for l in logs if l["crosscut"]), key=lambda l: l["slices"])
         second = fig(svgs[f'log_{top["id"]}'], f'The building block · log {top["id"]}, end view',
-                     f'<span>{len(top["cells"])} pieces, {top["slices"]} slices of it in the board</span>')
+                     f'<span>{len(top["cells"])} pieces' + (f', {top["slices"]} lengths of it in the planks</span>' if planks else f', {top["slices"]} slices of it in the board</span>'))
     woods = "".join(f'<li><span class="sw" style="background:{w["end"]}"></span>{e(w["name"])}: '
                     f'{next((s["bf_buy"] for s in plan["stock"] if s["species"] == w["name"]), 0):g} bd ft</li>' for w in plan["woods"])
     tilts = sorted({round(b["tilt"], 1) for b in plan["bar_types"] if b["tilt"]})
@@ -201,14 +202,14 @@ def page(plan, svgs, photo, guide=None):
              "Jointer and planer for the blanks and bars",
              {"tri": "Drum sander or thickness planer (helical head is best) to true bars and logs in the V blocks", "blocks": "Jointer and planer to true the logs",
               "panel": "Planer to true the panels", "hex": "Sanding board: 120 grit on a flat base, for the sides of the pucks"}[kind],
-             "Crosscut sled with a stop block, spacer and hold-down", "Band saw (to halve one spare slice for end blocks)" if kind == "tri" else "Band saw or hand saw to halve the edge pucks, calipers" if kind == "hex" else "Calipers and a straightedge",
-             {"tri": "Shop-made V blocks, row jig and sled cradle (step 2)", "blocks": "Shop-made band cradle, corner cauls and row jig (step 2)", "panel": "Flat cauls", "hex": "Flat glue-up base with a clamped frame of four straight boards (step 2), blue tape"}[kind],
+             "Crosscut sled with a stop block, spacer and hold-down", "Calipers and a straightedge" if kind == "tri" else "Band saw or hand saw to halve the edge pucks, calipers" if kind == "hex" else "Calipers and a straightedge",
+             {"tri": "Shop-made V blocks, plank base and edge strips (step 2)", "blocks": "Shop-made band cradle, corner cauls and plank base (step 2)", "panel": "Flat cauls", "hex": "Flat glue-up base with a clamped frame of four straight boards (step 2), blue tape"}[kind],
              "Bar clamps, taped cauls, Titebond III" + (" and Titebond II Extend for the puck glue-up" if kind == "hex" else ""), "Router sled or drum sander to flatten the board; never a planer on the finished end grain",
              "Random-orbit sander, mineral oil and board butter"]
-    how = {"tri": "Bars are glued two to four at a time into small triangular logs in a V block. Every face of every log is sanded flat, the logs are sliced, "
-                  "the triangular slices are glued into straight rows, and the rows are glued into the board. No glue-up ever has a face that cannot be machined.",
+    how = {"tri": "Bars are glued two to four at a time into small triangular logs in a V block. Every face of every log is machined flat, then the long logs are glued side by side into planks. A plank is one row of the board made long: "
+                  "it is planed, crosscut into rows, and the rows are glued into the board. No row is assembled from loose slices, and no glue-up has a face that cannot be machined.",
            "blocks": "Each star block is built as a square log: two bars make a band, two bands and a square bar make a quarter log, two quarters make a half and two halves the block. "
-                     "The faces of each glue-up that are glued next are machined flat first, then the block logs are sliced and the slices glued in rows.",
+                     "The faces of each glue-up that are glued next are machined flat first. The long block logs are then glued side by side into planks, the planks are planed and crosscut into rows, and the rows are glued into the board.",
            "hex": "Each cube is three diamond bars taped and glued into one hexagon log. The logs are sliced into hexagon pucks, the pucks are sanded and test-fitted, "
                   "and all of them are glued at once inside a clamped frame, starting from the centre. This is how Tom Silva builds the board at This Old House. "
                   "Expect a few hairline gaps; they are filled with glue and sanding dust before the last sanding.",
@@ -216,7 +217,7 @@ def page(plan, svgs, photo, guide=None):
     notes = [how] + list(plan["notes"])
     glance = "".join(f'<dt>{e(k)}</dt><dd class="m">{fr(v)}</dd>' for k, v in (
         ("Bars", f'{nbars} + spares, {pl(len(plan["bar_types"]), "shape")}'), ("Logs", ", ".join(f'{l["count"]} × {l["id"]}' for l in logs)),
-        ("Slices", f'{nsl}, cut {short(plan["slice_cut"])} thick'), ("Rows", f'{len(rows)}, each about {short(max(r["height"] for r in rows))} wide') if kind != "hex" else ("Pucks", f'{sum(1 for r in rows for pk in r["pucks"] if not pk.get("half"))} whole, {sum(1 for r in rows for pk in r["pucks"] if pk.get("half"))} half, in {len(rows)} rows'),
+(("Planks", ", ".join(f'{p_["count"]} × {p_["id"]}' for p_ in planks) + f', crosscut {short(plan["slice_cut"])} thick') if planks else ("Slices", f'{nsl}, cut {short(plan["slice_cut"])} thick')), ("Rows", f'{len(rows)}, each about {short(max(r["height"] for r in rows))} wide') if kind != "hex" else ("Pucks", f'{sum(1 for r in rows for pk in r["pucks"] if not pk.get("half"))} whole, {sum(1 for r in rows for pk in r["pucks"] if pk.get("half"))} half, in {len(rows)} rows'),
         ("Glue-ups", f'{sum(1 for s in plan["steps"] if s.get("glue"))} stages, never more than four parts in a log' if kind != "hex" else "the logs, then every puck in one session")))
     side = (f'<div class="notes" style="padding:0;display:grid;gap:0;align-content:start">{second}'
             f'<div class="notes"><h3>How it goes together</h3><ul>{"".join(f"<li>{fr(n)}</li>" for n in notes)}</ul><h3>At a glance</h3><dl class="kv">{glance}</dl></div></div>')
@@ -269,7 +270,7 @@ def page(plan, svgs, photo, guide=None):
                 key = ("log " + p["log"]) if "log" in p else ("bar " + p["bar"] + " " + wname(p["wood"]).split()[-1].lower())
                 parts[key] = parts.get(key, 0) + 1
         ptxt = ", ".join(f"{c} × {k}" for k, c in parts.items())
-        use = f'{l["slices"]} slices + {l["spares"]} spare, {fr(short(plan["slice_cut"]))} thick' if l["crosscut"] else "goes into " + ", ".join(
+        use = ("goes into plank " + ", ".join(l.get("planks", []))) if planks and l["crosscut"] else f'{l["slices"]} slices + {l["spares"]} spare, {fr(short(plan["slice_cut"]))} thick' if l["crosscut"] else "goes into " + ", ".join(
             sorted({"log " + o["id"] for o in logs for st in o["stages"] for p in st["parts"] if p.get("log") == l["id"]}))
         asm = svgs.get(f'asm_log_{l["id"]}') if l["level"] == 1 else None
         wide = ' style="grid-column:1/-1"' if len(l["stages"]) > 1 else ""
@@ -284,17 +285,35 @@ def page(plan, svgs, photo, guide=None):
     per_log = "".join(f'<dt>Log {e(l["id"])}</dt><dd class="m">{l["slices"]} slices</dd>' for l in logs if l["crosscut"])
     rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">' + _runs([pk["log"] + ("′" if pk["flip"] else "") + ("½" if pk.get("half") else "") for pk in r["pucks"]]) + '</td></tr>' for r in rows)
     marks = ("<li>The letter is the log the slice comes from.</li><li>The short heavy line is the pencil line you drew on the slice at the saw: it marks the log's reference face.</li>"
-             "<li>A prime (A′) means the slice is turned over, pencil line underneath, on the edge shown.</li><li>R1, R2 … are the rows, glued in that order.</li>"
+             + ("<li>A prime (A′) means the slice is turned over, pencil line underneath, on the edge shown.</li>" if any(pk.get("flip") for r in rows for pk in r["pucks"]) else "<li>Every slice goes pencil line up; none is turned over.</li>") + "<li>R1, R2 … are the rows, glued in that order.</li>"
              "<li>Dashed red is the trim line; the paler area is cut off.</li>") if kind not in ("panel", "hex") else (
              "<li>Every hexagon is one puck, a slice of log A, set with its pale lid diamond toward the top of the drawing.</li>"
              "<li>½ is a half puck: a puck sawn in two from point to point (step 7), sawn edge to the outside.</li>"
              "<li>R1, R2 … are the rows. They are not glued one at a time: every puck goes into the frame in one session.</li>"
              "<li>Dashed red is the trim line: the two ragged ends are sawn off, and each long side gets a light clean-up cut.</li>") if kind == "hex" else (
              "<li>Each row is one slice of the panel named by its letter.</li><li>A prime (A′) means the slice is turned end for end.</li><li>Dashed red is the trim line.</li>")
-    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", "Top view before trimming: which slice goes where, and which way round", f"<div class=dims>{nsl} slices · {pl(len(rows), "row")}</div>")}'
-             f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Reading the drawing</h3><ul>{marks}</ul>'
-             f'<h3>Slices needed</h3><dl class="kv">{per_log}</dl>'
-             f'<h3>Row by row, starting at the end with the R label</h3><div class="tbl"><table class="d">{rowtab}</table></div></div></div></article>')
+    if planks:
+        from planks import OP_TEXT
+        flips = any(pk["flip"] for p_ in planks for pk in p_["pucks"])
+        pcards = "".join(
+            f'<div class="joint" style="grid-column:1/-1"><div class="jh"><span class="jn">{e(p_["id"])}</span><div><h4>Plank {e(p_["id"])}: {p_["n"]} logs across, {fr(short(p_["width"]))} wide</h4>'
+            f'<div class="jsub">end view from the marked ends of the logs, as it lies on the base</div></div></div><div class="ph">{svgs["plank_" + p_["id"]]}</div>'
+            f'<dl class="kv"><dt>Make</dt><dd class="m">{p_["count"]} × {fr(short(p_["length"]))} long</dd><dt>Logs, left to right</dt><dd class="m">{_runs([pk["log"] + ("′" if pk["flip"] else "") for pk in p_["pucks"]])}</dd>'
+            f'<dt>Gives</dt><dd class="m">{pl(p_["rows_cut"], "row")} + {p_["spares"]} spare, {fr(short(plan["slice_cut"]))} thick: R{", R".join(str(u["row"]) for u in p_["uses"])}</dd></dl></div>' for p_ in planks)
+        rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">{e(r["plank"])}</td><td>{e(OP_TEXT[r["op"]])}</td></tr>' for r in rows)
+        marks = ("<li>Each row, R1, R2 …, is one crosscut of the plank named beside it.</li><li>The letters are the logs in the row, and the short heavy line is each log's reference face.</li>"
+                 + ("<li>A prime (A′) is a log turned end for end in its plank.</li>" if flips or any(pk.get("flip") for r in rows for pk in r["pucks"]) else "")
+                 + "<li>Rows from one plank are slid along each other until the pattern meets, as drawn; the ends that overhang are trimmed off.</li>"
+                 "<li>Dashed red is the trim line; the paler area is cut off.</li>")
+        H.append(f'<article class="sheet" id="layout">{tb("05", "Planks & rows", "Each plank is a row of the board made long; each crosscut of it is a row. Then the top view before trimming: which row goes where, and which way round", f"<div class=dims>{pl(npl, "plank")} · {pl(len(rows), "row")}</div>")}'
+                 f'<div class="jgrid logs">{pcards}</div>'
+                 f'<div class="main" style="border-top:1px solid var(--rule)">{fig(svgs["layout"], "Rows before trimming")}<div class="panel"><h3>Reading the drawing</h3><ul>{marks}</ul>'
+                 f'<h3>Row by row</h3><div class="tbl"><table class="d"><tr><th>Row</th><th>Plank</th><th>Goes in</th></tr>{rowtab}</table></div></div></div></article>')
+    else:
+        H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", "Top view before trimming: which slice goes where, and which way round", f"<div class=dims>{nsl} slices · {pl(len(rows), "row")}</div>")}'
+                 f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Reading the drawing</h3><ul>{marks}</ul>'
+                 f'<h3>Slices needed</h3><dl class="kv">{per_log}</dl>'
+                 f'<h3>Row by row, starting at the end with the R label</h3><div class="tbl"><table class="d">{rowtab}</table></div></div></div></article>')
 
     # 06 build
     import re as _re
@@ -332,5 +351,5 @@ def page(plan, svgs, photo, guide=None):
 <main>{"".join(H)}</main>
 <article class="sheet" id="checks">{tb("R", "Checks", "Recomputed from the board's geometry every time the plan is built", stamp)}
 <div class="lower full" style="border-top:0"><div class="panel"><table class="cost">{chk}</table></div></div></article>
-<footer>Kerf {fr(short(sh["kerf"]))}; slices cut {fr(short(plan["slice_cut"]))}; {fr(short(sh["end_trim"]))} to square the first end of a log and {fr(short(sh["hold_end"]))} held at the other; sliced logs at most {sh["max_log_length"]:g}" long; bars ripped {fr(short(sh["rip_oversize"]))} over and machined to size; {sh["true_skim"]:.2f}" allowed for each truing pass. Change these under "shop" in design.json and rebuild.</footer>
+<footer>Kerf {fr(short(sh["kerf"]))}; {"rows" if planks else "slices"} cut {fr(short(plan["slice_cut"]))}; {fr(short(sh["end_trim"]))} to square the first end of a log and {fr(short(sh["hold_end"]))} held at the other; {"planks" if planks else "sliced logs"} at most {sh["max_log_length"]:g}" long; bars ripped {fr(short(sh["rip_oversize"]))} over and machined to size; {sh["true_skim"]:.2f}" allowed for each truing pass. Change these under "shop" in design.json and rebuild.</footer>
 </div></body></html>"""

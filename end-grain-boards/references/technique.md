@@ -94,32 +94,38 @@ bevel to bevel, so no feather edge leads into the knives. Quarter logs are glued
 L-shaped cauls) so clamps work from two directions. Two joints at right angles are never glued at
 once: quarters into halves, halves into blocks, each jointed and planed square in between.
 
-## Crosscutting slices
+## Planks, rows, then the board
 
-Every log has a marked end and a reference face (the face under the caul), pencilled on the end grain
-when it comes out of the block. Crosscut sled with a base no thicker than 1/2", a stop block and a 1"
-spacer: slide the log to the spacer, clamp, remove the spacer, cut, so the slice is never trapped.
-Triangle logs lie reference face down between two 30 degree strips that stop short of the blade's
-path. Hold the slice with a push stick through the cut, push the sled on past the blade and lift the
-slice away before pulling back. As each slice comes off, pencil a short line on its sawn face along the
-edge that lay on the sled: sheet 05 draws that line in every slice. No crayon or wax on glue faces.
-The last 2" of a log is held and never sliced. A 10" saw clears about 3-1/8": a log on a 1/2" sled base
-can be 2-5/8" tall. Slices are cut 1/8" over finished thickness.
+Rows are never assembled from loose slices. The trued logs, still long, are glued side by side into a
+plank whose end is one row of the board; every crosscut of the plank is then a whole row. This is how
+makers build repeating end-grain patterns, and it replaced this skill's earlier slice-by-slice rows,
+which meant hundreds of small glue-ups.
 
-## Rows, then the board
+`scripts/planks.py` groups the rows. Two rows share a plank when one is the other as cut, turned end
+for end, turned over, or slid along by a few logs (the plank is then made a log or two wider, up to
+`shop.max_crosscut`). A lattice that repeats every row or two needs one or two planks. A pattern with
+no repeat from row to row needs a plank per row; the plan warns, and a different pattern or a
+symmetric colouring is the fix.
 
-Triangular slices glue in pairs into diamonds, then pairs into a row in the row jig: a fixed fence, a
-cleat, and between them a loose fence sawn into short blocks, one per slice that has its base on that
-side, each with its own wedge. One wedge moves one slice. End blocks (a spare slice cut in half) turn
-the slanted ends into square faces for the clamp along the row. The faces being glued are the trued
-sides of the logs: long grain, one thin coat on one face, moderate pressure. Do not size these faces
-as if they were end grain.
+Gluing a plank: on a flat taped base, in sections of three or four logs, then sections to each other.
+Triangle logs lie point down and point up in turn; a strip with a 30 degree bevel lies against the
+leaning log at each side so the clamps bear square. Taped cauls are clamped down across the top. Every
+log has a marked end and a reference face; sheet 05 draws the plank from the marked ends.
 
-Every row is trued: on edge in a carrier under the drum sander, both edges, every row at the same
-setting. Never the jointer or planer: the knives meet the fibres end-on.
+Truing a plank: both wide faces through the planer or drum sander, all planks at one setting. A plank
+is long grain, so the planer is safe. A plank wider than the machine is built as two halves, each
+trued, and joined last. This replaces truing the edges of end-grain rows.
 
-Rows glue two or three at a time with cauls across both faces near the ends. Register by the slice
-corners, which meet corner to corner, and pencil lines drawn across the dry fit.
+Crosscutting: plank flat on the sled (edge strip between a leaning edge and the fence), hold-down,
+stop block and a 1" spacer so the row is never trapped. Rows are cut 1/8" over finished thickness and
+numbered on the sawn face as they come off. The last 2" of a plank is held and never cut.
+
+Rows glue two or three at a time with cauls across both faces near the ends. Register by the log
+corners, which meet corner to corner, and pencil lines drawn across the dry fit. The faces being glued
+are the machined faces of the planks: long grain, one thin coat, moderate pressure.
+
+The plank steps are this skill's own write-up of that practice and have not been built or read by a
+critic yet. Tumbling blocks from hexagon logs is the exception: pucks cannot be made as planks.
 
 ## Flatten, then trim
 

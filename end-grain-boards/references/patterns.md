@@ -243,7 +243,7 @@ which makes the maze and the over-and-under look. Worked out from the stills of 
 every four bar widths mark the tiles, and the model matches a squared-up still on 90% of pixels. At phone
 resolution the jogs read as 60 degrees; they are 45.
 
-Build (`scripts/planks.py`), in planks throughout: the tile is four identical slabs, each `bar` thick, in
+Build (`scripts/twoply.py`), in planks throughout: the tile is four identical slabs, each `bar` thick, in
 which light and dark meet on a 45 degree line. A slab is ripped with the blade at 45 degrees from a two-ply
 blank (light on dark, face glued; the ply thicknesses set where the line falls), planed, and ripped square.
 Four slabs, every other one rolled over, make a square log; logs side by side, every other one a quarter

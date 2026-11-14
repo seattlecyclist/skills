@@ -86,6 +86,13 @@ plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"wi
                   "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
 expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
 
+plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+expect("a repeating lattice is one plank, every row a crosscut of it", len(plan["planks"]) == 1 and plan["planks"][0]["rows_cut"] == len(plan["rows"])
+       and all(r["plank"] == "P1" for r in plan["rows"]) and any("planks into rows" in s["title"] for s in plan["steps"]))
+plan, _ = run(json.load(open(os.path.join(EX, "ziggurat", "design.json"))))
+expect("mirrored rows share a plank, turned over", len(plan["planks"]) * 2 == len(plan["rows"]) and {r["op"] for r in plan["rows"]} == {"", "f"})
+plan, _ = run(json.load(open(os.path.join(EX, "tumbling-blocks", "design.json"))))
+expect("hexagon pucks are not planks", not plan["planks"])
 d = json.load(open(os.path.join(EX, "two-wood-maze", "design.json")))
 plan, errs = run(d)
 expect("maze: a plank build, one slab type, six rows from one plank", not errs and plan["method"] == "plank" and plan["N"]["nslab"] == 16 and len(plan["rows"]) == 6)

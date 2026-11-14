@@ -498,14 +498,14 @@ GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cube
               "rosettes": rosettes, "rhombitrihex": rosettes}
 
 
-PLANK = {"maze", "two-wood-maze"}      # built by planks.py: slabs ripped from a two-ply blank, logs, one plank, rows
+PLANK = {"maze", "two-wood-maze"}      # built by twoply.py: slabs ripped from a two-ply blank, logs, one plank, rows
 
 
 def generate(design):
     pat = design["pattern"]
     if pat in PLANK:
-        import planks
-        return planks.generate(design.get("params", {}), design["board"])
+        import twoply
+        return twoply.generate(design.get("params", {}), design["board"])
     if pat == "custom":
         return {"polygons": design["polygons"], "trim": design["trim"],
                 "roles": sorted({p["role"] for p in design["polygons"]}), "notes": design.get("notes", [])}
@@ -606,7 +606,7 @@ def gems(p, board):
     polys, trim, cells = _lattice(p, board, t, 2, colour)
     return {"polygons": polys, "trim": trim, "roles": ["light", "pale", "shade", "dark", "table"], "cells": cells,
             "notes": [f"Each gem is a hexagon {4 * t:g}\" across its points: a {2 * t:g}\" table ringed by six facets.",
-                      f"Every log is one trapezoid facet bar and one small triangle of the table, so a gem is six {2 * t:g}\" triangle slices meeting at its centre."]}
+                      f"Every log is one trapezoid facet bar and one small triangle of the table, so a gem is six {2 * t:g}\" triangle logs meeting at its centre."]}
 
 
 def ziggurat(p, board):
@@ -617,11 +617,11 @@ def ziggurat(p, board):
     def colour(u, v):
         d = int(_hexdist(u, v))
         if d % 2: return "line"
-        return ["mid", "light", "light", "mid", "dark", "dark"][_sector(u, v)]
+        return ["dark", "mid", "light", "light", "mid", "dark"][_sector(u, v)]     # lit from the left: the top half mirrors the bottom, so each plank gives two rows
     polys, trim, cells = _lattice(p, board, t, 2, colour, centre=(0, 0))
     return {"polygons": polys, "trim": trim, "roles": ["light", "mid", "dark", "line"], "cells": cells,
             "notes": [f"Concentric hexagonal steps {t:g}\" wide round the middle of the board; the terraces face six ways and are shaded in three woods.",
-                      "One motif, not a repeat: lay the slices out from sheet 05 and number them before gluing."]}
+                      "One motif, not a repeat: the top half mirrors the bottom half, so each plank gives one row for each half."]}
 
 
 def ribbons(p, board):
