@@ -70,8 +70,9 @@ d["params"]["side"] = 1.25; plan, errs = run(d)
 expect("a log too tall for the saw is caught", errs and any("fits under the saw" in e for e in errs))
 d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
 plan, _ = run(d)
-expect("LeMoyne: bands, quarter, half and block logs; only the block is sliced",
-       [l["shape"] for l in plan["logs"]] == ["band", "band", "quarter", "half", "block"] and [l["id"] for l in plan["logs"] if l["crosscut"]] == ["E"])
+expect("LeMoyne: bands, quarter, half and block logs plus a border bar; only the block and the border are sliced",
+       [l["shape"] for l in plan["logs"]] == ["band", "band", "quarter", "half", "block", "border"] and [l["id"] for l in plan["logs"] if l["crosscut"]] == ["E", "F"])
+expect("the trimmed board is inside the slices with waste on every edge", min(plan["board"]["margins"]) >= 0.12)
 plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"width": 12, "length": 16, "thickness": 1.5},
                   "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
 expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)

@@ -52,10 +52,22 @@ def _rhombille(p, board, colour):
             C = (cx, cy)
             unit = f"r{j}/h{col}"
             for name, pts in (("lid", [C, UR, T, UL]), ("left", [C, UL, LL, B]), ("right", [C, B, LR, UR])):
-                polys.append(_poly(pts, colour(name, i, j), f"r{j}", unit))
+                role = colour(name, i, j); mot = None
+                if isinstance(role, tuple):               # (role, (i, j) of the 6-way vertex at the motif's centre)
+                    role, (mi, mj) = role; mc = mi + mj // 2
+                    mot = [mc * w + (w / 2 if mj % 2 else 0), 1.5 * mj * s - s]
+                q = _poly(pts, role, f"r{j}", unit)
+                if mot: q["motif"] = mot
+                polys.append(q)
     y0 = float(p.get("y0", -s / 2)) * 1.0
     trim = [0.0, y0, kcol * 1.5 * w, y0 + 1.5 * (rows - 1) * s + s]
     _rhombille.cells = {"kind": "tri", "side": 3 * s, "origin": [0.0, -s], "angle": 90, "levels": int(p.get("levels", 1))}
+    def hexc(i, j):                               # centre of hexagon (i, j) in axial coordinates
+        col = i + j // 2
+        return (col * w + (w / 2 if j % 2 else 0), 1.5 * j * s)
+    _rhombille.hexc = hexc
+    _rhombille.vertex = lambda i, j: (hexc(i, j)[0], hexc(i, j)[1] - s)      # the 6-way vertex at the bottom of hexagon (i, j)
+    _rhombille.span = [(i, j) for j in range(-2, rows + 3) for i in range(-3 - j // 2, cols + 3 - j // 2)]
     return polys, trim, rows, kcol
 
 
@@ -65,6 +77,8 @@ def cubes(p, board):
     polys, trim, rows, cols = _rhombille(p, board, lambda name, i, j: name)
     s = float(p.get("side", 1.25))
     return {"polygons": polys, "trim": trim, "roles": ["lid", "left", "right"], "cells": _rhombille.cells,
+            "period": 1.5 * s,
+            "centers": [(c[0], c[1] + 0.5 * s) for c in (_rhombille.hexc(i, j) for i, j in _rhombille.span)],     # both end cuts run through the middle of a row of lids
             "notes": [f"Every cube is three {s:g}\" diamonds: lid, left face, right face.",
                       "Light lid, medium left, dark right reads as light from the top left; swap left and right to move the light."]}
 
@@ -89,13 +103,15 @@ def stars6(p, board):
         # the rhombus's two 60-degree corners are 6-way vertices: B of hexes (i,j), (i-1,j+1) [UL], (i,j+1) [UR]
         ends = {"lid": ((i - 1, j + 1), (i, j + 1)), "left": ((i - 1, j + 1), (i, j)),
                 "right": ((i, j + 1), (i, j))}[name]
-        if any(chosen(*e) for e in ends):
-            return f"star_{name}" if shade else "star"
+        for e in ends:
+            if chosen(*e): return (f"star_{name}" if shade else "star", e)
         return "field"
 
     polys, trim, rows, cols = _rhombille(p, board, colour)
     roles = (["star_lid", "star_left", "star_right"] if shade else ["star"]) + ["field"]
     return {"polygons": polys, "trim": trim, "roles": roles, "cells": _rhombille.cells,
+            "centers": [_rhombille.vertex(i, j) for i, j in _rhombille.span if chosen(i, j)],
+            "motif": {"radius": S3 * float(p.get("side", 1.25)), "ground": "field"},
             "notes": [f"Six {float(p.get('side', 1.0)):g}\" diamonds around a point make each star ({spacing} spacing); the field is the same diamond in the ground wood.",
                       "Every piece is a 60 degree diamond or a triangle cut at the same blade tilt."]}
 
@@ -112,9 +128,9 @@ def snowflakes(p, board):
     m = int(p.get("spacing", 2 * arm + 1)); core = bool(p.get("core", False))
     rot = lambda d, k: d if k == 0 else rot((-d[1], d[0] + d[1]), k - 1)
     dirs = [rot((1, 0), k) for k in range(6)]
-    edges, cores = set(), set()
-    def add(a, b, centre=False):
-        e = (min(a, b), max(a, b)); edges.add(e)
+    edges, cores = {}, set()
+    def add(a, b, centre=False, c=None):
+        e = (min(a, b), max(a, b)); edges[e] = c
         if centre: cores.add(e)
     flake = []
     for d in dirs:
@@ -138,22 +154,26 @@ def snowflakes(p, board):
     # flake row lines up with the hexagon rows and the row logs repeat every 2k rows)
     k = int(p.get("rise") or max(1, round(m / S3)))
     stagger = bool(p.get("stagger", False))
+    fc = []
     for a in range(-8, 9):
         for b in range(-8, 9):
             c = (ic + a * m - b * k + ((m // 2) if stagger and b % 2 else 0), jc + 2 * k * b)
+            fc.append(c)
             for (u, v), centre in flake:
-                add((c[0] + u[0], c[1] + u[1]), (c[0] + v[0], c[1] + v[1]), centre)
+                add((c[0] + u[0], c[1] + u[1]), (c[0] + v[0], c[1] + v[1]), centre, c)
 
     def colour(name, i, j):
         ends = {"lid": ((i - 1, j + 1), (i, j + 1)), "left": ((i - 1, j + 1), (i, j)),
                 "right": ((i, j + 1), (i, j))}[name]
         e = (min(ends), max(ends))
-        if e in cores and core: return "core"
-        return "flake" if e in edges else "field"
+        if e in cores and core: return ("core", edges[e])
+        return ("flake", edges[e]) if e in edges else "field"
 
     polys, trim, rows, cols = _rhombille(dict(p, side=s, cols=cols, rows=rows), board, colour)
     roles = (["core"] if core else []) + ["flake", "field"]
     return {"polygons": polys, "trim": trim, "roles": roles, "cells": _rhombille.cells,
+            "centers": [_rhombille.vertex(*c) for c in fc],
+            "motif": {"radius": S3 * s * (arm + (0.5 if any(x == arm - 1 for x in branch_at) and branch else 0)), "ground": "field"},
             "notes": [f"Each snowflake has six arms of {arm} diamonds with side branches, and the flakes repeat every {m} diamonds.",
                       "Every piece is a 60 degree diamond or a triangle cut at the same blade tilt."]}
 
@@ -166,8 +186,9 @@ def stars8(p, board):
     a = float(p.get("side", 1.0))                 # rhombus side
     S = a * (2 + math.sqrt(2))                    # block side
     alternate = bool(p.get("alternate", True))
-    cols = int(p.get("cols") or _fit(board["width"], S))
-    rows = int(p.get("rows") or _fit(board["length"], S))
+    bw = float(p.get("border", 1.0))              # plain border in the ground wood, so no star point is cut by the edge
+    cols = int(p.get("cols") or _fit(board["width"] - 2 * bw, S))
+    rows = int(p.get("rows") or _fit(board["length"] - 2 * bw, S))
     h = S / 2
     rt = 2 * a * math.cos(math.radians(22.5))
 
@@ -201,8 +222,12 @@ def stars8(p, board):
                     pts = [rot(pt, q) for pt in pts]
                     polys.append(_poly([(x + cx, y + cy) for x, y in pts], role, f"b{r}-{c}", f"b{r}-{c}/q{q}"))
     roles = ["star_a", "star_b", "field"] if alternate else ["star_a", "field"]
-    return {"polygons": polys, "trim": [0, 0, cols * S, rows * S], "roles": roles,
-            "cells": {"kind": "blocks", "side": a, "cols": cols, "rows": rows,
+    X, Y = cols * S, rows * S
+    if bw:
+        for x0, y0, x1, y1 in ((-bw, -bw, X + bw, 0), (-bw, Y, X + bw, Y + bw), (-bw, 0, 0, Y), (X, 0, X + bw, Y)):
+            polys.append(_poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], "field", "border"))
+    return {"polygons": polys, "trim": [-bw, -bw, X + bw, Y + bw], "roles": roles,
+            "cells": {"kind": "blocks", "side": a, "cols": cols, "rows": rows, "border": bw,
                       "roles": {"a": "star_a", "b": "star_b" if alternate else "star_a", "field": "field"}},
             "notes": [f"{rows} x {cols} star blocks, each {S:.3f}\" square. A block is four identical quarter logs turned 90 degrees to each other.",
                       "The ground triangles on each block edge are made as two halves, one in each quarter; that glue line joins the same wood and disappears in end grain."]}
@@ -313,8 +338,14 @@ def geodomes(p, board):
     order = sorted(range(6), key=lambda k: -math.cos(math.radians(60 * k + 30) - la))
     base = {4: [1, 1, 2, 2, 3, 4], 3: [1, 1, 2, 2, 3, 3], 5: [1, 2, 2, 3, 4, 5]}.get(K, [1 + i * (K - 1) // 5 for i in range(6)])
     sector_tone = {k: base[r] for r, k in enumerate(order)}
+    mode = p.get("shade", "light")
+    dark = set(order[3:])                      # the three sides turned away from the light
     def tone_of(f):
         k, ring = f; t = sector_tone[k]
+        if mode == "rings":                    # concentric: pale crown, darker towards the rim
+            return max(1, min(K, 1 + round(ring * (K - 1) / max(1, n - 1))))
+        if mode == "dome":                     # rings, with the far side of each ring a tone darker
+            return max(1, min(K, 1 + ring + (1 if k in dark and ring > 0 else 0)))
         if ring == 0 and n > 2: t -= 1
         if ring == n - 1 and n > 2 and p.get("rim", True): t += 1
         return max(1, min(K, t))
@@ -323,6 +354,7 @@ def geodomes(p, board):
     roles = [f"tone{k}" for k in range(1, K + 1)]
     return {"polygons": polys, "trim": trim, "roles": roles,
             "cells": {"kind": "tri", "side": n * s, "origin": list(cen(ic, jc)), "angle": 0},
+            "centers": [cen(ic + a * A[0] + b * B[0], jc + a * A[1] + b * B[1]) for a in range(-4, 5) for b in range(-4, 5)],
             "notes": [f"Domes are hexagons {n} triangles to a side ({6 * n * n} facets, {2 * n * s:.2f}\" across), shaded in {K} woods as if lit from the upper left.",
                       f"Every bar is the same {s:g}\" equilateral triangle: one saw setup for the whole board."]}
 
@@ -355,6 +387,7 @@ def kagome(p, board):
     trim = [0.0, 0.0, cols * 2 * a, rows * h]
     return {"polygons": polys, "trim": trim, "roles": ["hex", "up", "down"],
             "cells": {"kind": "tri", "side": 2 * a, "origin": [-a, 0.0], "angle": 0, "levels": int(p.get("levels", 2))},
+            "centers": [((m % 2) * a + 2 * k * a, 2 * m * h) for m in range(-2, rows // 2 + 3) for k in range(-2, cols + 3)],
             "notes": [f"Hexagons {2 * a:g}\" across with {a:g}\" triangles between them. Each hexagon is built from pieces in neighbouring logs; "
                       "those glue lines join the same wood and disappear in end grain.",
                       "Every bar is ripped at a 30 degree blade tilt."]}
@@ -447,6 +480,7 @@ def pinwheel(p, board):
     trim = [0.0, 0.0, cols * a, rows * h]
     return {"polygons": polys, "trim": trim, "roles": ["hex", "diamond", "tri"],
             "cells": {"kind": "tri", "side": 2 * a, "origin": [0.0, 0.0], "angle": 0, "levels": int(p.get("levels", 1))},
+            "centers": [L(i, j) for j in range(-4, rows + 5) for i in range(-((j + 1) // 2) - 4, -((j + 1) // 2) + cols + 9) if is_c(i, j)],
             "notes": [f"Hexagons {2 * a:g}\" across, each ringed by six diamonds leaning the same way, with small triangles between: "
                       "a rosette drawn on a triangle grid so every piece has 60 degree corners."]}
 

@@ -246,7 +246,7 @@ def tri_plan(polys, trim, cells, wood_of, bar_ok=None):
         t = types[kk]
         logs.append({"id": ids[n], "key": kk, "kind": "tri", "level": 1, "side": L, "w": L, "h": H,
                      "outline": [(0, 0), (L / 2, H), (-L / 2, H)], "cells": t["cells"],
-                     "stages": [{"parts": g, "jig": "V cradle"} for g in t["stages"]], "crosscut": levels == 1})
+                     "stages": [{"parts": g, "jig": "V block"} for g in t["stages"]], "crosscut": levels == 1})
     idx = {lg["key"]: lg["id"] for lg in logs}
     top = base; top_side = L
     if levels == 2:
@@ -263,7 +263,7 @@ def tri_plan(polys, trim, cells, wood_of, bar_ok=None):
                     t = types[kk]; n = len(logs)
                     logs.append({"id": ids[n], "key": kk, "kind": "tri", "level": 1, "side": L, "w": L, "h": H,
                                  "outline": [(0, 0), (L / 2, H), (-L / 2, H)], "cells": t["cells"],
-                                 "stages": [{"parts": g, "jig": "V cradle"} for g in t["stages"]], "crosscut": False})
+                                 "stages": [{"parts": g, "jig": "V block"} for g in t["stages"]], "crosscut": False})
                     idx[kk] = logs[-1]["id"]
                 kids.append((idx[kk], tri, k, fl, items))
             found = None
@@ -288,7 +288,7 @@ def tri_plan(polys, trim, cells, wood_of, bar_ok=None):
             logs.append({"id": ids[n], "key": kk, "kind": "tri", "level": 2, "side": L2, "w": L2, "h": H2,
                          "outline": [(0, 0), (L2 / 2, H2), (-L2 / 2, H2)],
                          "cells": [c_ for p in t["parts"] for c_ in p["cells"]],
-                         "stages": [{"parts": sorted(t["parts"], key=lambda p: (round(min(v[1] for v in p["pts"]), 3), sum(v[0] for v in p["pts"]))), "jig": "V cradle"}],
+                         "stages": [{"parts": sorted(t["parts"], key=lambda p: (round(min(v[1] for v in p["pts"]), 3), sum(v[0] for v in p["pts"]))), "jig": "V block"}],
                          "crosscut": True})
             idx[kk] = logs[-1]["id"]
         top = big; top_side = L2
@@ -379,7 +379,7 @@ def blocks_plan(polys, trim, cells, wood_of):
     for lid, role in (("A", A), ("B", B)) if wood_of(A) != wood_of(B) else (("A", A),):
         cs = band(role)
         add({"id": lid, "kind": "rect", "shape": "band", "level": 1, "w": h, "h": q, "outline": band_out, "cells": cs,
-             "stages": [{"parts": [{"bar": True, "wood": wood_of(r), "role": r, "pts": p} for r, p in cs], "jig": "tape and flat cauls"}], "crosscut": False})
+             "stages": [{"parts": [{"bar": True, "wood": wood_of(r), "role": r, "pts": p, "outside": True} for r, p in cs], "jig": "band cradle"}], "crosscut": False})
     bid_a = "A"; bid_b = "B" if wood_of(A) != wood_of(B) else "A"
     # quarter log, corner (star centre) at the origin, first quadrant: band a along x (below the diagonal), band b mirrored along y
     ba = band(A); bb_ = [(r, ccw([(y, x) for x, y in p])) for r, p in band(B)]
@@ -407,13 +407,27 @@ def blocks_plan(polys, trim, cells, wood_of):
     out_rows = []
     by = {}
     for p in polys: by.setdefault(p["slice"], []).append(p)
+    bw = float(cells.get("border", 0)); fid = chr(ord(kid) + 1)
+    def bpuck(x0, y0, x1, y1):
+        box = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+        return {"log": fid, "pts": box, "flip": False, "ref": (box[0], box[1]), "cells": [(F, box)]}
+    if bw:       # a plain end-grain border in the ground wood: one solid bar, sliced like the logs
+        add({"id": fid, "kind": "rect", "shape": "border", "level": 4, "w": S, "h": bw, "outline": [(0, 0), (S, 0), (S, bw), (0, bw)], "cells": [(F, [(0, 0), (S, 0), (S, bw), (0, bw)])],
+             "stages": [{"parts": [{"bar": True, "wood": wood_of(F), "role": F, "pts": [(0, 0), (S, 0), (S, bw), (0, bw)]}], "jig": "none"}], "crosscut": True})
+    def brow(y0):
+        x0 = -S / 2; pk = [bpuck(x0 + i * S, y0, x0 + (i + 1) * S, y0 + bw) for i in range(cols + 1)]
+        return {"n": 0, "pucks": pk, "height": bw, "length": (cols + 1) * S, "pts": [(x0, y0), (x0 + (cols + 1) * S, y0), (x0 + (cols + 1) * S, y0 + bw), (x0, y0 + bw)]}
+    if bw: out_rows.append(brow(-bw))
     for r in range(rows_n):
         pk = []
+        if bw: pk.append(bpuck(-bw, r * S, 0, r * S + S))
         for c in range(cols):
             x0, y0 = c * S, r * S; box = [(x0, y0), (x0 + S, y0), (x0 + S, y0 + S), (x0, y0 + S)]
             pk.append({"log": kid, "pts": box, "flip": False, "ref": (box[0], box[1]),
                        "cells": [(p["role"], p["pts"]) for p in by.get(f"b{r}-{c}", [])]})
-        out_rows.append({"n": r + 1, "pucks": pk, "height": S, "length": cols * S, "pts": [(0, r * S), (cols * S, r * S), (cols * S, r * S + S), (0, r * S + S)]})
+        if bw: pk.append(bpuck(cols * S, r * S, cols * S + bw, r * S + S))
+        out_rows.append({"n": r + 1, "pucks": pk, "height": S, "length": cols * S + 2 * bw, "pts": [(-bw, r * S), (cols * S + bw, r * S), (cols * S + bw, r * S + S), (-bw, r * S + S)]})
+    if bw: out_rows.append(brow(rows_n * S))
     return {"logs": logs, "rows": out_rows, "info": {"kind": "blocks", "side": S}}
 
 

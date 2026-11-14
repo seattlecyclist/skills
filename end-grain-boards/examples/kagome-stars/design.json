@@ -1,6 +1,6 @@
 {
  "name": "Kagome Star Lattice End-Grain Board",
- "description": "a kagome lattice: pale maple hexagons on a triangular grid, each ringed by six small triangles, walnut pointing up and cherry pointing down, so the board reads as six-point stars woven like a triaxial basket",
+ "description": "a kagome lattice: dark walnut hexagons on a triangular grid, each ringed by six small pale maple triangles, so the board reads as six-point stars woven like a triaxial basket",
  "pattern": "kagome",
  "params": {
   "side": 0.75
@@ -11,9 +11,9 @@
   "thickness": 1.5
  },
  "species": {
-  "hex": "maple",
-  "up": "walnut",
-  "down": "cherry"
+  "hex": "walnut",
+  "up": "maple",
+  "down": "maple"
  },
  "options": {
   "edge": "1/8\" chamfer",

@@ -1,6 +1,6 @@
 """Illustrated assembly drawings: the build steps drawn in 3D, in the manner of printed step-by-step
 woodworking plans. Bars, units, logs and slices are drawn as solid prisms in their woods (end grain
-darker on the cut ends), glue faces in yellow, push and clamp directions as orange block arrows,
+darker on the cut ends), glue faces in blue, push and clamp directions as orange block arrows,
 parts called out with circled letters on leaders, the grain direction as a long arrow, and saw cuts
 as red lines.
 
@@ -12,7 +12,7 @@ Pure Python: an orthographic projection and a painter's sort, which is exact for
 import html, math
 
 AZ, EL = math.radians(-32), math.radians(30)
-GLUE = "#f2cf3a"; ARROW = "#f39a1e"; CUT = "#d62f2f"; INK = "#1e2327"
+GLUE = "#7fb7d4"; ARROW = "#f39a1e"; CUT = "#d62f2f"; INK = "#1e2327"
 
 
 def _hex(c):

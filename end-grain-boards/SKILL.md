@@ -15,11 +15,13 @@ brief → design.json → cbplan.py (checks, plan, diagrams, guide image) → re
 
 **How every board here is built.** An end-grain face is the cut end of a log. Each polygon on the
 face is a long *bar* of that cross-section, ripped on the table saw. Bars are glued three or four at a
-time into a small closed *log*: a triangle for 60 degree patterns (glued in a V cradle), a rectangle
-for 45 and 90 degree patterns (bands, then quarter logs in corner cauls). **Every face of every log is
+time into a small closed *log*: a triangle for 60 degree patterns (glued in a V block whose sides stop
+3/16" under the top of the log), a rectangle for 45 and 90 degree patterns (bands, then quarter logs in
+corner cauls). **Every face of every log is
 machined flat** before anything else is glued to it. Logs are crosscut into *slices*, slices are glued
 in pairs and then into straight *rows* in a row jig, rows are trued and glued into the board, and the
-board is flattened and then trimmed. `scripts/logs.py` works this out from the face: it lays the
+board is flattened and then trimmed. An optional *frame* of end-grain blocks is glued round the trimmed
+field. Every truing pass takes a skim, so the plan lays the pattern out at the trued sizes, not the drawn ones. `scripts/logs.py` works this out from the face: it lays the
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
 
@@ -35,7 +37,7 @@ has the rules and the reasons.
 | `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
-| `scripts/assembly.py` | `Scene`: the small 3D drawing engine behind the exploded views (solid parts in their woods, glue faces yellow, orange clamp arrows, circled labels, grain arrow, red cut lines). |
+| `scripts/assembly.py` | `Scene`: the small 3D drawing engine behind the exploded views (solid parts in their woods, glue faces blue, orange clamp arrows, circled labels, grain arrow, red cut lines). |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
 | `scripts/selftest.py` | Proves every example passes and the checks catch an overlap, a gap, a bevel past 45 degrees, a bad wood and an unbuildable pattern. |
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
@@ -65,6 +67,12 @@ Get, or ask once for only what you cannot infer:
 - **Size.** Default 12 x 16 x 1-1/2". Generators fit whole repeats, so the finished size moves to the
   nearest repeat; report the actual size. Piece size (`side`) sets how busy it looks, and the log it
   makes must pass under the saw (2-5/8" tall): cube and star diamonds up to 1", kagome and pinwheel 3/4", LeMoyne 3/4".
+- **Frame.** `"frame": {"width": 1.0, "species": "walnut"}` puts a plain end-grain frame round the
+  field (the finished size includes it). Use it by default on the 60 degree patterns: a repeat cut by a
+  bare edge reads as a swatch, the same crop inside a frame reads as composed. `stars8` has its own
+  `border` param instead. Never a long-grain frame.
+- **Whole motifs.** `stars6` and `snowflakes` leave out any star or flake the trim would cut through
+  (`"whole_motifs": false` turns this off). Check the face: what is left should be a symmetric group.
 - **Extras:** edge treatment, feet, juice groove, handles (`options`), and the setting for the photo.
 
 ## 2. design.json
@@ -86,7 +94,7 @@ Get, or ask once for only what you cannot infer:
 `description` is used word for word in the render prompt, so describe what a viewer sees. `shop`
 defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" waste at each log end, logs at
 most 24" (longer ones are split), blanks 5-1/2" wide with the last 1" not ripped, bars ripped 1/32" over,
-1/64" allowed for truing each log face, 1/8" cleaned off every board edge, saw clearance 3-1/8" over a 1/2" sled. Generator `params`
+0.01" allowed for each truing pass (`true_skim`), 1/8" cleaned off every board edge, the last 2" of a log held and not sliced, saw clearance 3-1/8" over a 1/2" sled, drum sander opening 3". Generator `params`
 are in `references/patterns.md` (`rows`/`cols` override the fit).
 
 ## 3. Build and check
@@ -105,11 +113,14 @@ error: fix the design (usually `side` or `levels`), never the plan text. Explain
 
 Then look at `plan.html`:
 - **Face** (sheet 01): does it read as what the user described? Contrast between roles is the usual
-  problem (two mid-browns merge; a dark wood on the largest pieces takes over). Is the crop balanced?
+  problem (two mid-browns merge; a dark wood on the largest pieces takes over). Is the crop balanced
+  and the same on opposite edges? Are motifs whole? If not, add a frame, change `side`, or move the size.
 - **Logs** (sheet 04): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
   down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
   a simpler variant and say why.
-- **Layout** (sheet 05): letters, stripe edges and primes must be legible; rows straight.
+- **Layout** (sheet 05): letters, pencil-line marks and primes must be legible; rows straight.
+- **Jigs** (sheet 06, step 2): one V block per size and height of part. More than four blocks means many
+  small bar shapes; a larger `side` or fewer roles usually removes some.
 - **Steps** (sheet 06): a builder who cannot picture a glue-up builds from the drawings beside the steps.
 
 ## 4. Render (plan-to-photo)
@@ -151,6 +162,8 @@ new wood changes board feet and possibly the warnings.
   plan has the builder set tilt with a digital gauge and dry-fit three scrap bars; keep that advice.
 - The faces glued when slices become rows and rows become the board are long grain (the sides of the
   logs). Never tell the builder to size them or double-coat them as end grain.
+- The plan's trim margins are measured from the deepest notch of a ragged edge to the cut, at the trued
+  sizes. If you change `true_skim`, the margins and the finished size move with it.
 - Flatten, then trim. A thickness planer destroys end-grain boards; so does a jointer on a row's edge.
 - A log taller than 2-5/8" does not pass under a 10" saw on a sled. Shrink `side` before promising a size.
 - Same-wood glue lines disappear in end grain, so the build may cut a piece in two or merge two
