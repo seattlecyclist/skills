@@ -25,7 +25,7 @@ import patterns, species as SP
 
 DEFAULT_SHOP = {"kerf": 0.125, "max_log_length": 24.0, "flatten_allowance": 0.125, "end_trim": 0.75,
                 "stock_width": 5.5, "spare_slices": 1, "rip_oversize": 1 / 32, "true_skim": 0.01, "hold_end": 2.0, "edge_clean": 0.125, "sander_opening": 3.0,
-                "glue_extra": 0.5, "blank_remainder": 1.0, "max_cut_height": 3.125, "sled_base": 0.5, "min_bar_face": 0.375}
+                "glue_extra": 0.5, "blank_remainder": 1.5, "max_cut_height": 3.125, "sled_base": 0.5, "min_bar_face": 0.375}
 S3 = math.sqrt(3)
 FONT = "IBM Plex Mono, ui-monospace, Menlo, monospace"
 
@@ -174,7 +174,8 @@ RIP_TEXT = ("Every bevelled bar is cut on the rip sled (sheet 06, step 2), the s
        "The sled runs against the rip fence, and the fence stays on the side the blade leans away from: its usual place on a left-tilt saw; on a right-tilt saw move the fence to the left of the blade. "
        "The fence deck, between the fence and the blade, carries the locating fence and the toggle clamps. The landing deck, beyond the blade and under its lean, catches what comes off. "
        "Nothing is ever loose on the saw table. Trapezoids and diamonds start as square-edged strips and are clamped to the fence deck for both bevels; only a waste sliver drops on the landing deck. "
-       "A triangle leaves no flat for a clamp, so there the wide blank is clamped and the triangle bar comes off on the landing deck, held between its stop strip and the blade, and rides along with the sled. "
+       "A triangle leaves no flat for a clamp, so there the wide blank is clamped and the triangle bar is cut free on the landing deck. It is not loose: the stop strip's edge is ripped at the same tilt and leans over the bar's sloping face, "
+       "so the bar sits base down in a dovetail-shaped pocket between stop and deck, on a strip of stick-on sandpaper, and cannot lift, tip or creep. It rides along with the sled; nothing rubs it past the blade. "
        "After every pass push the sled on until the work is clear of the blade, or switch off and wait for the blade to stop, before lifting anything out. Keep the riving knife in place.")
 
 
@@ -270,7 +271,7 @@ def recipe(key, p, L, A, shop, outside=False):
                       f"Tilt the blade {tilt:.1f} degrees from vertical (digital angle gauge). " + RIP + " Clamp the blank on the fence deck with its free edge over the slot and rip one bevel along it; that strip is waste." + deep(H + dH, tilt),
                       f"For every bar: turn the blank over end for end (the same edge stays toward the blade, the other face goes down), slide it across until its sharp lower edge touches the landing stop, "
                       f"close the clamps on it and push the sled through. The bar is left on the landing deck, base down and point up, between the stop and the blade. "
-                      f"Screw the landing stop {dim(base + e_)} from the blade at the deck, then confirm on a test bar. When the blank gets too narrow for the clamp pads, lay the caul across it and a scrap of the same thickness."]
+                      f"Screw the landing stop with its sharp lower edge {dim(base + e_)} from the blade at the deck, then confirm on a test bar. The blank's bevelled edge slides in under the stop's leaning face until the two faces meet. Back the blank for every pass: fill the gap between its rear edge and the locating fence with spacer strips (rip a few to 1\" and 1/2\"), so the clamps are not the only thing holding it in place. Stop when less than {short(shop['blank_remainder'])} of blank is left; that strip is waste."]
                 if outside or not equi:
                     st.append(f"Leave the two sawn faces as they are. They end up on the outside of the glue-up and are machined with it; the planed base is the glue face.")
                 else:
@@ -845,8 +846,9 @@ def steps(plan, design):
                 "the blade saws the base into two decks and notches both bridges, which are tall enough to stay whole above the cut and hold the decks together."
                 + (" Make one sled for each tilt." if len(tl) > 1 else ""),
                 "The 9\" deck beside the rip fence is the fence deck. Screw a straight locating fence, 3/4\" x 1-1/2\", flat on it and parallel to the cut, through slotted holes so it can be reset for each bar shape, "
-                "and mount three toggle clamps behind it with their pads reaching over it. The pads close on a caul, a straight strip about 1/2\" x 1\" laid along the top of the work, so the pressure is spread and no pad is near the blade. "
-                "The other deck is the landing deck. For triangle bars a stop strip of 1/4\" hardboard is screwed to it parallel to the cut. Leave the rip fence where it is for the whole run; every setting is made on the sled."]
+                "and mount three toggle clamps behind it with their pads reaching over it. The pads close on a caul, a straight strip 1/2\" wide and 3/4\" high laid along the top of the work, so the pressure is spread and no pad is near the blade. Lay the caul over the part of the work that has deck under it, toward the locating fence, never out over a leaning edge. "
+                "The other deck is the landing deck. For triangle bars a stop strip is screwed to it parallel to the cut: a 3/4\" strip with one edge ripped at the blade's tilt, set so that edge leans toward the blade and over the bar, "
+                "with a strip of stick-on 120 grit sandpaper on the deck in front of it. Leave the rip fence where it is for the whole run; every setting is made on the sled."]
     if kind == "tri":
         vb = plan["vblocks"]; longest = max(lg["length"] for lg in logs) + sh["glue_extra"]
         thin = [v for v in vb if v["base"] < 0.5]; tallest = max(v["tall"] + v["base"] for v in vb)
@@ -870,7 +872,7 @@ def steps(plan, design):
                 f"Crosscut sled with a stop block and a 1\" spacer. Its base must be {short(sh['sled_base'])} or thinner: the tallest log stands {short(max(l['trued'] * S3 / 2 for l in sliced))} on it and the blade, fully raised, clears {short(sh['max_cut_height'])}. "
                 "Raise the blade and check it clears the top of the log before the first cut. For these three-cornered logs add a cradle: two strips with one edge ripped at 30 degrees (offcuts from the V blocks). "
                 "Screw one to the sled base against the sled fence, sloping face toward the log; the log lies on one face on the sled base with a sloping face against that strip, "
-                "and the second strip is clamped to the sled base against its other sloping face. Both strips stop 1/4\" short of the blade's path, so the slice comes off free of the cradle. "
+                "and the second strip is pushed against its other sloping face and held by two bar clamps that reach across the sled fence and the strip. Both strips stop 1/4\" short of the blade's path, so the slice comes off free of the cradle. "
                 "The log is then held on all three faces (drawing at the crosscut step)."]
     elif kind == "blocks":
         hq = min(min(lg["w"], lg["h"]) for lg in logs if lg["shape"] == "quarter")
@@ -986,9 +988,11 @@ def steps(plan, design):
         elif main["shape"] == "band":
             tx = [f"Plane both broad faces of each band, equal cuts from each face, all bands at one planer setting, down to {dim(main['trued'][1])} thick. "
                   "The sawn faces of the bars carried the allowance for this. A band has one bevelled edge that ends in a feather. Nest the bands in pairs: lay one wide face down and roll its partner over, wide face up, the same end leading, "
-                  "so the two bevels lap and the pair is a rectangle. Tape the pair down to a flat carrier board; it goes through as a rectangle and no thin edge leads into the knives. Turn the pair over as one to plane the other faces.",
-                  f"Then bring every band to width at one saw setting: blade square, the band wide face down, its bevelled edge against an auxiliary fence that sits tight on the table so the feather cannot slip under it, "
-                  f"and rip the square edge (the triangle bar's outer face) so the wide face measures {dim(main['trued'][0] + 1 / 64)}. Finish with one jointer pass on that sawn edge, every band at the same jointer setting, to {dim(main['trued'][0])}. "
+                  "so the two bevels lap and the pair is a rectangle. Lay the pair on a flat carrier board between two straight rails screwed down a snug fit apart and lower than the bands, and tape across both ends: "
+                  "the rails stop the lapped bevels from wedging apart under the feed rollers, the pair goes through as a rectangle, and no thin edge leads into the knives. Turn the pair over as one to plane the other faces.",
+                  f"Then bring every band to width at one setting, working from its solid edge. First take one light jointer pass on the square edge (the triangle bar's outer face) to clean it. "
+                  f"Then put the band on the rip sled with the blade still at 45 degrees: wide face up under the caul, the jointed square edge against the locating fence, and skim the bevelled edge so the wide face measures {dim(main['trued'][0])}. "
+                  f"Set the locating fence once with a test band and run all the bands at that setting. The skim also leaves the bevel, which is the next glue face, freshly cut. "
                   "This width decides whether the corner cauls close the diagonal joints of the star, so check a few bands with calipers: all within a few thousandths."]
         elif main["shape"] == "quarter":
             tx = [f"True the two inner faces, the ones that lay in the lower caul and meet at the star corner: one light jointer pass each, about {sk}, keeping them square to each other. "
@@ -1015,7 +1019,7 @@ def steps(plan, design):
 
     # crosscut
     ns = sum(lg["slices"] + lg["spares"] for lg in sliced)
-    lay = ("Lay the log in the sled cradle on its reference face, marked end away from the stop. Push the second strip hard against the log and clamp it to the sled base with two clamps, both on the side of the blade away from the stop: the log is pinched between the two strips, and that is what holds it for every cut. To move the log on, slacken one clamp, slide the log, tighten." if kind == "tri"
+    lay = ("Lay the log in the sled cradle on its reference face, marked end away from the stop. Push the second strip hard against the log and put two bar clamps across the sled fence and that strip, both on the side of the blade away from the stop (clamp jaws cannot reach under a sled, so the clamps squeeze fence, log and strip together above the base): the log is pinched between the two strips, and that is what holds it for every cut. To move the log on, slacken one clamp, slide the log, tighten." if kind == "tri"
            else "Lay the log on its chalked face against the sled fence, marked end away from the stop, and clamp it down." if kind == "blocks"
            else "Lay the panel against the sled fence and clamp it down.")
     tx = [f"Square the unmarked end of each log first. {lay}" if kind != "panel" else f"Square one end of each panel first. {lay}",
@@ -1095,15 +1099,16 @@ def steps(plan, design):
             n1, n2 = r["per_side"]; nm = "line" if r["role"] == "liner" else "frame"
             tx.append(f"The {nm}: plane the {r['species']} board to {dim(r['width'])} thick with both edges jointed parallel. Crosscut {r['blocks']} blocks from it on the sled, each {short(cutl)} long, "
                       "with the same spacer stop and setting used for the slices; the board lies flat on the sled under a hold-down, and the last 2 inches are not cut. "
-                      f"Stand the blocks on end: each is {short(r['width'])} x {short(r['block_len'])} seen from above. Glue them edge to edge into four strips against the fixed fence of the row jig, "
-                      f"one clamp along each strip: two strips of {n1} blocks for the long sides (at least {short(r['long'] + 0.5)} long) and two of {n2} for the ends (at least {short(r['short'] + 0.5)}). "
+                      f"Stand the blocks on end: each is {short(r['width'])} x {short(r['block_len'])} seen from above. Glue them edge to edge into four strips in the row jig: against the fixed fence, the loose blocks wedged up to them so the strip cannot buckle sideways, "
+                      f"a taped caul with a weight on top, and one clamp along each strip with light pressure: two strips of {n1} blocks for the long sides (at least {short(r['long'] + 0.5)} long) and two of {n2} for the ends (at least {short(r['short'] + 0.5)}). "
                       "These joints are long grain to long grain, and in one wood they disappear.")
         tx += ["Scrape each strip and pass the face that meets the board under the drum sander once, so it is flat across the block joints.",
                ("Work one ring at a time, the line first. " if two else "")
                + "Glue the two long strips to the long edges, overhanging both ends, with clamps across the board every 4 to 5 inches and a taped caul over each joint to keep the strips level with the field. "
                "When the glue has set, saw the overhanging ends flush with the short edges on the sled, taking the strip ends and no more than a shaving of the field.",
                "Glue the two end strips across the ends the same way, clamping along the length of the board, then saw their overhang flush with the long sides."
-               + (" Then do the same with the frame strips round the line." if two else ""),
+               + (" The outside of the line is the glue face for the frame, so true it before going on: skim all four edges of the board with a light trim cut on the sled or track saw, a shaving only, so each is one flat, square face. "
+                  "Then add the frame strips round the line the same way." if two else ""),
                f"Flatten both faces again with light passes until frame and field are in one plane, and stop at {short(T)}. The board is now {dim(bd['width'])} x {dim(bd['length'])}.",
                "Sand both faces 80, 120, 180; wipe with a damp cloth to raise the grain, let it dry, then sand 220."]
         S.append({"title": "Add the frame", "text": tx, "figs": ["frame"], "see": [], "glue": True,

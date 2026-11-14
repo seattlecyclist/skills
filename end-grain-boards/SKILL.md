@@ -93,7 +93,7 @@ Get, or ask once for only what you cannot infer:
 
 `description` is used word for word in the render prompt, so describe what a viewer sees. `shop`
 defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" waste at each log end, logs at
-most 24" (longer ones are split), blanks 5-1/2" wide with the last 1" not ripped, bars ripped 1/32" over,
+most 24" (longer ones are split), blanks 5-1/2" wide with the last 1-1/2" not ripped, bars ripped 1/32" over,
 0.01" allowed for each truing pass (`true_skim`), 1/8" cleaned off every board edge, the last 2" of a log held and not sliced, saw clearance 3-1/8" over a 1/2" sled, drum sander opening 3". Generator `params`
 are in `references/patterns.md` (`rows`/`cols` override the fit).
 

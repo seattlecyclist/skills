@@ -44,7 +44,7 @@ ripped between a tilted blade and the fence.
   face up, bevel the other. The bar sits wide face up under the caul. True the sawn faces in a V block.
 - Triangles: a triangle leaves no flat for a clamp, so the wide blank is clamped to the fence deck
   and turned over end for end before every pass. The bar comes off base down on the landing deck,
-  between a stop strip and the blade, and rides with the sled. Stop when the blank is 1" wide.
+  between a stop strip and the blade, and rides with the sled. Stop when the blank is 1-1/2" wide.
   True the sawn faces in a V block.
 
 The plan's sheet 03 draws the sled from the front for each bar and step 2 draws it from above.

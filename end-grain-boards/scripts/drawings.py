@@ -174,7 +174,7 @@ def bars(plan):
             if mode == "square":
                 x_lo, x_hi = -Wb - 0.2, K + w + 1.0
             elif mode == "flip":
-                x_lo, x_hi = -w - 1.3, K + Wb + 2.6; fh = t + 1.2
+                x_lo, x_hi = -w - 1.9, K + Wb + 2.6; fh = t + 1.2
             else:
                 xf = K + w if mode == "para" else K - tt + w
                 x_lo, x_hi = -tt - 1.5, xf + 3.3; fh = t + 1.2
@@ -188,8 +188,8 @@ def bars(plan):
             def clamp(xp, xc, top):
                 """Toggle clamp: base at xc on the deck, arm over to a caul lying on the work at xp."""
                 hy = top + 0.75
-                return (R(xp - 0.32, xp + 0.32, top, top + 0.22, "#e9dfc6", INK) + R(xc - 0.3, xc + 0.3, 0, 0.3, "#9aa3ab", "#59616a")
-                        + f'<path d="M{X(xc):.1f},{Y(0.3):.1f} V{Y(hy):.1f} H{X(xp):.1f} V{Y(top + 0.22):.1f}" fill="none" stroke="#59616a" stroke-width="3" stroke-linejoin="round"/>'
+                return (R(xp - 0.25, xp + 0.25, top, top + 0.38, "#e9dfc6", INK) + R(xc - 0.3, xc + 0.3, 0, 0.3, "#9aa3ab", "#59616a")
+                        + f'<path d="M{X(xc):.1f},{Y(0.3):.1f} V{Y(hy):.1f} H{X(xp):.1f} V{Y(top + 0.38):.1f}" fill="none" stroke="#59616a" stroke-width="3" stroke-linejoin="round"/>'
                         + T(X((xp + xc) / 2), Y(hy) - 6, "toggle clamp on a caul", 10.5))
             if mode == "square":
                 el.append(pg([(-Wb, 0), (0, 0), (0, t), (-Wb, t)], blank_c)); el.append(pg([(K, 0), (K + w, 0), (K + w, t), (K, t)], fill, sw=1.5))
@@ -206,7 +206,7 @@ def bars(plan):
                     if nx[0] > K + 0.05 and max(nx) < K + Wb - 0.05:
                         el.append(f'<line x1="{X(nx[0]):.1f}" y1="{Y(0):.1f}" x2="{X(nx[1]):.1f}" y2="{Y(t):.1f}" stroke="{CUT}" stroke-width="1" stroke-dasharray="4 3"/>')
                     el.append(pg(bar, fill, sw=1.5))
-                    el.append(R(-w - 0.7, -w, 0, 0.25)); el.append(T(X(-w - 0.35), Y(0.25) - 6, "stop", 10.5))
+                    hs = min(0.75, t - 0.08); el.append(pg([(-w - 0.9, 0), (-w, 0), (-w + hs * math.tan(math.radians(tilt)), hs), (-w - 0.9, hs)], MDF, MDF_E)); el.append(T(X(-w - 0.5), Y(hs) - 6, "leaning stop", 10.5))
                     el.append(clamp(K + Wb * 0.62, K + Wb + 0.75, t)); el.append(T(X(K + Wb * 0.62), Y(t / 2) + 4, "blank", 10.5))
                     barx, bary = -w / 2, t * 0.36; d0, d1 = -w, 0
                 else:
@@ -214,7 +214,7 @@ def bars(plan):
                     el.append(pg([(-tt, 0), (0, 0), (-tt, t)], "#fff", "#8d8676", 1, "3 3")); el.append(T(X(-tt) - 6, Y(t / 2) + 4, "waste", 10, "end", "#5b6167"))
                     el.append(pg(bar, fill, sw=1.5))
                     el.append(R(xf, xf + 0.75, 0, max(1.0, t + 0.2))); el.append(T(X(xf + 0.38), Y(-D) + 30, "locating fence", 10.5))
-                    el.append(clamp((bar[2][0] + bar[3][0]) / 2, xf + 1.5, t))
+                    el.append(clamp((max(bar[0][0], bar[3][0]) + min(bar[1][0], bar[2][0])) / 2, xf + 1.5, t))
                     barx, bary = sum(v[0] for v in bar) / 4, t * 0.5
                     if mode == "para": d0, d1 = K, K + w; lab = "the face on the deck, as sawn"
                     else: d0, d1 = K - tt, xf; dimy = t; lab = "the wide face, as sawn"
@@ -512,7 +512,7 @@ def board_fig(plan):
     allp = [mv(r["pts"], o) for r, o in zip(rows, off)]
     b = bbox_of(allp); m = 1.7
     bb = (b[0] - m, b[1] - m, b[2] + m, b[3] + m)
-    sc = min(600 / (bb[2] - bb[0]), 470 / (bb[3] - bb[1]))
+    sc = min(640 / (bb[2] - bb[0]), 640 / (bb[3] - bb[1]))
     s = Svg(bb, sc, pad=20, extra_h=20, title="Rows glued into the board, seen from above")
     for r, o in zip(rows, off):
         for pk in r["pucks"]:
