@@ -159,7 +159,7 @@ def page(plan, svgs, photo, guide=None):
 
     sheets = [("overview", "Overview", short(W) + " × " + short(L)), ("materials", "Material list", f"{bf:g} bd ft"),
               ("bars", "Bars & rip setups", f'{len(plan["bar_types"])} shape{"s" if len(plan["bar_types"]) > 1 else ""}'),
-              ("logs", "Units & logs", (f'{len(plan["units"])} unit{"" if len(plan["units"]) == 1 else "s"} · ' if plan["units"] else "") + f'{len(logs)} log{"" if len(logs) == 1 else "s"}'),
+              ("logs", "Strip panels" if plan.get("method") == "strips" else "Units & logs", (f'{len(plan["units"])} unit{"" if len(plan["units"]) == 1 else "s"} · ' if plan["units"] else "") + f'{len(logs)} log{"" if len(logs) == 1 else "s"}'),
               ("layout", "Slice layout", f"{nsl} slices"), ("build", "Building it", f'{len(plan["steps"])} steps')]
     index = "".join(f'<a href="#{i}"><span class="n">{n:02d}</span><span class="t">{e(t)}</span><span class="s">{fr(s)}</span></a>'
                     for n, (i, t, s) in enumerate(sheets, 1))
@@ -232,16 +232,16 @@ def page(plan, svgs, photo, guide=None):
     for l in logs:
         what = ", ".join(x for x in ((f'{len(l["units"])} units' if l["units"] else ""), (f'{len(l["loose_bars"])} bars' if l["loose_bars"] else "")) if x)
         cards += (f'<div class="joint" style="grid-column:1/-1"><div class="ph">{svgs[f"log{l["type"]}"]}</div><div class="jh"><span class="jn">{e(l["name"][-1])}</span>'
-                  f'<div><h4>{e(l["name"])}: {e(what)} side by side</h4><div class="jsub">{"needs a plywood carrier on the sled" if l.get("carrier") else "sits flat on the sled"}</div></div></div>'
+                  f'<div><h4>{e(l["name"])}: {e(what)} {"in a panel" if plan.get("method") == "strips" else "side by side"}</h4><div class="jsub">{"needs a plywood carrier on the sled" if l.get("carrier") else "sits flat on the sled"}</div></div></div>'
                   f'<dl class="kv"><dt>Make</dt><dd class="m">{l["count"]} × {fr(short(l["length"]))} long</dd><dt>Slices</dt><dd class="m">{l["slices"]} + {l["spares"]} spare, '
                   f'{fr(short(T + sh["flatten_allowance"]))} thick</dd></dl></div>')
-    H.append(f'<article class="sheet" id="logs">{tb("04", "Units & logs", "Bars glue into units, units glue side by side into logs; labels show any unit turned or flipped", f"<div class=dims>{len(plan["units"])} unit type{"" if len(plan["units"]) == 1 else "s"} · {len(logs)} log type{"" if len(logs) == 1 else "s"}</div>")}'
+    H.append(f'<article class="sheet" id="logs">{tb("04", *(("Strip panels", "Each log is one straight strip of the board: bars glued single file into a panel with two flat faces, drawn lying on the bench") if plan.get("method") == "strips" else ("Units & logs", "Bars glue into units, units glue side by side into logs; labels show any unit turned or flipped")), f"<div class=dims>{(str(len(plan["units"])) + " unit type" + ("" if len(plan["units"]) == 1 else "s") + " · ") if plan["units"] else ""}{len(logs)} log type{"" if len(logs) == 1 else "s"}</div>")}'
              f'<div class="jgrid">{cards}</div></article>')
 
     # 05 layout
     turns = sorted({s["xf"] for s in plan["slices"]} - {"id"})
     per_log = "".join(f'<dt>{e(l["name"])}</dt><dd class="m">slices ' + ", ".join(str(s["n"]) for s in plan["slices"] if s["log"] == l["name"]) + "</dd>" for l in logs)
-    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", "Number, log letter and any turn, glued bottom to top; trim on the red dashed line", f"<div class=dims>{nsl} slices</div>")}'
+    H.append(f'<article class="sheet" id="layout">{tb("05", "Slice layout", ("Number, log letter and any turn, glued in number order; trim on the red dashed line"), f"<div class=dims>{nsl} slices</div>")}'
              f'<div class="main">{fig(svgs["layout"], "Slices before trimming")}<div class="panel"><h3>Where each slice comes from</h3><dl class="kv">{per_log}</dl>'
              f'<h3>Marks</h3><ul>' + ("".join(f"<li><b class=mono>{XF_MARK[t]}</b> {e(XF_TEXT[t])}</li>" for t in turns) or "<li>Every slice goes down as cut.</li>")
              + '</ul><p class="small">The pencil V drawn across each log before crosscutting tells you which face is up and keeps the slices in order.</p></div></div></article>')

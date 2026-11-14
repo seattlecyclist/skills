@@ -300,11 +300,14 @@ def figures(plan, unit_list, unit_type_of):
         s.note("Glue the yellow faces\nTape the outside, roll the bars together")
         out[f"asm_unit{u['type'] + 1}"] = s.svg(title=u["name"])
 
+    vstrips = plan.get("method") == "strips" and (plan.get("strips") or {}).get("axis") == "x"
+    rp = [dict(q, pts=[[v[1], -v[0]] for v in q["pts"]]) for q in polys] if vstrips else polys   # panels lie flat
+
     # ---- 2nd glue-up: each log, units (or bars) side by side, pulled apart along the row, with arrows
     for lg in plan["logs"]:
         rep = next(sl for sl in plan["slices"] if sl["id"] == lg["rep"])
         groups = [[i for i in unit_list[uid]] for uid in lg["units"]] + [[i] for i in lg["loose_bars"]]
-        gp = [[polys[i]["pts"] for i in g] for g in groups]
+        gp = [[rp[i]["pts"] for i in g] for g in groups]
         cs = [_centroid([v for p in g for v in p]) for g in gp]
         order = sorted(range(len(groups)), key=lambda k: cs[k][0])
         bb = [min(v[0] for g in gp for p in g for v in p), min(v[1] for g in gp for p in g for v in p)]
@@ -347,7 +350,7 @@ def figures(plan, unit_list, unit_type_of):
 
     # ---- crosscut: the first log with cut lines and slices standing off the end
     lg = plan["logs"][0]; rep = next(sl for sl in plan["slices"] if sl["id"] == lg["rep"])
-    pp = [polys[i] for i in rep["bars"]]
+    pp = [rp[i] for i in rep["bars"]]
     bb = [min(v[0] for p in pp for v in p["pts"]), min(v[1] for p in pp for v in p["pts"])]
     wid = max(v[0] for p in pp for v in p["pts"]) - bb[0]; top = max(v[1] for p in pp for v in p["pts"]) - bb[1]
     cut = T + plan["shop"]["flatten_allowance"]; pitch = cut + plan["shop"]["kerf"]
@@ -379,6 +382,23 @@ def figures(plan, unit_list, unit_type_of):
     by0 = min(v[1] for s_ in show for i in s_["bars"] for v in polys[i]["pts"])
     bx0 = min(v[0] for s_ in show for i in s_["bars"] for v in polys[i]["pts"])
     maxx = max(v[0] for s_ in show for i in s_["bars"] for v in polys[i]["pts"]) - bx0
+    if vstrips:
+        maxy = max(v[1] for s_ in show for i in s_["bars"] for v in polys[i]["pts"]) - by0
+        for r, s_ in enumerate(show):
+            ox = r * gap
+            for i in s_["bars"]:
+                p = polys[i]
+                s.prism([(x - bx0 + ox, y - by0) for x, y in p["pts"]], T, flat(0, 0), end(p["role"]), side(p["role"]))
+            cx = (s_["bbox"][0] + s_["bbox"][2]) / 2 - bx0 + ox
+            mark = {"id": "", "r180": " ↻", "fx": " ⇋", "fy": " ⇵"}.get(s_["xf"], " *")
+            s.mark("label", (cx, maxy, T), f"{s_['n']}{mark}".strip(), (8, -36))
+        tr_ = max(v[0] for s_ in show for i in s_["bars"] for v in polys[i]["pts"]) - bx0 + gap * (len(show) - 1)
+        s.mark("arrow", (-3.5, maxy / 2, T / 2), (-0.8, maxy / 2, T / 2))
+        s.mark("arrow", (tr_ + 3.5, maxy / 2, T / 2), (tr_ + 0.8, maxy / 2, T / 2))
+        s.note(f"End grain up, the strips slid as numbered. Glue {len(show) if len(show) < 5 else 'two to four'} at a time,\n"
+               "pattern lined up across each joint, cauls top and bottom")
+        out["asm_board"] = s.svg(title="Glue the slices")
+        show = []
     for r, s_ in enumerate(show):
         oy = r * gap
         for i in s_["bars"]:
@@ -387,12 +407,13 @@ def figures(plan, unit_list, unit_type_of):
         lowx = maxx + 0.2; cy = (s_["bbox"][1] + s_["bbox"][3]) / 2 - by0 + oy
         mark = {"id": "", "r180": " ↻", "fx": " ⇋", "fy": " ⇵"}.get(s_["xf"], " *")
         s.mark("label", (maxx, cy, T), f"{s_['n']}{mark}".strip(), (40, -6))
-    tl = max(v[1] for s_ in show for i in s_["bars"] for v in polys[i]["pts"]) - by0 + gap * (len(show) - 1)
-    s.mark("arrow", (maxx / 2, -3.5, T / 2), (maxx / 2, -0.8, T / 2))
-    s.mark("arrow", (maxx / 2, tl + 3.5, T / 2), (maxx / 2, tl + 0.8, T / 2))
-    s.note(f"End grain up. Glue {len(show) if len(show) < 5 else 'two to four'} slices at a time,\n"
-                               "faces flush, cauls top and bottom")
-    out["asm_board"] = s.svg(title="Glue the slices")
+    if show:
+        tl = max(v[1] for s_ in show for i in s_["bars"] for v in polys[i]["pts"]) - by0 + gap * (len(show) - 1)
+        s.mark("arrow", (maxx / 2, -3.5, T / 2), (maxx / 2, -0.8, T / 2))
+        s.mark("arrow", (maxx / 2, tl + 3.5, T / 2), (maxx / 2, tl + 0.8, T / 2))
+        s.note(f"End grain up. Glue {len(show) if len(show) < 5 else 'two to four'} slices at a time,\n"
+               "faces flush, cauls top and bottom")
+        out["asm_board"] = s.svg(title="Glue the slices")
 
     # ---- trim: the glued board with trim lines
     s = Scene(az=-28, el=40); tr = plan["board"]["trim"]

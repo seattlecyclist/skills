@@ -14,16 +14,24 @@ brief → design.json → cbplan.py (checks, plan, diagrams, guide image) → re
 ```
 
 **How every board here is built.** An end-grain face is the cut end of a log. Each polygon on the
-face is a long *bar* of that cross-section, ripped on the table saw (bevelled for angles). Bars are
-glued into *units* (a cube = three rhombi), units or bars side by side into a *log*, the log is
-crosscut into *slices* about 1-5/8" thick, and the slices are laid out (some turned or flipped) and
-glued edge to edge into the board, which is trimmed and flattened. Identical slices come from one
-log, so the script matches slices by shape (any of the eight ways a slice can lie on the bench) and
-makes as few logs as it can.
+face is a long *bar* of that cross-section, ripped on the table saw (bevelled for angles). The script
+cuts the face into straight parallel *strips* (`scripts/strips.py`), splitting any bar a strip line
+crosses (in tumbling blocks only the maple lids split, along their short diagonal, and the same-wood
+seam all but disappears). Each strip is a *log*: its bars glue up single file into a panel with two
+flat faces, which are scraped or drum-sanded clean before the panel is crosscut into *slices*. The
+slices are straight strips, laid out (some slid, turned or flipped) and glued like any end-grain board,
+then trimmed and flattened. Every glue face is a flat plane that can be checked and cleaned: nothing is
+glued into a V-groove. Strips that are windows of one longer strip come from one log, so a pattern
+usually needs one or two logs.
+
+The older method (bars into units, units into logs whose outer faces zigzag) is still there with
+`"build": {"method": "units"}`, but its log faces are V-grooves that can't be cleaned; don't use it
+unless the user asks.
 
 | Path | What it is |
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
+| `scripts/strips.py` | Cuts the face into straight strips: searches strip direction, width and offset for the fewest split bars with every bar spanning its strip (single file) and no slivers; merges strips into logs; marks the bars past the trim line that each slice carries. Override in `design.build`: `axis` (`x` vertical strips, `y` horizontal), `pitch`, `offset`, `min_pitch`, `max_pitch`. |
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `checker`, `brick`) and the polygon format for `custom`. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, units & logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
@@ -86,7 +94,8 @@ python3 scripts/cbplan.py design.json out/
 It prints the actual size, every bar shape with its blade tilt, each log (count, length, slices) and
 the board feet per species, then the checks: species hard enough (Janka 900+), bars convex, **no
 overlaps and no gaps** over the finished board (a sampled coverage test), every bevel 45 degrees or
-less, board 1" or thicker; warnings for species that move differently, unknown species and boards
+less, board 1" or thicker; warnings for strips that don't glue single file (bars side by side inside a strip, as in
+LeMoyne stars: say so, and try another `build.axis` or `pitch`), and for species that move differently, unknown species and boards
 large for their thickness. A FAIL is a design error: fix the design, never the plan text. Explain any
 WARN to the user.
 

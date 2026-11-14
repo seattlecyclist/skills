@@ -236,7 +236,7 @@ def coverage(polys, trim, step):
     off = step * 0.3719
     xs = np.arange(x0 + off, x1, step); ys = np.arange(y0 + off * 1.31, y1, step)
     X, Y = np.meshgrid(xs, ys)
-    cnt = np.zeros(X.shape, dtype=np.int16)
+    cnt = np.zeros(X.shape, dtype=np.int16); near = np.zeros(X.shape, bool)   # points on an edge prove nothing
     for p in polys:
         pts = ccw([tuple(v) for v in p["pts"]])
         px = [v[0] for v in pts]; py = [v[1] for v in pts]
@@ -247,12 +247,16 @@ def coverage(polys, trim, step):
         m = np.ones(sx.shape, bool)
         for k in range(len(pts)):
             (ax, ay), (bx, by) = pts[k - 1], pts[k]
-            m &= (bx - ax) * (sy - ay) - (by - ay) * (sx - ax) > 1e-9
+            cr = (bx - ax) * (sy - ay) - (by - ay) * (sx - ax)
+            m &= cr > 1e-9
+            ln = math.hypot(bx - ax, by - ay) or 1
+            near[j0:j1, i0:i1] |= (np.abs(cr) / ln < 2e-4) & (np.minimum(ax, bx) - 2e-4 <= sx) & (sx <= np.maximum(ax, bx) + 2e-4) \
+                & (np.minimum(ay, by) - 2e-4 <= sy) & (sy <= np.maximum(ay, by) + 2e-4)
         cnt[j0:j1, i0:i1] += m
-    over = np.argwhere(cnt > 1)
+    over = np.argwhere((cnt > 1) & ~near)
     t0, s0, t1, s1 = trim
     inside = (X > t0 + step) & (X < t1 - step) & (Y > s0 + step) & (Y < s1 - step)
-    gaps = np.argwhere(inside & (cnt == 0))
+    gaps = np.argwhere(inside & (cnt == 0) & ~near)
     pt = lambda ij: (round(float(xs[ij[1]]), 2), round(float(ys[ij[0]]), 2))
     return len(over), (pt(over[0]) if len(over) else None), len(gaps), (pt(gaps[0]) if len(gaps) else None)
 
@@ -351,6 +355,12 @@ def build(design, out, photo=None):
     g = patterns.generate(design)
     polys = g["polygons"]; trim = [float(v) for v in g["trim"]]
     for p in polys: p["pts"] = [list(v) for v in ccw([tuple(v) for v in p["pts"]])]
+    bcfg = dict(design.get("build", {})); method = bcfg.get("method", "strips")
+    strip_info = None
+    if method == "strips":
+        import strips
+        polys, strip_info = strips.split(polys, trim, bcfg)
+        for p in polys: p["pts"] = [list(v) for v in ccw([tuple(v) for v in p["pts"]])]
     checks = []
     def check(ok, what, detail="", level="error"):
         checks.append({"ok": bool(ok), "what": what, "detail": detail, "level": level})
@@ -410,14 +420,21 @@ def build(design, out, photo=None):
     sm = Matcher(); slice_list = []
     for sid, idx in slices.items():
         items = [(polys[i]["role"], polys[i]["pts"]) for i in idx]
-        t, gx = sm.add(items)
+        if strip_info:
+            t, gx = strip_info["slice_type"][sid]
+            while len(sm.types) <= t: sm.types.append(None)
+        else:
+            t, gx = sm.add(items)
         bb = bbox_of([polys[i]["pts"] for i in idx])
         slice_list.append({"id": sid, "type": t, "xf": gx, "bars": idx, "bbox": bb})
     # number slices in glue order: bottom to top, then left to right
-    order = sorted(range(len(slice_list)), key=lambda k: (round(slice_list[k]["bbox"][1], 2), slice_list[k]["bbox"][0]))
+    if strip_info:   # strips glue up in order across the board
+        order = sorted(range(len(slice_list)), key=lambda k: int(slice_list[k]["id"][1:]))
+    else:
+        order = sorted(range(len(slice_list)), key=lambda k: (round(slice_list[k]["bbox"][1], 2), slice_list[k]["bbox"][0]))
     for n, k in enumerate(order): slice_list[k]["n"] = n + 1
     rep_slice = {}
-    for s in slice_list: rep_slice.setdefault(s["type"], s)
+    for s in sorted(slice_list, key=lambda s_: int(s_["id"][1:]) if strip_info else 0): rep_slice.setdefault(s["type"], s)
 
     # units: matched across the whole board
     um = Matcher(); unit_list = OrderedDict()
@@ -493,13 +510,18 @@ def build(design, out, photo=None):
     for st in stock.values():
         st["bf_buy"] = math.ceil(st["bf"] * 1.25 * 2) / 2   # 25% for defects and milling, to the half foot
 
+    if strip_info:
+        check(strip_info["narrow"] == 0, "Every strip glues up single file (each joint one flat face)",
+              f"{strip_info['narrow']} bars sit beside another bar inside a strip; glue those groups first and clean each "
+              "joint face, or try another strip direction or pitch in design.build" if strip_info["narrow"] else
+              f"{strip_info['strips']} strips {short(strip_info['pitch'])} wide, {strip_info['split']} bars split by the strip lines", "warn")
     # final glue-up checks
     check(T >= 1.0, "Board at least 1\" thick (end grain under 1\" can split)", f"{T}\"")
     check(max(W, Lb) / T <= 18, "Board not too large for its thickness", f"{W:.1f} x {Lb:.1f} x {T}", "warn")
     for lg in logs:
         lw, lh = lg["bbox"][2] - lg["bbox"][0], lg["bbox"][3] - lg["bbox"][1]
         if not (lg["flat"]["bottom"] or lg["flat"]["top"]) or not (lg["flat"]["left"] or lg["flat"]["right"]):
-            lg["carrier"] = True
+            lg["carrier"] = method != "strips"
 
     plan = {"name": design.get("name", design["pattern"]), "description": design.get("description", ""), "pattern": design["pattern"], "board": {
                 "width": W, "length": Lb, "thickness": T, "trim": trim},
@@ -509,7 +531,7 @@ def build(design, out, photo=None):
                        dims=bt["recipe"]["dims"], tilt=bt["recipe"]["tilt"], steps=bt["recipe"]["steps"], pts=bt["pts"],
                        sides=bt["sides"], angles=bt["angles"]) for bt in bar_types.values()],
             "bars": bars_out, "units": unit_types, "logs": logs, "slices": slice_list, "stock": list(stock.values()),
-            "checks": checks}
+            "checks": checks, "method": method, "strips": strip_info}
     plan["steps"] = steps(plan, design)
     os.makedirs(os.path.join(out, "svg"), exist_ok=True)
     svgs = diagrams(plan, unit_type_of, unit_list)
@@ -565,16 +587,37 @@ def steps(plan, design):
         tx.append("Let the glue (Titebond III, or II) cure overnight, then scrape the squeeze-out flush; "
                   "the units' outside faces are glue faces for the next step.")
         S.append({"title": "Glue the units", "text": tx, "diagrams": [f"unit{u['type'] + 1}" for u in plan["units"]]})
-    tx = []
-    for lg in plan["logs"]:
-        what = (f"{len(lg['units'])} units" if lg["units"] else "") + (" and " if lg["units"] and lg["loose_bars"] else "") + \
-               (f"{len(lg['loose_bars'])} bars" if lg["loose_bars"] else "")
-        tx.append(f"{lg['name']}: glue {what} side by side as drawn; make {lg['count']} log{'s' if lg['count'] > 1 else ''}, "
-                  f"{dim(lg['length'])} long, for {lg['slices']} slices" + (f" plus {lg['spares']} spare" if lg["spares"] else "") + ".")
-    tx.append("Glue on a flat, waxed or papered surface with cauls across the faces so the bars stay in plane; "
-              "a log that is twisted gives slices that won't sit flat together.")
-    tx.append("Scrape the glue off, then square one end of each log.")
-    S.append({"title": "Glue the logs", "text": tx, "diagrams": [f"log{l['type']}" for l in plan["logs"]]})
+    if plan.get("method") == "strips":
+        si = plan["strips"]; across = "wide" if si["axis"] == "x" else "tall"
+        tx = []
+        for lg in plan["logs"]:
+            lw = (lg["bbox"][2] - lg["bbox"][0]) if si["axis"] == "x" else (lg["bbox"][3] - lg["bbox"][1])
+            ll = (lg["bbox"][3] - lg["bbox"][1]) if si["axis"] == "x" else (lg["bbox"][2] - lg["bbox"][0])
+            how = "single file" if not si["narrow"] else "as drawn (where bars sit side by side, glue those groups first and clean their joint face)"
+            tx.append(f"{lg['name']}: {len(lg['loose_bars'])} bars glued {how}, into a panel {dim(si['pitch'])} thick "
+                      f"(one strip of the board) by about {short(ll)} wide; make {lg['count']}, {dim(lg['length'])} long, for "
+                      f"{lg['slices']} slices" + (f" plus {lg['spares']} spare" if lg["spares"] else "") + ".")
+        tx.append(("Every joint in a panel is one flat bevelled face, so every glue face can be checked and cleaned. " if not si["narrow"] else "") + "Lay the "
+                  "bars on a waxed, flat caul against a straight fence, in the drawn order, and glue four to six at a time. "
+                  "Clamp lightly along the stack, and clamp cauls down across both faces so a bevelled joint can't ride up.")
+        tx.append("Take the squeeze-out off while it is rubbery (20 to 40 minutes): it peels off a flat bevel with a chisel "
+                  "or a plastic scraper, where cured glue would need cutting. Add the next section once the last has set.")
+        tx.append("When the panel is done, scrape or drum-sand both broad faces just flat: these are the glue faces for "
+                  "the board. Take off only glue and lips; every 1/32\" removed narrows this strip of the pattern. "
+                  f"Check that the panel is {dim(si['pitch'])} thick everywhere and flat under a straightedge.")
+        S.append({"title": "Glue the logs", "text": tx, "diagrams": [f"log{l['type']}" for l in plan["logs"]],
+                  "dont": "glue a whole panel at once or let squeeze-out cure on a bevel. Fresh squeeze-out peels off; cured glue on a bevel has to be pared, and paring changes the angle."})
+    else:
+      tx = []
+      for lg in plan["logs"]:
+          what = (f"{len(lg['units'])} units" if lg["units"] else "") + (" and " if lg["units"] and lg["loose_bars"] else "") + \
+                 (f"{len(lg['loose_bars'])} bars" if lg["loose_bars"] else "")
+          tx.append(f"{lg['name']}: glue {what} side by side as drawn; make {lg['count']} log{'s' if lg['count'] > 1 else ''}, "
+                    f"{dim(lg['length'])} long, for {lg['slices']} slices" + (f" plus {lg['spares']} spare" if lg["spares"] else "") + ".")
+      tx.append("Glue on a flat, waxed or papered surface with cauls across the faces so the bars stay in plane; "
+                "a log that is twisted gives slices that won't sit flat together.")
+      tx.append("Scrape the glue off, then square one end of each log.")
+      S.append({"title": "Glue the logs", "text": tx, "diagrams": [f"log{l['type']}" for l in plan["logs"]]})
     tx = [f"Before cutting, draw a pencil V across the top of each log: every slice keeps a mark that says which way is up and "
           f"where it came from.",
           f"On a crosscut sled with a stop block, cut slices {dim(cut)} thick (finished {short(T)} plus "
@@ -592,7 +635,11 @@ def steps(plan, design):
     tx.append("Glue in stages of two to four slices, then glue the stages together. End grain drinks glue: brush a thin "
               "coat on both faces, wait two minutes, add a second coat, then clamp with moderate pressure and cauls top "
               "and bottom so the slices stay flush (the faces are end grain and are hard to plane flat).")
-    if plan["pattern"] in ("cubes", "tumbling-blocks", "stars6"):
+    if plan.get("method") == "strips":
+        tx.append("Every slice is a straight strip with flat faces. Line each one up with its neighbour by the pattern, "
+                  "not the ends (the ends are ragged and get trimmed): dry-fit, then mark across each joint with a pencil "
+                  "tick so the strips go back in register under glue.")
+    elif plan["pattern"] in ("cubes", "tumbling-blocks", "stars6"):
         tx.append("The rows nest by their zigzags, so each row centres itself on the one below. Clamp across the rows with "
                   "a little pressure from the ends too, or the rows can slide along the 60 degree faces.")
     S.append({"title": "Glue the board", "text": tx, "diagrams": ["layout"],
@@ -668,9 +715,14 @@ def diagrams(plan, unit_type_of, unit_list):
         rep = next(sl for sl in plan["slices"] if sl["id"] == lg["rep"])
         pts = [polys[i]["pts"] for i in rep["bars"]]
         b = bbox_of(pts); bw, bh = b[2] - b[0], b[3] - b[1]
+        if bh > 2 * bw:      # a tall strip panel: draw it lying on the bench, as it is glued
+            R = lambda q: [[v[1], -v[0]] for v in q]
+            pts = [R(q) for q in pts]; b = bbox_of(pts); bw, bh = b[2] - b[0], b[3] - b[1]
+        else:
+            R = lambda q: q
         sc = min(60, 560 / bw, 320 / bh)
         s = Svg(b, sc, pad=50, extra_h=150, title=lg["name"])
-        for i in rep["bars"]: s.poly(polys[i]["pts"], col(polys[i]["role"]), "#00000066", 0.6)
+        for i in rep["bars"]: s.poly(R(polys[i]["pts"]), col(polys[i]["role"]), "#00000066", 0.6)
         for u in lg["units"]:
             for a_, b_ in outline_edges([polys[i]["pts"] for i in unit_list[u]]): s.line(a_, b_, "#111", 1.8)
             t, gx = unit_type_of[u]
