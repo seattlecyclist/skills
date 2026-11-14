@@ -53,6 +53,33 @@ build of them exists. All but `chevrons` need the small triangle bar and so the 
 `ziggurat` is one motif, not a repeat. To add another, write a `colour(u, v)` function and pass it to
 `_lattice`.
 
+## tribars (impossible triangles)
+
+On the same lattice with logs four small triangles on a side. Every upward log is a Penrose tribar: three
+identical trapezoid bars (3 and 2 units on their faces, one unit thick) set pinwheel fashion round a
+one-unit triangular key. Every downward log is plain ground, split into a trapezoid and a triangle bar
+because a triangle the size of the log is deeper than a 10" saw rips at 30 degrees. Roles `a`, `b`, `c`
+(the bars), `key`, `ground`, `ground_mid`; give `ground` and `ground_mid` the same wood. `side` 0.75.
+All rows are the same crosscut slid half a log: one plank. This skill's own design.
+
+## sierpinski
+
+Each large upward triangle (eight units on a side) is the fractal: light unit triangles with dark holes
+of one, two and four units; the large downward triangles are ground. Built at `levels: 2`: first-level
+logs two units on a side (three light bars round a dark one, or one solid bar), four of those to a log
+four units on a side. No bar is larger than two units. Roles `tri`, `hole`, `ground`. `side` 0.625.
+Two planks, each cut for half the rows. This skill's own design.
+
+## swell (graded checkerboard)
+
+A two-wood checkerboard whose strip widths and row thicknesses grow from `min` (3/8") at the edges to
+the middle on a sine curve; the middle size is solved from the board size. `cols` (16) and `rows` (22)
+must be even. `cells` is `{"kind": "panel", "graded": true}`: one strip panel makes every row, planed
+thinner before each set of slices, thickest first, and made long enough (`shop.planer_min_length`, 14")
+to go through the planer at the last setting. Every second row is turned end for end. The graded-width
+method is Andrei Muntian's, documented by Bob Chambers (research folder); the sine layout in both
+directions is this skill's own. Roles `a`, `b`.
+
 ## stars6 (six-point stars)
 
 The same rhombille tiling coloured differently. Six rhombi meet at their 60 degree corners at every

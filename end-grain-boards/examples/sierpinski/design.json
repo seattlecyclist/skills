@@ -1,0 +1,9 @@
+{
+ "name": "Sierpinski End-Grain Board",
+ "description": "Sierpinski triangles in maple with walnut holes at three sizes, on a cherry ground",
+ "pattern": "sierpinski",
+ "params": {"side": 0.625},
+ "board": {"width": 12.5, "length": 17.3, "thickness": 1.5},
+ "species": {"tri": "maple", "hole": "walnut", "ground": "cherry"},
+ "options": {"edge": "1/8\" chamfer", "feet": true}
+}

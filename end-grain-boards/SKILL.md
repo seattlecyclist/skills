@@ -46,7 +46,7 @@ has the rules and the reasons.
 | `scripts/logs.py` | The build: face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
 | `scripts/planks.py` | Groups the rows into planks: which rows are the same sequence of logs as cut, turned or slid along, and the end view of each plank. |
 | `scripts/repeats.py` | The repeat math: row period, turns, plank types, nearby sizes ranked by how well they repeat, and `--variants`, a page of every face one plank can make by turning and sliding rows. |
-| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
+| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `tribars`, `sierpinski`, `swell`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
 | `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
@@ -57,7 +57,7 @@ has the rules and the reasons.
 | `references/technique.md` | The five rules, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
 | `references/repeats.md` | The ten fixed rules that make a plan come out the same every time, the four moves and what each does on the face, and the math for finding repeats. **Read before changing a size or pattern to cut the plank count, or when asked for new looks from one plank.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Thirteen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`; each with `design.json`, `plan.html`, `guide.jpg` and, where one has been rendered, `photo.jpg`. |
+| `examples/` | Sixteen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`, and three built from the concept sheet, `impossible-triangles`, `sierpinski`, `swell`; each with `design.json`, `plan.html`, `guide.jpg` and, where one has been rendered, `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in

@@ -27,7 +27,7 @@ import planks as PK
 DEFAULT_SHOP = {"kerf": 0.125, "max_log_length": 24.0, "flatten_allowance": 0.125, "end_trim": 0.75,
                 "stock_width": 5.5, "spare_slices": 1, "rip_oversize": 1 / 32, "true_skim": 0.01, "hold_end": 2.0, "edge_clean": 0.125, "sander_opening": 3.0,
                 "glue_extra": 0.5, "blank_remainder": 1.5, "max_cut_height": 3.125, "sled_base": 0.5, "min_bar_face": 0.375,
-                "max_crosscut": 24.0, "planer_width": 12.5}
+                "max_crosscut": 24.0, "planer_width": 12.5, "planer_min_length": 14.0}
 S3 = math.sqrt(3)
 FONT = "IBM Plex Mono, ui-monospace, Menlo, monospace"
 
@@ -663,6 +663,10 @@ def build(design, out, photo=None):
         n = npk[lg["id"]]; need = n + max(shop["spare_slices"], math.ceil(n * 0.05))
         k = max(1, math.ceil(need * pitch / usable)); per = math.ceil(need / k)
         length = _up(per * pitch + ends)
+        if lg.get("graded"):      # one panel, planed thinner between cuts: it must stay long enough for the planer to the last cut
+            k, per = 1, n; length = _up(n * pitch + max(ends, shop["planer_min_length"]))
+            hs = sorted({round(r["height"], 4) for r in rows}, reverse=True)
+            lg["grades"] = [{"thick": h, "rows": [r["n"] for r in rows if abs(r["height"] - h) < 1e-3]} for h in hs]
         lg.update(slices=n, spares=k * per - n, per_log=per); lg["make"][length] += k
     bar_types = OrderedDict(); need = defaultdict(lambda: defaultdict(int))
     for lg in sorted(logs, key=lambda l: -l["level"]):
@@ -675,6 +679,16 @@ def build(design, out, photo=None):
                         key, pp, L, A = shape_of(part["pts"]); key = (key, bool(part.get("outside")))
                         if key not in bar_types:
                             bar_types[key] = {"id": None, "recipe": recipe(key[0], pp, L, A, shop, key[1]), "pts": pp, "sides": L, "angles": A}
+                        if lg.get("graded") and bar_types[key].get("graded") is None:
+                            # a strip of a graded panel: the blank is planed to the panel's first thickness and the strip is ripped to its width
+                            wx = max(v[0] for v in part["pts"]) - min(v[0] for v in part["pts"]); tp = lg["h"] + 1 / 16
+                            ov_ = shop.get("rip_oversize", 1 / 32)
+                            bar_types[key]["graded"] = True
+                            bar_types[key]["recipe"] = {"kind": "rect", "label": f"{short(wx)} strip", "dims": {"width": wx, "thick": tp}, "stock": tp,
+                                "per_bar": wx + ov_ + shop["kerf"], "lead": 0.0, "tilt": 0, "stop": wx + ov_, "setup": "square", "warn": [],
+                                "steps": [f"Mill the blank to {dim(tp)} thick: the panel's first thickness plus 1/16\" to clean up after glue.",
+                                          f"Blade square. Rip the strip {dim(wx + ov_)} wide with the fence {short(wx + ov_)} from the blade.",
+                                          f"Stand it on edge and plane the sawn edges to {dim(wx)}, half off each edge. Measure with calipers: this width is a grid line that runs the whole board."]}
                         part["shape"] = key
                         need[(key, part["wood"])][_up(ln + shop["glue_extra"])] += k
     for n, (k, bt) in enumerate(bar_types.items()):
@@ -714,6 +728,15 @@ def build(design, out, photo=None):
                                         "yield": f'{bl["bars"]} + {bl["spares"]} spare'} for bl in b["lengths"]]})
         st["bf"] += bf
         if not q: check(False, f"Bar {b['bar']} stock", f"{b['stock']:.2f}\" thick is more than 16/4; laminate blanks first")
+    if lp["info"].get("graded"):      # every strip is the same thickness: rip them all from shared blanks, not one blank per width
+        usable_w = shop["stock_width"] - shop["blank_remainder"]
+        for wkey, st in stock.items():
+            mine = [b for b in bars_out if b["species"] == wkey]; b0 = mine[0]
+            width = sum((b["total_bars"] + b["total_spares"]) * bar_types[next(k_ for k_, bt in bar_types.items() if bt["id"] == b["bar"])]["recipe"]["per_bar"] for b in mine)
+            nb = max(1, math.ceil(width / usable_w)); ln = b0["lengths"][0]["blank_length"]; q = nominal(b0["stock"])
+            st["items"] = [{"bar": f'{mine[0]["bar"]} to {mine[-1]["bar"]}', "mill_to": b0["stock"], "rough": f"{q}/4" if q else "glue up", "per_blank": len(mine),
+                            "blanks": [{"n": nb, "size": f'{short(b0["stock"])} x {short(shop["stock_width"])} x {ln}"', "yield": f'{sum(b["total_bars"] for b in mine)} strips + {sum(b["total_spares"] for b in mine)} spare'}]}]
+            st["bf"] = nb * (q or 16) / 4 * (shop["stock_width"] + 0.5) * ln / 144
     if frame:
         thin = [r for r in frame_out["rings"] if r["width"] < 0.375 - 1e-6]
         check(not thin, "Frame rings at least 3/8\" wide", ", ".join(f'{r["role"]} {short(r["width"])}' for r in thin) + ("; a thinner end-grain strip breaks before it is glued on" if thin else ""), "warn")
@@ -1155,6 +1178,8 @@ def steps(plan, design):
         else:
             tx = ["Plane both faces of each panel clean and parallel, all panels at one planer setting. These faces are the glue faces of the board. "
                   f"Bring the panels to {dim(main['h'])} thick."]
+            if main.get("graded"):
+                tx = [f"Plane both faces of the panel clean and parallel and bring it to {dim(main['h'])}, the first and thickest setting. These faces are the glue faces of the board. The next step takes it thinner two slices at a time."]
         S.append({"title": f"Clean and check the {what}s" if main["kind"] == "hex" else f"True the {what}s", "text": tx, "figs": ["true"] if main["kind"] == "tri" and lv == levels[0] else [], "see": [],
                   "dont": "leave dried glue on a face. A bead a few thousandths high holds the next joint open." if main["kind"] == "hex" else
                           "leave a glue face as it came out of the clamps. Dried glue and a part standing a few thousandths proud hold the next joint open."})
@@ -1168,18 +1193,32 @@ def steps(plan, design):
                else "Lay the log on one flat with a corner touching the sled fence, marked end away from the stop, and clamp it down with the hold-down on its top flat. The squaring cut was made after the glue-up; repeat it only if the end is not clean." if kind == "hex"
                else "Lay the log on its chalked face against the sled fence, marked end away from the stop, and clamp it down." if kind == "blocks"
                else "Lay the panel against the sled fence and clamp it down.")
-        tx = [f"Square the unmarked end of each log first. {lay}" if kind != "panel" else f"Square one end of each panel first. {lay}",
-              f"Set the stop block {dim(cut + 1.0)} from the blade and use the 1\" spacer: slide the log up to the spacer, clamp the log, take the spacer away, then cut. "
-              f"The slice comes off {dim(cut)} thick (finished {short(T)} plus {short(sh['flatten_allowance'])} to flatten) with an inch of room beside it, so it cannot bind between blade and stop.",
-              f"Cut {ns} slices in all" + ": " + ", ".join(f"{lg['slices']} + {lg['spares']} spare from log {lg['id']}" for lg in sliced) + ". "
-              + ("As each slice comes off, turn up the face that was toward the blade and pencil an X on it. Every puck goes into the board X up, so every cube is lit from the same side." if kind == "hex" else
-                 "As each slice comes off, turn up the face that was toward the blade and pencil a short line on it along the edge that lay on the sled. "
-                 "That line is the mark sheet 05 draws inside every slice. Stack the slices by letter." if kind != "panel" else "Stack them in order."),
-              "Hold the slice down on the sled base with a push stick as the blade comes through, hand well clear. Push the sled on until the slice is past the blade, "
-              "stop, and lift the slice away before pulling the sled back.",
-              f"The last {short(sh['hold_end'])} of each log is the part the clamp holds. It is never sliced: stop there."]
-        S.append({"title": "Crosscut the slices", "text": tx, "figs": ["cut_setup", "asm_cut"], "see": [],
-                  "dont": "cut a slice against a fixed stop with no spacer, or slice into the last 2 inches of a log. A trapped slice is thrown; a short stub cannot be held."})
+        graded = next((lg for lg in sliced if lg.get("grades")), None)
+        if graded:
+            gr = graded["grades"]; last = graded["length"] - (len(rows) - len(gr[-1]["rows"])) * (cut + sh["kerf"])
+            tx = [f"One panel makes every row. It starts at {dim(gr[0]['thick'])} and is planed thinner before each set of slices, {len(gr)} settings in all, thickest first. "
+                  f"Plane both faces a little at each setting so the panel stays flat, and set the planer with calipers on the panel, not by the scale.",
+                  "Settings and the rows cut at each: " + "; ".join(f"{dim(g['thick'])} for rows {_join(str(n) for n in g['rows'])}" for g in gr) + ".",
+                  f"At each setting: plane, square the end if it is not clean, then crosscut one slice for each row listed. {lay} "
+                  f"Set the stop block {dim(cut + 1.0)} from the blade and use the 1\" spacer: slide the panel up to the spacer, clamp it, take the spacer away, then cut. Each slice comes off {dim(cut)} long (finished {short(T)} plus {short(sh['flatten_allowance'])} to flatten).",
+                  "Pencil its row number on the end grain of each slice as it comes off and stack them in order. Slices of neighbouring settings differ by as little as 1/32\" and cannot be told apart later.",
+                  f"The panel is made {dim(graded['length'])} long so it is still about {short(last)} long at the last planer setting; most planers need 12\" to 14\". There are no spare slices, so cut slowly and measure every setting.",
+                  "Hold the slice down on the sled base with a push stick as the blade comes through, hand well clear. Push the sled on until the slice is past the blade, stop, and lift the slice away before pulling the sled back."]
+            S.append({"title": "Plane and crosscut, thickest first", "text": tx, "figs": ["cut_setup", "asm_cut"], "see": [],
+                      "dont": "plane the panel once it is shorter than your planer's minimum length, or cut a slice against a fixed stop with no spacer."})
+        else:
+            tx = [f"Square the unmarked end of each log first. {lay}" if kind != "panel" else f"Square one end of each panel first. {lay}",
+                  f"Set the stop block {dim(cut + 1.0)} from the blade and use the 1\" spacer: slide the log up to the spacer, clamp the log, take the spacer away, then cut. "
+                  f"The slice comes off {dim(cut)} thick (finished {short(T)} plus {short(sh['flatten_allowance'])} to flatten) with an inch of room beside it, so it cannot bind between blade and stop.",
+                  f"Cut {ns} slices in all" + ": " + ", ".join(f"{lg['slices']} + {lg['spares']} spare from log {lg['id']}" for lg in sliced) + ". "
+                  + ("As each slice comes off, turn up the face that was toward the blade and pencil an X on it. Every puck goes into the board X up, so every cube is lit from the same side." if kind == "hex" else
+                     "As each slice comes off, turn up the face that was toward the blade and pencil a short line on it along the edge that lay on the sled. "
+                     "That line is the mark sheet 05 draws inside every slice. Stack the slices by letter." if kind != "panel" else "Stack them in order."),
+                  "Hold the slice down on the sled base with a push stick as the blade comes through, hand well clear. Push the sled on until the slice is past the blade, "
+                  "stop, and lift the slice away before pulling the sled back.",
+                  f"The last {short(sh['hold_end'])} of each log is the part the clamp holds. It is never sliced: stop there."]
+            S.append({"title": "Crosscut the slices", "text": tx, "figs": ["cut_setup", "asm_cut"], "see": [],
+                      "dont": "cut a slice against a fixed stop with no spacer, or slice into the last 2 inches of a log. A trapped slice is thrown; a short stub cannot be held."})
 
         if kind == "hex":
             nrow = len(rows); nh = len(halves); nr_ = sum(1 for pk in halves if pk["half"] == "right"); lgh = sliced[0]
@@ -1208,6 +1247,9 @@ def steps(plan, design):
             nrow = len(rows); per = max(len(r["pucks"]) for r in rows)
             if kind == "panel":
                 tx = [f"The slices are the rows: {nrow} of them. Lay them out end grain up in the order on sheet 05, turning the ones marked with a prime end for end."]
+                if plan["info"].get("graded"):
+                    tx += ["Each thickness was cut for rows on both sides of the middle. Every second row is turned end for end, which swaps the woods and makes the checker.",
+                           f"The thinnest slices are {dim(min(r['height'] for r in rows))} thick and {dim(cut)} tall, so they tip. Glue the board in packs of five or six slices between taped cauls, with a square scrap block taped outside the first and last slice of a pack so the clamps bear on something that stands up, then glue the packs together."]
             else:
                 tx = [f"Lay out the whole board dry on a flat surface from sheet 05: {nrow} rows of up to {per} slices. Each slice goes pencil line up, with the line on the edge where the drawing shows it. "
                       + ("A letter with a prime (A′) is turned over, line underneath; the drawing still shows which edge the line is on. " if any(pk.get("flip") for r in rows for pk in r["pucks"]) else "No slice in this board is turned over. ")

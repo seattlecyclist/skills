@@ -654,4 +654,77 @@ def notched(p, board):
             "notes": [f"Blocks {4 * t:g}\" across their points, each with a {t:g}\" notch at the near corner."]}
 
 
-GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched})
+def tribars(p, board):
+    """Impossible triangles: every upward triangle log is a Penrose tribar, three identical trapezoid bars
+    set pinwheel fashion round a small triangular key, each bar seeming to pass over the next. The
+    downward logs are plain ground. Roles: a, b, c (the bars), key, ground."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        a, b = u % 4, v % 4; c = 4 - a - b
+        if c < 0:      # the ground log is four half-size triangles: one that size is too deep to rip
+            return "ground_mid" if a > 2 and b > 2 and a + b < 6 else "ground"
+        if a > 1 and b > 1 and c > 1: return "key"
+        if b < 1 and a > 1: return "a"
+        if c < 1 and b > 1: return "b"
+        return "c"
+    polys, trim, cells = _lattice(p, board, t, 4, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c", "key", "ground", "ground_mid"], "cells": cells,
+            "notes": [f"Every upward log is the same tribar: three trapezoid bars ({3 * t:g}\" and {2 * t:g}\" faces, {t * S3 / 2:.3g}\" thick) round a {t:g}\" key. Every downward log is plain ground, glued from two smaller bars because a {4 * t:g}\" triangle is deeper than the saw rips at 30 degrees.",
+                      "This skill's own design; no published build of it exists."]}
+
+
+def sierpinski(p, board):
+    """Sierpinski triangles: each large upward triangle is the fractal, light triangles with dark holes at
+    three sizes; the large downward triangles are plain ground. Built from triangle logs half the size of
+    the large triangle, each made in two levels. Roles: tri, hole, ground."""
+    t = float(p.get("side", 0.625))
+    def colour(u, v):
+        a, b = u % 8, v % 8
+        if a + b > 8: return "ground"
+        s = 8
+        while s > 1:
+            h = s / 2; c = s - a - b
+            if a < h and b < h and c < h: return "hole"
+            if a >= h: a -= h
+            elif b >= h: b -= h
+            s = h
+        return "tri"
+    q = dict(p); q.setdefault("levels", 2)
+    polys, trim, cells = _lattice(q, board, t, 2, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["tri", "hole", "ground"], "cells": cells,
+            "notes": [f"The fractal has holes at three sizes: {t:g}\", {2 * t:g}\" and {4 * t:g}\". First-level logs are {2 * t:g}\" triangles: three light bars round a dark one, or one solid bar. Four of those make each {4 * t:g}\" log, so no bar is larger than {2 * t:g}\".",
+                      "This skill's own design; no published build of it exists."]}
+
+
+def _frac(x):
+    n = round(x * 32); w, r = divmod(n, 32)
+    if not r: return str(w)
+    g = math.gcd(r, 32); return (f"{w}-" if w else "") + f"{r // g}/{32 // g}"
+
+
+def swell(p, board):
+    """Swell: a two-wood checkerboard whose squares grow from the edges to the middle on a sine curve, so a
+    flat board looks as if it bulges. One strip panel makes every row: it is planed a little thinner before
+    each pair of slices is cut. Roles: a, b."""
+    cols = int(p.get("cols", 16)); rows = int(p.get("rows", 22)); lo = float(p.get("min", 0.375))
+    if cols % 2 or rows % 2: raise SystemExit("swell needs an even number of columns and rows: every second row is the same slice turned end for end")
+    def grade(n, total, step):
+        sn = [math.sin(math.pi * (i + 0.5) / n) for i in range(n // 2)]
+        hi = lo + max(0.0, (total / 2 - n / 2 * lo) / sum(sn))
+        half = [round((lo + (hi - lo) * v) / step) * step for v in sn]
+        return half + half[::-1]
+    ws = grade(cols, board["width"], 1 / 32); hs = grade(rows, board["length"], 1 / 32)
+    polys = []; y = 0.0
+    for j, h in enumerate(hs):
+        x = 0.0
+        for i, w in enumerate(ws):
+            polys.append(_poly([(x, y), (x + w, y), (x + w, y + h), (x, y + h)], "a" if (i + j) % 2 == 0 else "b", f"r{j:02d}"))
+            x += w
+        y += h
+    return {"polygons": polys, "trim": [0, 0, sum(ws), sum(hs)], "roles": ["a", "b"], "cells": {"kind": "panel", "graded": True},
+            "notes": [f"{rows} rows of {cols} pieces. Strip widths run from {_frac(min(ws))}\" at the edges to {_frac(max(ws))}\" in the middle; row thicknesses from {_frac(min(hs))}\" to {_frac(max(hs))}\".",
+                      "One panel makes every row. Each thickness is used once each side of the middle, and the slice above the middle is its partner turned end for end.",
+                      "The graded-width method is the one behind Andrei Muntian's optical illusion boards, documented step by step by Bob Chambers. Grading both directions on a sine curve is this skill's own layout."]}
+
+
+GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched, "tribars": tribars, "sierpinski": sierpinski, "swell": swell})
