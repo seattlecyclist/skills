@@ -437,8 +437,55 @@ def _rot90(v, k):
     return (x, y)
 
 
+# ------------------------------------------------------------------------------------- hexagon logs (tumbling blocks)
+def hex_plan(polys, trim, cells, wood_of):
+    """Tumbling blocks the way makers build them: three diamond bars taped into a hexagon log, the log sliced into
+    pucks, the pucks glued into the board inside a clamped frame. A hexagon whose centre is on a side trim line
+    goes in as a half puck, so both sides of the glue-up are straight."""
+    s = float(cells["side"]); w = S3 * s
+    by = {}
+    for p in polys: by.setdefault(p["unit"], []).append(p)
+    ids = [a for a in "ABCDEFGHJKLMNPQRSTUVWXYZ"]
+    types = {}; logs = []; rows = {}
+    for unit, ps in by.items():
+        if len(ps) != 3: continue
+        vs = {}
+        for p in ps:
+            for v in p["pts"]: vs.setdefault(_r(v), []).append(v)
+        c = next((v[0] for v in vs.values() if len(v) == 3), None)
+        if c is None: continue
+        if c[0] < trim[0] - 1e-6 or c[0] > trim[2] + 1e-6: continue
+        if c[1] + s <= trim[1] + 1e-6 or c[1] - s >= trim[3] - 1e-6: continue
+        half = "right" if c[0] < trim[0] + 1e-6 else "left" if c[0] > trim[2] - 1e-6 else None
+        loc = [(wood_of(p["role"]), p["role"], ccw([(v[0] - c[0] + w / 2, v[1] - c[1] + s) for v in p["pts"]])) for p in ps]
+        loc.sort(key=lambda t: -max(v[1] for v in t[2]))
+        kk = key_of(loc)
+        if kk not in types:
+            types[kk] = ids[len(logs)]
+            out = [(w / 2, 0), (w, s / 2), (w, 1.5 * s), (w / 2, 2 * s), (0, 1.5 * s), (0, s / 2)]
+            logs.append({"id": types[kk], "key": kk, "kind": "hex", "shape": "hex", "level": 1, "side": s, "w": w, "h": 2 * s, "outline": out,
+                         "cells": [(r, p_) for _, r, p_ in loc],
+                         "stages": [{"parts": [{"bar": True, "wood": w_, "role": r, "pts": p_} for w_, r, p_ in loc], "jig": "tape"}], "crosscut": True})
+        out = [(c[0], c[1] - s), (c[0] + w / 2, c[1] - s / 2), (c[0] + w / 2, c[1] + s / 2), (c[0], c[1] + s), (c[0] - w / 2, c[1] + s / 2), (c[0] - w / 2, c[1] - s / 2)]
+        cl = [(p["role"], [tuple(v) for v in p["pts"]]) for p in ps]
+        if half:
+            box = [(c[0], c[1] - s - 1), (c[0] + w, c[1] - s - 1), (c[0] + w, c[1] + s + 1), (c[0], c[1] + s + 1)] if half == "right" else \
+                  [(c[0] - w, c[1] - s - 1), (c[0], c[1] - s - 1), (c[0], c[1] + s + 1), (c[0] - w, c[1] + s + 1)]
+            out = clip_poly(out, box); cl = [(r, q) for r, q in ((r, clip_poly(q, box)) for r, q in cl) if q]
+        j = round(c[1] / (1.5 * s))
+        rows.setdefault(j, []).append({"log": types[kk], "pts": out, "flip": False, "half": half, "ref": (out[0], out[1]), "cells": cl, "x": c[0]})
+    out_rows = []
+    for n, j in enumerate(sorted(rows)):
+        pk = sorted(rows[j], key=lambda p: p["x"])
+        xs = [v[0] for p in pk for v in p["pts"]]; ys = [v[1] for p in pk for v in p["pts"]]
+        out_rows.append({"n": n + 1, "pucks": pk, "height": 2 * s, "length": max(xs) - min(xs),
+                         "pts": [(min(xs), min(ys)), (max(xs), min(ys)), (max(xs), max(ys)), (min(xs), max(ys))]})
+    return {"logs": logs, "rows": out_rows, "info": {"kind": "hex", "side": s, "angle": 0}}
+
+
 def plan(polys, trim, cells, wood_of, bar_ok=None):
     kind = cells.get("kind", "panel")
+    if kind == "hex": return hex_plan(polys, trim, cells, wood_of)
     if kind == "tri": return tri_plan(polys, trim, cells, wood_of, bar_ok)
     if kind == "blocks": return blocks_plan(polys, trim, cells, wood_of)
     return panel_plan(polys, trim, wood_of)

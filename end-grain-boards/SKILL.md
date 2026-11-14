@@ -25,6 +25,10 @@ field. Every truing pass takes a skim, so the plan lays the pattern out at the t
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
 
+One board is the exception: `cubes` (tumbling blocks) is built the way makers build it, three diamond
+bars taped into a hexagon log, the logs sliced into pucks and all the pucks glued at once in a clamped
+frame. Its logs are not machined, so its plan stresses one-setup bars and keeps a gap-filling step.
+
 Never plan a glue-up whose outside is a zigzag or V-groove (rows of hexagons, nested units): those
 faces cannot be machined, squeeze-out stays in them and the next joint gaps. `references/technique.md`
 has the rules and the reasons.
@@ -83,7 +87,7 @@ Get, or ask once for only what you cannot infer:
   "name": "Tumbling Blocks End-Grain Board",
   "description": "3D tumbling blocks: a honeycomb of cubes seen corner-on, maple lids over cherry and walnut sides",
   "pattern": "cubes",
-  "params": {"side": 1.0},
+  "params": {"side": 1.5},
   "board": {"width": 12, "length": 16, "thickness": 1.5},
   "species": {"lid": "maple", "left": "cherry", "right": "walnut"},
   "options": {"edge": "1/8\" chamfer", "feet": true, "juice_groove": false, "handles": false},

@@ -64,9 +64,13 @@ plan, _ = run(d)
 expect("checkerboard: one strip panel, every other slice turned", len(plan["logs"]) == 1 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False, True})
 d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
 plan, _ = run(d)
-expect("tumbling blocks: one triangle log, two bar shapes, no glue-up over four parts",
-       len(plan["logs"]) == 1 and len(plan["bar_types"]) == 2 and max(len(s["parts"]) for s in plan["logs"][0]["stages"]) <= 4)
-d["params"]["side"] = 1.25; plan, errs = run(d)
+expect("tumbling blocks: one hexagon log of three diamond bars, no triangle bar, half pucks on both long sides",
+       len(plan["logs"]) == 1 and plan["logs"][0]["shape"] == "hex" and len(plan["bar_types"]) == 1 and "triangle" not in plan["bar_types"][0]["kind"]
+       and {pk.get("half") for r in plan["rows"] for pk in r["pucks"]} == {None, "left", "right"})
+t = copy.deepcopy(d); t["params"] = {"side": 1.0, "build": "triangle"}; plan, errs = run(t)
+expect("tumbling blocks, build triangle: one triangle log, two bar shapes, no glue-up over four parts",
+       not errs and len(plan["logs"]) == 1 and len(plan["bar_types"]) == 2 and max(len(s["parts"]) for s in plan["logs"][0]["stages"]) <= 4)
+d["params"]["side"] = 1.75; plan, errs = run(d)
 expect("a log too tall for the saw is caught", errs and any("fits under the saw" in e for e in errs))
 d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
 plan, _ = run(d)

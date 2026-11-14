@@ -3,7 +3,7 @@
  "description": "3D tumbling blocks: a honeycomb of cubes seen corner-on, each cube a pale maple lid over a cherry left face and a walnut right face",
  "pattern": "cubes",
  "params": {
-  "side": 1.0
+  "side": 1.5
  },
  "board": {
   "width": 12,
@@ -18,5 +18,8 @@
  "options": {
   "edge": "1/8\" chamfer",
   "feet": true
+ },
+ "shop": {
+  "stock_width": 6.5
  }
 }

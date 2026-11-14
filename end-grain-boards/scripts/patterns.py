@@ -76,11 +76,18 @@ def cubes(p, board):
     their own species (light lid, medium and dark sides reads best)."""
     polys, trim, rows, cols = _rhombille(p, board, lambda name, i, j: name)
     s = float(p.get("side", 1.25))
+    notes = [f"Every cube is three {s:g}\" diamonds: lid, left face, right face.",
+             "Light lid, medium left, dark right reads as light from the top left; swap left and right to move the light."]
+    if p.get("build", "hexagon") != "triangle":
+        # Built the way makers build tumbling blocks: three diamond bars taped into a hexagon log, sliced into pucks.
+        # The side cuts run through the centres of every other row (half pucks there), the end cuts across the upright flats.
+        w = S3 * s; n = max(2, round(board["width"] / (w / 2)))
+        return {"polygons": polys, "trim": [0.0, trim[1], n * w / 2, trim[3]], "roles": ["lid", "left", "right"],
+                "cells": {"kind": "hex", "side": s}, "notes": notes}
     return {"polygons": polys, "trim": trim, "roles": ["lid", "left", "right"], "cells": _rhombille.cells,
             "period": 1.5 * s,
             "centers": [(c[0], c[1] + 0.5 * s) for c in (_rhombille.hexc(i, j) for i, j in _rhombille.span)],     # both end cuts run through the middle of a row of lids
-            "notes": [f"Every cube is three {s:g}\" diamonds: lid, left face, right face.",
-                      "Light lid, medium left, dark right reads as light from the top left; swap left and right to move the light."]}
+            "notes": notes}
 
 
 def stars6(p, board):

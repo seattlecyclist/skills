@@ -15,11 +15,22 @@ rows shifted half a hexagon.
 | `side` | 1.25 | rhombus side, inches |
 | `cols`, `rows` | fitted | hexagons per row, rows |
 
-Build: triangle logs three diamonds on a side (`3·side`), each of three diamonds and three small
-triangles (half lids) in two glue-ups; the board is whole columns of those logs, so its width moves
-to a multiple of `2.6·side`. One log type, two bar shapes, both at a 30 degree blade tilt. Keep
-`side` at 1" or less so the log passes under the saw. Roles: `lid`, `left`, `right`. Light lid, mid
-left, dark right puts the light top left.
+| `build` | `hexagon` | `hexagon` or `triangle` (below) |
+
+Build, `hexagon` (default): the way makers build this board (Tom Silva, This Old House; Degoose and
+lanwater on LumberJocks). Three diamond bars, one of each wood, are taped into a hexagon log; the logs
+are sliced into pucks; every puck is glued at once inside a clamped frame of four boards, from the
+centre out. One bar shape at a 30 degree tilt, no triangle bar. The long sides run through the
+centres of every other row, where half pucks go, so the width moves to a multiple of `0.87·side`.
+Nothing is machined between the bars and the board, so the bars must all be cut at one setup, and
+the plan keeps Silva's gap-filling step. Keep `side` at 1.5" or less so the log passes under the saw;
+1.5" gives about 35 pucks on a 12 x 16 board (Silva's has 36).
+
+Build, `triangle`: triangle logs three diamonds on a side (`3·side`), each of three diamonds and
+three small triangles (half lids) in two glue-ups, trued in a V block. Every face is machined, but it
+needs a triangle bar and no published build uses it. Keep `side` at 1" or less.
+
+Roles: `lid`, `left`, `right`. Light lid, mid left, dark right puts the light top left.
 
 ## stars6 (six-point stars)
 

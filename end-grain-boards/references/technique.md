@@ -42,12 +42,29 @@ ripped between a tilted blade and the fence.
   sand to thickness.
 - Trapezoids: square-edged strips again; bevel one edge, turn the strip end for end with the same
   face up, bevel the other. The bar sits wide face up under the caul. True the sawn faces in a V block.
-- Triangles: a triangle leaves no flat for a clamp, so the wide blank is clamped to the fence deck
-  and turned over end for end before every pass. The bar comes off base down on the landing deck,
-  between a stop strip and the blade, and rides with the sled. Stop when the blank is 1-1/2" wide.
-  True the sawn faces in a V block.
+- Triangles: a triangle leaves no flat for a clamp, so it is never the piece that is held. The cut
+  is Vaughn McMillan's (Woodcraft Magazine, quilt-pattern board): bevel the edge of a wide board, turn
+  it over, rip again, and the triangle comes away as the offcut on the open side of the blade. He runs
+  a board at least 5" wide along the rip fence with a push block. The plan clamps the same wide blank
+  to the fence deck and turns it end for end before every pass; the bar lands base down on the landing
+  deck against a stop strip and rides out with the sled. The stop strip is the plan's own addition, so
+  the plan says to prove it on scrap. Stop when the blank is 1-1/2" wide. True the sawn faces in a V block.
+- Where a pattern can avoid triangle bars, avoid them. Tumbling blocks are built from hexagon logs of
+  three diamond bars for that reason (see Hexagon logs).
 
 The plan's sheet 03 draws the sled from the front for each bar and step 2 draws it from above.
+
+## Hexagon logs (tumbling blocks)
+
+How makers build the cube board (Tom Silva at This Old House; Degoose and lanwater on LumberJocks).
+Three 60 degree diamond bars, one of each wood, are glued into a hexagon log held by painter's tape
+wrapped round it every few inches. The log is not machined: scrape the glue and check it across the
+flats. It is crosscut into pucks, the puck sides get a few strokes on 120 grit, and all the pucks are
+glued in one session on a taped base, from the centre out, inside a frame of four straight boards
+clamped both ways, with cauls over the top. Half pucks, sawn point to point, fill the ends of every
+other row. Because nothing is machined after the bars, cut every bar at one saw and planer setting
+(lanwater's second batch did not match his first), expect hairline gaps, and fill them with glue and
+sanding dust before the last flattening pass, as Silva does.
 
 ## Triangle logs (60 degree patterns)
 

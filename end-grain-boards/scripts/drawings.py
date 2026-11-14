@@ -119,7 +119,9 @@ def layout(plan):
         for pk in r["pucks"]:
             s.poly(pk["pts"], "none", INK, 1.0)
             c = _cen(pk["pts"])
-            if plan["info"]["kind"] != "panel":
+            if plan["info"]["kind"] == "hex":
+                _chip(s, c, pk["log"] + ("½" if pk.get("half") else ""), r=8 if small else 10, size=10 if small else 11.5)
+            elif plan["info"]["kind"] != "panel":
                 a, b = pk["ref"]; k = 0.16
                 a2 = (a[0] + (c[0] - a[0]) * k, a[1] + (c[1] - a[1]) * k); b2 = (b[0] + (c[0] - b[0]) * k, b[1] + (c[1] - b[1]) * k)
                 a3 = (a2[0] + (b2[0] - a2[0]) * 0.12, a2[1] + (b2[1] - a2[1]) * 0.12); b3 = (b2[0] + (a2[0] - b2[0]) * 0.12, b2[1] + (a2[1] - b2[1]) * 0.12)
@@ -314,6 +316,10 @@ def log_stages(plan, lg):
             lw = max(0.4, w - 0.4)
             s.poly([(sh - 0.28, -0.28), (sh + lw, -0.28), (sh + lw, 0), (sh, 0), (sh, lw), (sh - 0.28, lw)], MDF, MDF_E, 1)
             s.poly([(sh + w + 0.28, h + 0.28), (sh + w - lw, h + 0.28), (sh + w - lw, h), (sh + w, h), (sh + w, h - lw), (sh + w + 0.28, h - lw)], MDF, MDF_E, 1)
+        elif shape == "hex":
+            c0 = (sh + w / 2, h / 2)
+            band = [(c0[0] + (x - w / 2) * 1.07, c0[1] + (y - h / 2) * 1.07) for x, y in lg["outline"]]
+            s.poly(band, "#8fb8e8", "#3f78c0", 1.2, op=0.55)
         elif not solo and not tri:
             s.line((sh - 0.6, 0), (sh + w + 0.6, 0), MDF_E, 2)
         for p in done: _draw_part(s, plan, p, sh, op=0.45, label=False, bold=False)
@@ -326,6 +332,8 @@ def log_stages(plan, lg):
             c = centroid(p["pts"]) if "log" not in p else _cen(p["pts"])
             _chip(s, (c[0] + sh, c[1]), (p["log"] + ("′" if p.get("flip") else "")) if "log" in p else p["bar"], r=9, size=10.5)
         if solo: pass
+        elif shape == "hex":
+            s.text((sh + w / 2, -0.45), "painter's tape wrapped tight round the bundle", 10.5)
         elif tri:
             hw = top / S3 - 0.08
             s.poly([(sh - hw, top), (sh + hw, top), (sh + hw, top + 0.28), (sh - hw, top + 0.28)], MDF, MDF_E, 1)
@@ -342,7 +350,7 @@ def log_stages(plan, lg):
                 _arrow(s, (sh - 0.95, h / 2), (sh - 0.06, h / 2)); _arrow(s, (sh + w + 0.95, h / 2), (sh + w + 0.06, h / 2))
                 if shape == "half":
                     s.poly([(sh + 0.1, h), (sh + w - 0.1, h), (sh + w - 0.1, h + 0.24), (sh + 0.1, h + 0.24)], MDF, MDF_E, 1); s.text((sh + w / 2, h + 0.5), "caul", 10.5)
-        lab = "Solid bar, no glue-up" if solo else f"Glue-up {k + 1}" if n > 1 else "One glue-up"
+        lab = "Solid bar, no glue-up" if solo else f"Glue-up {k + 1}" if n > 1 else "One glue-up, held by tape" if shape == "hex" else "One glue-up"
         s.text((sh + (0 if tri else w / 2), h + 1.72), lab, 12, weight="600")
         if tri and not solo: s.text((sh, h + 1.42), _vb(plan, stg.get('vsize', w), top)['name'], 10.5)
         done += stg["parts"]
@@ -400,9 +408,10 @@ def ripsled(plan):
     s.poly([(2.5, 8.0), (Ls - 2.5, 8.0), (Ls - 2.5, 8.7), (2.5, 8.7)], "#d9c9a0", INK, 0.9)
     for fx in (0.2, 0.5, 0.8):
         x = Ls * fx; s.poly([(x - 0.9, 11.2), (x + 0.9, 11.2), (x + 0.9, 13.2), (x - 0.9, 13.2)], "#9aa3ab", "#59616a", 1); s.line((x, 11.2), (x, 8.35), "#59616a", 4)
-    s.poly([(1.5, 4.3), (Ls - 1.5, 4.3), (Ls - 1.5, 4.9), (1.5, 4.9)], MDF, MDF_E, 1)
+    has_tri = any("triangle" in bt.get("kind", "") for bt in plan["bar_types"])
+    if has_tri: s.poly([(1.5, 4.3), (Ls - 1.5, 4.3), (Ls - 1.5, 4.9), (1.5, 4.9)], MDF, MDF_E, 1)
     s.text((Ls / 2, 14.9), "fence deck: three toggle clamps", 12, weight="600")
-    for y, yl, lab, x0_, col in ((9.98, 11.4, "locating fence", Ls - 1.5, INK), (9.1, 9.9, "strip", Ls - 1.5, INK), (8.35, 8.4, "caul", Ls - 2.5, INK), (6.9, 6.9, "blade", Ls + 1.2, CUT), (4.6, 4.6, "leaning stop, for triangle bars", Ls - 1.5, INK)):
+    for y, yl, lab, x0_, col in ((9.98, 11.4, "locating fence", Ls - 1.5, INK), (9.1, 9.9, "strip", Ls - 1.5, INK), (8.35, 8.4, "caul", Ls - 2.5, INK), (6.9, 6.9, "blade", Ls + 1.2, CUT), (4.6, 4.6, "stop strip, for triangle bars", Ls - 1.5, INK))[:5 if has_tri else 4]:
         if col == INK: s.line((x0_, y), (Ls + 0.4, y), INK, 0.7); s.line((Ls + 0.4, y), (Ls + 1.9, yl), INK, 0.7)
         s.text((Ls + 2.2, yl), lab, 12, anchor="start", fill=col)
     s.text((Ls / 2, 2.2), "landing deck", 12, weight="600")
@@ -432,7 +441,9 @@ def true_fig(plan):
 def cut_setup(plan):
     """The crosscut sled from the operator's side: how the log is held."""
     lg = max((l for l in plan["logs"] if l["crosscut"]), key=lambda l: l["slices"]); tri = lg["kind"] == "tri"
-    w = lg["w"]; h = lg["h"]; sp = plan["species"]
+    w = lg["w"]; h = lg["h"]; sp = plan["species"]; hexl = lg["kind"] == "hex"
+    if hexl:                      # lying on one flat: the end view turned a quarter turn
+        lg = dict(lg, cells=[(r, [(h - y, x) for x, y in pts]) for r, pts in lg["cells"]]); w, h = h, w
     sc = min(58, 300 / (w + 4.2))
     s = Svg((-2.0, -0.9, w + 2.6, max(h, 2.6) + 0.8), sc, pad=22, extra_h=0, title="Log on the crosscut sled, seen along the cut")
     s.poly([(-1.9, -0.5), (w + 2.5, -0.5), (w + 2.5, 0), (-1.9, 0)], MDF, MDF_E, 1)
@@ -452,10 +463,10 @@ def cut_setup(plan):
         s.poly([(-1.2, 0), (0, 0), (0, 0.01), (-1.2, 0.01)], MDF, MDF_E, 0.5)
         cells = [(r, [(x - 1.2 + 0.0, y) for x, y in pts]) for r, pts in cells]
         _arrow(s, (w / 2 - 1.2, h + 0.95), (w / 2 - 1.2, h + 0.08)); s.text((w / 2 + 0.2, h + 0.62), "hold-down", 10.5, anchor="start")
-        s.text((w / 2, -0.75), "log against the fence, clamped down", 10.5)
+        s.text((w / 2, -0.75), "log on one flat, a corner against the fence, clamped down" if hexl else "log against the fence, clamped down", 10.5)
     for r, pts in cells: s.poly(pts, sp[r]["end"], "#1e232760", 0.5)
     xs_ = [v[0] for _, p in cells for v in p]; ys_ = [v[1] for _, p in cells for v in p]
-    out = [(0, 0), (w, 0), (w / 2, h)] if tri else [(min(xs_), 0), (max(xs_), 0), (max(xs_), max(ys_)), (min(xs_), max(ys_))]
+    out = [(0, 0), (w, 0), (w / 2, h)] if tri else [(-1.2, h / 2), (-1.2 + w / 4, 0), (-1.2 + 3 * w / 4, 0), (-1.2 + w, h / 2), (-1.2 + 3 * w / 4, h), (-1.2 + w / 4, h)] if hexl else [(min(xs_), 0), (max(xs_), 0), (max(xs_), max(ys_)), (min(xs_), max(ys_))]
     s.poly(out, "none", INK, 1.5)
     return s.svg()
 
@@ -555,6 +566,35 @@ def board_fig(plan):
     return s.svg()
 
 
+def hexboard_fig(plan):
+    """Every puck glued at once inside a clamped frame of four boards."""
+    rows = plan["rows"]; sp = plan["species"]
+    b = bbox_of([pk["pts"] for r in rows for pk in r["pucks"]]); fw = 0.75; m = 2.3
+    sc = min(600 / (b[2] - b[0] + 2 * m), 640 / (b[3] - b[1] + 2 * m))
+    s = Svg((b[0] - m, b[1] - m, b[2] + m, b[3] + m), sc, pad=20, extra_h=20, title="Pucks glued inside the clamped frame, seen from above")
+    for r in rows:
+        for pk in r["pucks"]:
+            for ro, pts in pk["cells"]: s.poly(pts, sp[ro]["end"], "#1e232730", 0.3)
+            s.poly(pk["pts"], "none", INK, 1.0)
+    ex = 1.6
+    for x0, x1 in ((b[0] - fw, b[0]), (b[2], b[2] + fw)): s.poly([(x0, b[1] - ex), (x1, b[1] - ex), (x1, b[3] + ex), (x0, b[3] + ex)], MDF, MDF_E, 1.2)
+    for y0, y1 in ((b[1] - fw, b[1]), (b[3], b[3] + fw)): s.poly([(b[0], y0), (b[2], y0), (b[2], y1), (b[0], y1)], MDF, MDF_E, 1.2)
+    cx, cy = (b[0] + b[2]) / 2, (b[1] + b[3]) / 2
+    for f in (0.2, 0.5, 0.8):
+        y = b[1] + f * (b[3] - b[1]); x = b[0] + f * (b[2] - b[0])
+        _arrow(s, (b[0] - fw - 1.3, y), (b[0] - fw - 0.08, y)); _arrow(s, (b[2] + fw + 1.3, y), (b[2] + fw + 0.08, y))
+        if f != 0.5: continue
+        _arrow(s, (x, b[1] - fw - 1.3), (x, b[1] - fw - 0.08)); _arrow(s, (x, b[3] + fw + 1.3), (x, b[3] + fw + 0.08))
+    for f in (0.3, 0.7):
+        y = b[1] + f * (b[3] - b[1])
+        s.poly([(b[0] - fw - 0.5, y - 0.3), (b[2] + fw + 0.5, y - 0.3), (b[2] + fw + 0.5, y + 0.3), (b[0] - fw - 0.5, y + 0.3)], MDF, MDF_E, 1.2, dash="6 4", op=0.25)
+    c = max((pk for r in rows for pk in r["pucks"] if not pk.get("half")), key=lambda pk: -math.dist(_cen(pk["pts"]), (cx, cy)))
+    _chip(s, _cen(c["pts"]), "1", r=11, fill="#ffe9a8")
+    s.text((cx, b[3] + fw + 1.75), "frame of four 1x3 boards, clamped both ways; start at puck 1 and work outward", 11)
+    s.text((cx, b[1] - fw - 1.75), "dashed: cauls across the top, clamped down to the base", 11)
+    return s.svg()
+
+
 def trim_fig(plan):
     bd = plan["board"]; g = bd["glued"]; trim = bd["trim"]; sp = plan["species"]
     bb = (g[0] - 0.4, g[1] - 0.4, g[2] + 0.4, g[3] + 0.9)
@@ -563,7 +603,8 @@ def trim_fig(plan):
     for r in plan["rows"]:
         for pk in r["pucks"]:
             for ro, pts in pk["cells"]: s.poly(pts, sp[ro]["end"], "#1e232730", 0.3, op=0.45)
-        s.poly(r["pts"], "none", INK, 0.9)
+            if plan["info"]["kind"] == "hex": s.poly(pk["pts"], "none", INK, 0.9)
+        if plan["info"]["kind"] != "hex": s.poly(r["pts"], "none", INK, 0.9)
     for f in plan["face"]:
         if f["role"] not in ("frame", "liner"): s.poly(f["pts"], sp[f["role"]]["end"], "#1e232740", 0.3)
     s.poly([(trim[0], trim[1]), (trim[2], trim[1]), (trim[2], trim[3]), (trim[0], trim[3])], stroke=CUT, sw=1.8, dash="7 4")
@@ -660,6 +701,8 @@ def _on_any(a, b, outline, keys):
 def asm_cut(plan):
     lg = max((l for l in plan["logs"] if l["crosscut"]), key=lambda l: l["slices"]); sp = plan["species"]; cut = plan["slice_cut"]
     H = lg["h"]
+    if lg["kind"] == "hex":
+        lg = dict(lg, cells=[(r, [(H - y, x) for x, y in pts]) for r, pts in lg["cells"]], w=lg["h"], h=lg["w"]); H = lg["h"]
     cells = [(r, CB.ccw([(-x, H - y) for x, y in pts])) for r, pts in lg["cells"]] if lg["kind"] == "tri" else [(r, CB.ccw([tuple(v) for v in pts])) for r, pts in lg["cells"]]
     s = Scene(az=50, el=26)
     body = max(3.5, 1.6 * lg["w"]); g = 0.55 * cut
@@ -685,6 +728,6 @@ def make(plan):
         out["jigs"] = jigs(plan); out["true"] = true_fig(plan)
     if any(bt.get("setup") in ("para", "trap", "flip") and bt.get("tilt") for bt in plan["bar_types"]): out["ripsled"] = ripsled(plan)
     out["cut_setup"] = cut_setup(plan)
-    out["asm_cut"] = asm_cut(plan); out["row"] = row_fig(plan); out["board"] = board_fig(plan); out["trim"] = trim_fig(plan)
+    out["asm_cut"] = asm_cut(plan); out["row"] = row_fig(plan); out["board"] = hexboard_fig(plan) if plan["info"]["kind"] == "hex" else board_fig(plan); out["trim"] = trim_fig(plan)
     if plan["board"].get("frame"): out["frame"] = frame_fig(plan)
     return out
