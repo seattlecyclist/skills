@@ -243,18 +243,28 @@ def stars8(p, board):
 # --------------------------------------------------------------------------------------------
 # Checkerboard: square bars in alternating species, rows shifted one square.
 # --------------------------------------------------------------------------------------------
+def _odd(n):
+    """Nearest odd count, at least 3: an odd by odd checker has the same wood in all four corners."""
+    n = max(3.0, n); k = int(round((n - 1) / 2)) * 2 + 1
+    return k
+
+
 def checker(p, board):
-    s = float(p.get("side", 1.5))
-    cols = int(p.get("cols") or _fit(board["width"], s))
-    rows = int(p.get("rows") or _fit(board["length"], s))
+    """Checker. Counts are odd by default so the four corners match. The two outside strips are made wider by the
+    clean-up cut, so the outside squares finish the same size as the rest; the ends are planed panel faces and are not cut."""
+    s = float(p.get("side", 1.5)); ec = 0.125
+    cols = int(p.get("cols") or _odd(board["width"] / s))
+    rows = int(p.get("rows") or _odd(board["length"] / s))
+    xs = [0.0] + [ec + i * s for i in range(1, cols)] + [cols * s + 2 * ec]
     polys = []
     for j in range(rows):
         for i in range(cols):
-            x, y = i * s, j * s
-            polys.append(_poly([(x, y), (x + s, y), (x + s, y + s), (x, y + s)],
+            x0, x1, y = xs[i], xs[i + 1], j * s
+            polys.append(_poly([(x0, y), (x1, y), (x1, y + s), (x0, y + s)],
                                "a" if (i + j) % 2 == 0 else "b", f"r{j}"))
-    return {"polygons": polys, "trim": [0, 0, cols * s, rows * s], "roles": ["a", "b"], "cells": {"kind": "panel"},
-            "notes": [f"{rows} rows of {cols} squares, {s:g}\" each."]}
+    return {"polygons": polys, "trim": [0, 0, xs[-1], rows * s], "roles": ["a", "b"], "cells": {"kind": "panel"}, "edge_clean": [ec, 0, ec, 0],
+            "notes": [f"{rows} rows of {cols} squares, {s:g}\" each. Both counts are odd, so all four corners are the same wood and the pattern is the same from either end.",
+                      "The two outside strips of each panel are ripped 1/8\" wider than the rest. The trim takes that 1/8\" off, so the outside squares finish the same size as the others."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -577,9 +587,9 @@ def chevrons(p, board):
         else: r = 1
         return "abc"[r]
     polys, trim, cells = _lattice(p, board, t, 3, colour)
-    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c"], "cells": cells,
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c"], "cells": cells, "period": 3 * t,      # whole repeats across: both sides cut the pattern at the same place
             "notes": [f"One log, one bar: three trapezoids ({2 * t:g}\" and {t:g}\" faces) glued pinwheel fashion into a {3 * t:g}\" triangle. No triangle bar anywhere.",
-                      "This is the build Mike Dillen documented after SPALM's board: trapezoid sticks in a V cradle, every face sanded flat."]}
+                      "The log is the one Mike Dillen documented after SPALM's board: trapezoid sticks in a V cradle, every face sanded flat. Dillen sliced his logs and glued the slices into rows; gluing the logs into a plank first and crosscutting whole rows is this plan's own step."]}
 
 
 def gems(p, board):
@@ -733,6 +743,7 @@ def triweave(p, board):
     strand goes over one neighbour and under the next. Roles: a, b, c (the strands), hole."""
     t = float(p.get("side", 0.75))
     def colour(u, v):
+        v = v + 1      # phase: puts each opening across four logs, so no log holds a hexagon bar (a hexagon cannot be ripped on the sled)
         i, j, w = math.floor(u), math.floor(v), math.floor(u + v)
         A, B, C = j % 3 == 0, i % 3 == 0, w % 3 == 2
         if A and B: return "a"
@@ -740,7 +751,13 @@ def triweave(p, board):
         if C and A: return "c"
         return "a" if A else "b" if B else "c" if C else "hole"
     polys, trim, cells = _lattice(p, board, t, 3, colour)
+    ox, oy = cells["origin"]; cs = []
+    for i in range(-40, 60):
+        for j in range(-4, 40):
+            if all(colour(i + a, j + b) == "hole" for a, b in ((1/3, 1/3), (-1/3, 2/3), (-2/3, 1/3), (-1/3, -1/3), (1/3, -2/3), (2/3, -1/3))):
+                cs.append(((i + j / 2) * t + ox, j * t * S3 / 2 + oy))
     return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c", "hole"], "cells": cells,
+            "centers": cs, "period": 3 * t, "keep_phase": True, "band": (1 / 3, 1 / 3),      # crop: whole repeats across, all four cuts through the middle of the openings
             "notes": [f"Strands are {t * S3 / 2:.3g}\" wide and {3 * t:g}\" apart, round {2 * t:g}\" hexagonal openings.",
                       "This skill's own design. The weave is the open hexagonal weave of basketry; two web searches found only square basket-weave boards, none woven three ways."]}
 

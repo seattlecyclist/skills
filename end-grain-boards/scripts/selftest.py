@@ -61,7 +61,9 @@ plan, errs = run(d); expect("red oak is refused", plan is None and "not a cuttin
 
 d = json.load(open(os.path.join(EX, "checkerboard", "design.json")))
 plan, _ = run(d)
-expect("checkerboard: one strip panel, every other slice turned", len(plan["logs"]) == 1 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False, True})
+expect("checkerboard: odd by odd, two strip panels taking turns, no slice turned, ends not trimmed",
+       len(plan["logs"]) == 2 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False} and len(plan["rows"]) % 2 == 1
+       and plan["face"][0]["role"] == plan["face"][-1]["role"] and plan["board"]["margins"][2] < 1e-6 and plan["board"]["margins"][3] < 1e-6)
 d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
 plan, _ = run(d)
 expect("tumbling blocks: one hexagon log of three diamond bars, no triangle bar, half pucks on both long sides",

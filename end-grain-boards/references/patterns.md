@@ -76,8 +76,11 @@ Open hexagonal basketwork on the lattice, logs three units on a side. Three sets
 wide and three units apart run at 60 degrees to each other round hexagonal openings two units across.
 Where two strands cross, one is on top: `a` over `b`, `b` over `c`, `c` over `a`, so every strand goes
 over one neighbour and under the next. Roles `a`, `b`, `c` (one wood per strand direction) and `hole`.
-Two log types (three trapezoids; a hexagon bar with three corner triangles), one plank for every row.
-`side` 0.75. This skill's own design; searches found square basket-weave boards only.
+Two log types of four bars each (trapezoid, diamond, triangle and parallelogram bars; the colours are
+phased so no hexagon bar is needed), one plank for every row. `side` 0.75. The crop is a whole number of
+repeats across and runs through the same phase of the weave at top and bottom. Pick the three strand
+woods far apart in hue and value (the example uses yellowheart, padauk and wenge on maple; design
+critics rejected ash with yellowheart, maple with canarywood, and padauk on white oak as too close). This skill's own design; searches found square basket-weave boards only.
 
 ## swell (graded checkerboard)
 
@@ -196,8 +199,12 @@ triangle, a diamond and a trapezoid, all at a 30 degree blade tilt. Keep `4·sid
 
 ## checker
 
-Square bars `side`, alternating `a`/`b`. The classic two-step: strips glued into a panel `side`
-thick, the panel crosscut, every other slice turned end for end. Use `side` 1-1/4" to 2".
+Square bars `side`, alternating `a`/`b`. The classic two-step: strips glued into two panels `side`
+thick (one starting with each wood), the panels crosscut, slices taken from the two in turn. Counts
+are always odd by odd, so all four corners are wood `a` and the board reads the same from either
+end. The two outside strips of each panel are ripped 1/8" wider and the trim takes that off, so the
+edge squares finish full size; the ends of the board are planed panel faces and are not sawn.
+Use `side` 1-1/4" to 2".
 
 ## brick
 
@@ -255,8 +262,12 @@ Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern w
   ring under 3/8" wide is flagged: its blocks are too small to handle.
 - `whole_motifs` (default true) moves the trim so it runs between motifs, or through their line of
   symmetry, instead of through an arbitrary point. Generators say where with `centers` (motif
-  centres) and `period` (the repeat along the board, for patterns with no mirror line across the
-  rows).
+  centres) and `period` (the repeat across the rows: the trimmed width is a whole number of them).
+  A generator can also return `band: (f0, f1)` (where in a row's height the top and bottom trim
+  cuts fall, as fractions; a cut on a row joint moves in by the edge clean-up), `keep_phase: true`
+  (do not slide the crop sideways to avoid slivers; the generator has chosen the phase) and
+  `edge_clean: [left, bottom, right, top]` (clean-up per edge, 0 for an edge that is already a
+  machined face).
 - `stars8` takes `params.border`: a plain border in the ground wood, cut as a border bar, so no
   star point is cut by the edge.
 
