@@ -99,6 +99,64 @@ def stars6(p, board):
                       "Every bar is the same 60 degree rhombus: one saw setup for the whole board."]}
 
 
+def snowflakes(p, board):
+    """Snowflakes on the rhombille tiling. Every rhombus joins two neighbouring 6-way vertices of the
+    tiling's triangular lattice, so a snowflake is drawn as lattice edges: six arms of 'arm' edges from
+    a centre, with side branches of 'branch' edges at 60 degrees from each arm point listed in
+    'branch_at'. Flakes repeat 'spacing' edges apart across the board and 'rise' x 2 hexagon rows apart along it
+    ('stagger' shifts every other flake row half a spacing). Roles: flake, field
+    (and core, the six rhombi at the centre, if 'core' is true)."""
+    arm = int(p.get("arm", 3)); branch = int(p.get("branch", 1))
+    branch_at = [int(b) for b in p.get("branch_at", [1, 2] if arm >= 3 else [1])]
+    m = int(p.get("spacing", 2 * arm + 1)); core = bool(p.get("core", False))
+    rot = lambda d, k: d if k == 0 else rot((-d[1], d[0] + d[1]), k - 1)
+    dirs = [rot((1, 0), k) for k in range(6)]
+    edges, cores = set(), set()
+    def add(a, b, centre=False):
+        e = (min(a, b), max(a, b)); edges.add(e)
+        if centre: cores.add(e)
+    flake = []
+    for d in dirs:
+        for t in range(arm):
+            flake.append((((t * d[0], t * d[1]), ((t + 1) * d[0], (t + 1) * d[1])), t == 0))
+        for b in branch_at:
+            if b >= arm: continue
+            P = (b * d[0], b * d[1])
+            for side in (1, 5):
+                e = rot(d, side)
+                for t in range(branch):
+                    flake.append((((P[0] + t * e[0], P[1] + t * e[1]), (P[0] + (t + 1) * e[0], P[1] + (t + 1) * e[1])), False))
+    # centre the flake lattice on the middle of the board
+    s = float(p.get("side", 0.75)); w = S3 * s
+    cols = int(p.get("cols") or _fit(board["width"], w, -0.5 * w, 2))
+    rows = int(p.get("rows") or _fit(board["length"], 1.5 * s, -0.5 * s, 2))
+    jc = rows // 2; ic = cols // 2 - jc // 2
+    R = arm + 2
+    # flake centres: columns 'spacing' apart, flake rows 2k hexagon rows apart (straight up, so every
+    # flake row lines up with the hexagon rows and the row logs repeat every 2k rows)
+    k = int(p.get("rise") or max(1, round(m / S3)))
+    stagger = bool(p.get("stagger", False))
+    for a in range(-8, 9):
+        for b in range(-8, 9):
+            c = (ic + a * m - b * k + ((m // 2) if stagger and b % 2 else 0), jc + 2 * k * b)
+            for (u, v), centre in flake:
+                add((c[0] + u[0], c[1] + u[1]), (c[0] + v[0], c[1] + v[1]), centre)
+
+    def colour(name, i, j):
+        ends = {"lid": ((i - 1, j + 1), (i, j + 1)), "left": ((i - 1, j + 1), (i, j)),
+                "right": ((i, j + 1), (i, j))}[name]
+        e = (min(ends), max(ends))
+        if e in cores and core: return "core"
+        return "flake" if e in edges else "field"
+
+    polys, trim, rows, cols = _rhombille(dict(p, side=s, cols=cols, rows=rows), board, colour)
+    roles = (["core"] if core else []) + ["flake", "field"]
+    return {"polygons": polys, "trim": trim, "roles": roles,
+            "notes": [f"Snowflakes with six arms of {arm} diamonds and side branches, repeating every {m} diamonds; "
+                      f"{rows} rows of {cols} hexagons, each hexagon 3 rhombus bars. Every bar is the same 60 degree "
+                      "rhombus. The flakes don't line up with the rows, so several rows differ and each gets its own log."]}
+
+
 # --------------------------------------------------------------------------------------------
 # Eight-point (LeMoyne) star blocks: 8 rhombi of 45 degrees, 4 corner squares, 4 edge triangles.
 # Built as quarter-block units (2 rhombi, a square, 2 half-triangles), four quarters per block log.
@@ -184,7 +242,7 @@ def brick(p, board):
             "notes": [f"{rows} courses; even rows carry a half brick past each end that is trimmed off."]}
 
 
-GENERATORS = {"cubes": cubes, "tumbling-blocks": cubes, "stars6": stars6, "stars8": stars8,
+GENERATORS = {"cubes": cubes, "tumbling-blocks": cubes, "stars6": stars6, "snowflakes": snowflakes, "snowflake": snowflakes, "stars8": stars8,
               "lemoyne": stars8, "checker": checker, "checkerboard": checker, "brick": brick}
 
 

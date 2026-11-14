@@ -24,14 +24,14 @@ makes as few logs as it can.
 | Path | What it is |
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
-| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `stars8`, `checker`, `brick`) and the polygon format for `custom`. |
+| `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `checker`, `brick`) and the polygon format for `custom`. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
 | `scripts/selftest.py` | Proves the checks catch an overlap, a gap, a bevel past 45 degrees and a bad wood. |
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
 | `references/technique.md` | Bevel ripping, tape glue-ups, crosscutting slices, flattening, finishing, safety. **Read before writing advice the plan doesn't already give.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Four worked boards: `tumbling-blocks`, `six-point-stars`, `lemoyne-stars`, `checkerboard`, each with `design.json`, `plan.html`, `guide.jpg` and (three) `photo.jpg`. |
+| `examples/` | Five worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, each with `design.json`, `plan.html`, `guide.jpg` and (four) `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in
@@ -42,10 +42,10 @@ missing, the full skill is in `end-grain-boards/` of that repo.
 
 Get, or ask once for only what you cannot infer:
 - **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`;
-  stars, Star of David, hexagram → `stars6`; eight-point, quilt or LeMoyne star, compass star →
+  stars, Star of David, hexagram → `stars6`; snowflakes → `snowflakes`; eight-point, quilt or LeMoyne star, compass star →
   `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`. Anything else (chevrons,
   hexagons, diamonds, a logo-like motif) → `custom` polygons (`references/patterns.md`). Say which you chose.
-- **Woods**, one per role the pattern has (`cubes`: lid, left, right; `stars6`: star, field; `stars8`:
+- **Woods**, one per role the pattern has (`cubes`: lid, left, right; `stars6`: star, field; `snowflakes`: flake, field; `stars8`:
   star_a, star_b, field; `checker` and `brick`: a, b). For 3D effects, light-medium-dark
   matters more than the species: maple / cherry / walnut is the classic. Fill gaps from
   `references/species.md` and say so. Refuse red oak, softwoods, spalted wood, cocobolo (it explains why).
@@ -92,7 +92,9 @@ Then look. Open `out/svg/face.svg` (or `plan.html`) and `out/guide.png` and ask:
 read as what the user described? Contrast between roles is the usual problem (two mid-browns
 merge); the star patterns also depend on `spacing` and on which wood is the star. Change and rerun.
 Also read the log and layout diagrams: a pattern that needs many log types (`stars6` with `sparse`
-spacing needs seven) is a poor build; prefer a variant with one to three logs and say why.
+spacing needs seven) is more glue-ups; prefer a variant with one to three logs where the look allows,
+and say why. Motifs bigger than a few rows (snowflakes) are built row by row: tell the user how many
+logs and that the extra end trim raises the board feet.
 
 ## 4. Render (plan-to-photo)
 

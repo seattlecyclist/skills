@@ -142,7 +142,7 @@ polygons, so every number in the plan comes from the geometry.
   board feet per species, a cut list (each bar's cross-section, blank thickness, blade tilt, count
   and lengths), and eight build steps with diagrams: bar sections and rip setups, unit glue-ups,
   each log in end and side view with its crosscuts, and the numbered slice layout with trim lines.
-- Patterns: tumbling blocks (3D cubes), six-point stars, LeMoyne eight-point stars, checkerboard,
+- Patterns: tumbling blocks (3D cubes), six-point stars, snowflakes, LeMoyne eight-point stars, checkerboard,
   brick, and any custom pattern of convex pieces.
 - A colour-coded guide drawing of the board and a photo made from it by plan-to-photo's Nano Banana
   path; `board.obj` for the Blender path.
@@ -169,10 +169,13 @@ Tumbling blocks in maple, cherry and walnut, 11-29/32" x 16-1/4" x 1-1/2": one b
 |---|---|
 | ![LeMoyne star board](end-grain-boards/examples/lemoyne-stars/photo.jpg) | ![Six-point star board](end-grain-boards/examples/six-point-stars/photo.jpg) |
 | LeMoyne stars: padauk and purpleheart points on maple, 20 blocks from one block log | Walnut six-point stars on maple, every piece the same 60-degree rhombus |
+| ![Purpleheart snowflake board](end-grain-boards/examples/snowflakes/photo.jpg) | |
+| Purpleheart snowflakes on maple: 252 rhombus bars, 7 row logs, 18 slices | |
 
 - 🌐 Plans: [tumbling-blocks](end-grain-boards/examples/tumbling-blocks/plan.html),
   [lemoyne-stars](end-grain-boards/examples/lemoyne-stars/plan.html),
   [six-point-stars](end-grain-boards/examples/six-point-stars/plan.html),
+  [snowflakes](end-grain-boards/examples/snowflakes/plan.html),
   [checkerboard](end-grain-boards/examples/checkerboard/plan.html) (download and open)
 - 📐 Guide drawings the photos were made from: `examples/*/guide.jpg`
 

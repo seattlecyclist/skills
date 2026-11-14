@@ -431,7 +431,7 @@ def build(design, out, photo=None):
     # logs: one kind per slice type
     cut = T + shop["flatten_allowance"]; pitch = cut + shop["kerf"]
     logs = []
-    LOGL = "LMNOPQRSTUVW"
+    LOGL = "LMNOPQRSTUVWXYZ" + "abcdefghijklmnopqrstuvwxyz"
     for t in range(len(sm.types)):
         n = sum(1 for s in slice_list if s["type"] == t)
         need = n + shop["spare_slices"]

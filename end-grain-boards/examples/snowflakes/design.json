@@ -1,0 +1,27 @@
+{
+  "name": "Purpleheart Snowflake End-Grain Board",
+  "description": "purpleheart snowflakes on a hard maple ground: each snowflake has six straight arms of diamond-shaped pieces radiating from its centre, with short side branches angled outward along each arm, and the flakes repeat across the board",
+  "pattern": "snowflakes",
+  "params": {
+    "side": 0.65,
+    "arm": 3,
+    "branch": 1,
+    "branch_at": [
+      2
+    ],
+    "spacing": 7
+  },
+  "board": {
+    "width": 13,
+    "length": 17,
+    "thickness": 1.5
+  },
+  "species": {
+    "flake": "purpleheart",
+    "field": "maple"
+  },
+  "options": {
+    "edge": "1/8\" chamfer",
+    "feet": true
+  }
+}

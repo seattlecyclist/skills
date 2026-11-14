@@ -35,6 +35,25 @@ a chosen vertex. Chosen vertices never neighbour, so no rhombus is in two stars.
 Roles: `star` (or the three shaded), `field`. Dark stars on a light field read most clearly with
 `open`; with `touching`, light stars on dark read better than dark on light.
 
+## snowflakes
+
+The rhombille tiling again: every rhombus joins two neighbouring 6-way vertices, so a flake is drawn
+as lattice edges: six arms of `arm` rhombi end to end from a centre, with side branches of `branch`
+rhombi at 60 degrees from the arm points in `branch_at`. A branch at step 1 meets the next arm's
+branch and closes a hexagon ring (a different motif); branches at step 2 or more read as a snowflake.
+
+| param | default | meaning |
+|---|---|---|
+| `side` | 0.75 | rhombus side (5/8" to 3/4" keeps two flakes across a 13" board) |
+| `arm` | 3 | rhombi per arm |
+| `branch_at`, `branch` | [1, 2] for arm 3, else [1]; 1 | where branches leave the arm, and their length |
+| `spacing` | 2·arm+1 | edges between flakes across; flake rows sit `rise`·2 hexagon rows apart (rise ≈ spacing/√3) |
+| `stagger` | false | shift every other flake row half a spacing (doubles the log types) |
+| `core` | false | role `core` for the six centre rhombi |
+
+Roles: `flake`, `field`. The example (arm 3, branch at 2, spacing 7, side 0.65) needs 7 row logs
+for 18 slices: rows repeat only every 2·rise rows.
+
 ## stars8 (LeMoyne / eight-point quilt star)
 
 Square blocks of side a(2+√2) (a = rhombus side): 8 rhombi of 45/135 degrees around the centre,
