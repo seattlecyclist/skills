@@ -45,7 +45,7 @@ python3 scripts/repeats.py --variants out.html a.json b.json   # every face one 
     planer takes. **Among layouts that pass:** fewest sandwiches, then fewest bar kinds, then the
     largest bar, the taller row, the fewest bars, rows across before rows along.
 13. **A sandwich is as wide as its slabs need and no wider,** in quarter inches, one board if that
-    still gives three slabs. One spare slab in ten, at least one, per sandwich type.
+    still gives three slabs, two boards edge-glued when one board wide would take more than four sandwiches of a kind. One spare slab in ten, at least one, per sandwich type.
 
 ## The moves and what each does
 

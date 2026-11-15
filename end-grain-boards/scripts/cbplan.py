@@ -749,9 +749,11 @@ def build(design, out, photo=None):
             cut_ = {"tilt": lg["tilt"], "slab": lg["slab"], "stack": lg["stack"]}
             lg["per"] = BR.per_sandwich(cut_, lg["w"], shop); lg["slabs"] = 0; lg["slab_spares"] = 0
             kk = sum(slabs[lg["id"]].values()); nn = math.ceil((kk + max(1, math.ceil(kk * 0.1))) / max(1, lg["per"])) if kk else 1
-            w2 = lg["w"]
+            w2 = lg["w"]; wb_ = shop.get("sandwich_width") or BR.widths(shop)[1]
+            if nn > 4 and wb_ > w2 and BR.per_sandwich(cut_, wb_, shop) > lg["per"]:      # more than four of one sandwich: make them two boards wide instead
+                w2 = wb_; nn = math.ceil((kk + max(1, math.ceil(kk * 0.1))) / BR.per_sandwich(cut_, wb_, shop))
             while w2 - 0.25 >= 3.0 and BR.per_sandwich(cut_, w2 - 0.25, shop) * nn >= kk + max(1, math.ceil(kk * 0.1)): w2 -= 0.25      # no wider than the slabs need
-            if w2 < lg["w"] - 1e-6:
+            if abs(w2 - lg["w"]) > 1e-6:
                 f_ = w2 / lg["w"]; sx_ = lambda ps: [(x * f_, y) for x, y in ps]
                 lg["w"] = w2; lg["outline"] = sx_(lg["outline"]); lg["cells"] = [(r, sx_(q)) for r, q in lg["cells"]]; lg["per"] = BR.per_sandwich(cut_, w2, shop)
                 for st in lg["stages"]:

@@ -211,7 +211,7 @@ new wood changes board feet and possibly the warnings.
 
 - A bar build spends wood to save work. Every sandwich loses a wedge at each edge to the tilted rip and
   every slab loses its two points. Against the log builds the examples run from half the board feet
-  (snowflakes) through a third more (tumbling blocks) to more than double (notched cubes, faceted gems:
+  (snowflakes) through a third more (tumbling blocks) to nearly double (notched cubes, geodesic domes, faceted gems:
   many sandwiches, each with its own wedges and spares). Tell the user the board feet, and that fewer
   woods, a larger `side` or wider stock cut the waste. The embedded photos of the examples whose size
   moved with the new build were dropped from their plans; `photo.jpg` beside them shows the old crop.
