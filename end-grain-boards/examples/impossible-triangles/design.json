@@ -1,0 +1,25 @@
+{
+ "name": "Impossible Triangles End-Grain Board",
+ "description": "rows of Penrose tribars, each three bars of maple, white oak and cherry passing over one another round a walnut key, on a walnut ground",
+ "pattern": "tribars",
+ "params": {
+  "side": 0.75
+ },
+ "board": {
+  "width": 12,
+  "length": 18.2,
+  "thickness": 1.5
+ },
+ "species": {
+  "a": "maple",
+  "b": "white-oak",
+  "c": "cherry",
+  "key": "walnut",
+  "ground": "walnut",
+  "ground_mid": "walnut"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

@@ -54,7 +54,47 @@ ripped between a tilted blade and the fence.
 
 The plan's sheet 03 draws the sled from the front for each bar and step 2 draws it from above.
 
-## Hexagon logs (tumbling blocks)
+## Sandwich bars (the default for 60 degree patterns)
+
+Source: the photo sequence Mike sent, https://imgur.com/a/3d-end-grain-cutting-board-maple-cherry-walnut-PFq4a
+(copies in the project's research folder), and his account of production-shop videos: planks stay
+rectangles; makers rip at an angle, flip, rotate and reglue, always back to a rectangle. The photos
+show the sandwich, the slabs, the squared bars, the plank and the rows. They do not show the saw
+setups, so the fence side, cut order and squaring marks below are worked out here, and every plan says
+so in those steps.
+
+1. **Sandwich.** Flat layers glued face to face. For tumbling blocks with diamond side s: lid wood
+   0.433s, face wood 0.866s, lid wood 0.433s (1 : 2 : 1), one sandwich with cherry in the middle and
+   one with walnut. Inside layers are pattern sizes: plane them with calipers, every wood at one
+   setting. Outside layers only have to be thick enough; the plan adds 1/32".
+2. **Tilted rip.** Blade at 30 degrees. The sandwich lies flat, jointed edge to the fence, fence on
+   the side the blade leans away from, so the slab falls free on the open side. Slabs are 0.866s thick
+   measured square to the cut, ripped 1/32" over and planed on both sawn faces. The first wedge and
+   the last piece against the fence are waste: two wedges per sandwich, each as wide as the
+   sandwich's thickness times tan 30. Wide sandwiches waste less, so a layer may be two boards
+   edge-glued.
+3. **Square.** Blade square. The slab lies on a sawn face; its two slanted edges are the old faces of
+   the sandwich. Rip both points off, measuring from the glue lines, never from the slanted edges.
+   The bar is 0.866s x 1.5s with slanted stripes. The plan gives each bar's marks: where the first cut
+   falls against a glue line, the distance to the second, and where every glue line should then lie on
+   both faces.
+4. **Plank, rows, board.** Bars side by side, alternating, every other one turned end for end; plane;
+   crosscut; glue rows, sliding or turning every other row. Same as every other plank build here.
+
+What decides whether a face can be built this way: cut it into rows and each row into bars. A bar
+works when every glue line inside it is parallel to the others and runs right across it. Then the bar
+is a slice of one stack of flat layers, at the angle the glue lines make with the bar's sides. `bars.py`
+tries every row height and bar width the pattern's own grid allows, both ways round, keeps those where
+every bar on the board works, the sandwich passes under the tilted blade (thickness at most
+`max_cut_height` x cos tilt, less 1/32") and gives at least two slabs, and picks by a fixed order:
+fewest sandwiches, fewest kinds of bar, largest bar, taller row, fewest bars. Bars that differ only by
+being rolled over or turned end for end are one kind. Bars whose sandwiches differ only in the
+thickness of the outside layers share one sandwich, made as thick as the hungriest needs.
+
+When it does not fit (stripes that bend inside every candidate bar, or bars under 0.4"), the build
+falls back to the logs below and the plan carries a warning that says so.
+
+## Hexagon logs (tumbling blocks, `"build": "logs"`)
 
 How makers build the cube board (Tom Silva at This Old House; Degoose and lanwater on LumberJocks).
 Three 60 degree diamond bars, one of each wood, are glued into a hexagon log held by painter's tape

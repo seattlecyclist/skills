@@ -1,0 +1,10 @@
+{
+  "name": "Star Lattice End-Grain Board",
+  "description": "a lattice of thin purpleheart lines on near-black wenge, drawn as six-sided cells, with a small padauk diamond wherever four lines meet",
+  "pattern": "starlattice",
+  "params": {"tile": 1.5, "strip": 0.1875, "lean": 35, "star": 0.375, "cols": 12, "rows": 8},
+  "board": {"width": 18, "length": 12, "thickness": 1.5},
+  "species": {"ground": "wenge", "line": "purpleheart", "star": "padauk"},
+  "options": {"edge": "1/8 in. round-over", "feet": true, "juice_groove": false, "handles": false},
+  "guide": {"az": -32, "el": 40}
+}

@@ -243,18 +243,28 @@ def stars8(p, board):
 # --------------------------------------------------------------------------------------------
 # Checkerboard: square bars in alternating species, rows shifted one square.
 # --------------------------------------------------------------------------------------------
+def _odd(n):
+    """Nearest odd count, at least 3: an odd by odd checker has the same wood in all four corners."""
+    n = max(3.0, n); k = int(round((n - 1) / 2)) * 2 + 1
+    return k
+
+
 def checker(p, board):
-    s = float(p.get("side", 1.5))
-    cols = int(p.get("cols") or _fit(board["width"], s))
-    rows = int(p.get("rows") or _fit(board["length"], s))
+    """Checker. Counts are odd by default so the four corners match. The two outside strips are made wider by the
+    clean-up cut, so the outside squares finish the same size as the rest; the ends are planed panel faces and are not cut."""
+    s = float(p.get("side", 1.5)); ec = 0.125
+    cols = int(p.get("cols") or _odd(board["width"] / s))
+    rows = int(p.get("rows") or _odd(board["length"] / s))
+    xs = [0.0] + [ec + i * s for i in range(1, cols)] + [cols * s + 2 * ec]
     polys = []
     for j in range(rows):
         for i in range(cols):
-            x, y = i * s, j * s
-            polys.append(_poly([(x, y), (x + s, y), (x + s, y + s), (x, y + s)],
+            x0, x1, y = xs[i], xs[i + 1], j * s
+            polys.append(_poly([(x0, y), (x1, y), (x1, y + s), (x0, y + s)],
                                "a" if (i + j) % 2 == 0 else "b", f"r{j}"))
-    return {"polygons": polys, "trim": [0, 0, cols * s, rows * s], "roles": ["a", "b"], "cells": {"kind": "panel"},
-            "notes": [f"{rows} rows of {cols} squares, {s:g}\" each."]}
+    return {"polygons": polys, "trim": [0, 0, xs[-1], rows * s], "roles": ["a", "b"], "cells": {"kind": "panel"}, "edge_clean": [ec, 0, ec, 0],
+            "notes": [f"{rows} rows of {cols} squares, {s:g}\" each. Both counts are odd, so all four corners are the same wood and the pattern is the same from either end.",
+                      "The two outside strips of each panel are ripped 1/8\" wider than the rest. The trim takes that 1/8\" off, so the outside squares finish the same size as the others."]}
 
 
 # --------------------------------------------------------------------------------------------
@@ -498,14 +508,15 @@ GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cube
               "rosettes": rosettes, "rhombitrihex": rosettes}
 
 
-PLANK = {"maze", "two-wood-maze"}      # built by twoply.py: slabs ripped from a two-ply blank, logs, one plank, rows
+# plank builds, each with its own module: slabs ripped from a laminated blank, logs, planks, rows
+PLANK = {"maze": "twoply", "two-wood-maze": "twoply", "starlattice": "starlattice", "star-lattice": "starlattice", "hex-lattice": "starlattice"}
 
 
 def generate(design):
     pat = design["pattern"]
     if pat in PLANK:
-        import twoply
-        return twoply.generate(design.get("params", {}), design["board"])
+        import importlib
+        return importlib.import_module(PLANK[pat]).generate(design.get("params", {}), design["board"])
     if pat == "custom":
         return {"polygons": design["polygons"], "trim": design["trim"],
                 "roles": sorted({p["role"] for p in design["polygons"]}), "notes": design.get("notes", [])}
@@ -583,9 +594,9 @@ def chevrons(p, board):
         else: r = 1
         return "abc"[r]
     polys, trim, cells = _lattice(p, board, t, 3, colour)
-    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c"], "cells": cells,
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c"], "cells": cells, "period": 3 * t,      # whole repeats across: both sides cut the pattern at the same place
             "notes": [f"One log, one bar: three trapezoids ({2 * t:g}\" and {t:g}\" faces) glued pinwheel fashion into a {3 * t:g}\" triangle. No triangle bar anywhere.",
-                      "This is the build Mike Dillen documented after SPALM's board: trapezoid sticks in a V cradle, every face sanded flat."]}
+                      "The log is the one Mike Dillen documented after SPALM's board: trapezoid sticks in a V cradle, every face sanded flat. Dillen sliced his logs and glued the slices into rows; gluing the logs into a plank first and crosscutting whole rows is this plan's own step."]}
 
 
 def gems(p, board):
@@ -660,4 +671,102 @@ def notched(p, board):
             "notes": [f"Blocks {4 * t:g}\" across their points, each with a {t:g}\" notch at the near corner."]}
 
 
-GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched})
+def tribars(p, board):
+    """Impossible triangles: every upward triangle log is a Penrose tribar, three identical trapezoid bars
+    set pinwheel fashion round a small triangular key, each bar seeming to pass over the next. The
+    downward logs are plain ground. Roles: a, b, c (the bars), key, ground."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        a, b = u % 4, v % 4; c = 4 - a - b
+        if c < 0:      # the ground log is four half-size triangles: one that size is too deep to rip
+            return "ground_mid" if a > 2 and b > 2 and a + b < 6 else "ground"
+        if a > 1 and b > 1 and c > 1: return "key"
+        if b < 1 and a > 1: return "a"
+        if c < 1 and b > 1: return "b"
+        return "c"
+    polys, trim, cells = _lattice(p, board, t, 4, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c", "key", "ground", "ground_mid"], "cells": cells,
+            "notes": [f"Every upward log is the same tribar: three trapezoid bars ({3 * t:g}\" and {2 * t:g}\" faces, {t * S3 / 2:.3g}\" thick) round a {t:g}\" key. Every downward log is plain ground, glued from two smaller bars because a {4 * t:g}\" triangle is deeper than the saw rips at 30 degrees.",
+                      "This skill's own design; no published build of it exists."]}
+
+
+def sierpinski(p, board):
+    """Sierpinski triangles: each large upward triangle is the fractal, light triangles with dark holes at
+    three sizes; the large downward triangles are plain ground. Built from triangle logs half the size of
+    the large triangle, each made in two levels. Roles: tri, hole, ground."""
+    t = float(p.get("side", 0.625))
+    def colour(u, v):
+        a, b = u % 8, v % 8
+        if a + b > 8: return "ground"
+        s = 8
+        while s > 1:
+            h = s / 2; c = s - a - b
+            if a < h and b < h and c < h: return "hole"
+            if a >= h: a -= h
+            elif b >= h: b -= h
+            s = h
+        return "tri"
+    q = dict(p); q.setdefault("levels", 2)
+    polys, trim, cells = _lattice(q, board, t, 2, colour)
+    return {"polygons": polys, "trim": trim, "roles": ["tri", "hole", "ground"], "cells": cells,
+            "notes": [f"The fractal has holes at three sizes: {t:g}\", {2 * t:g}\" and {4 * t:g}\". First-level logs are {2 * t:g}\" triangles: three light bars round a dark one, or one solid bar. Four of those make each {4 * t:g}\" log, so no bar is larger than {2 * t:g}\".",
+                      "This skill's own design; no published build of it exists."]}
+
+
+def _frac(x):
+    n = round(x * 32); w, r = divmod(n, 32)
+    if not r: return str(w)
+    g = math.gcd(r, 32); return (f"{w}-" if w else "") + f"{r // g}/{32 // g}"
+
+
+def swell(p, board):
+    """Swell: a two-wood checkerboard whose squares grow from the edges to the middle on a sine curve, so a
+    flat board looks as if it bulges. One strip panel makes every row: it is planed a little thinner before
+    each pair of slices is cut. Roles: a, b."""
+    cols = int(p.get("cols", 16)); rows = int(p.get("rows", 22)); lo = float(p.get("min", 0.375))
+    if cols % 2 or rows % 2: raise SystemExit("swell needs an even number of columns and rows: every second row is the same slice turned end for end")
+    def grade(n, total, step):
+        sn = [math.sin(math.pi * (i + 0.5) / n) for i in range(n // 2)]
+        hi = lo + max(0.0, (total / 2 - n / 2 * lo) / sum(sn))
+        half = [round((lo + (hi - lo) * v) / step) * step for v in sn]
+        return half + half[::-1]
+    ws = grade(cols, board["width"], 1 / 32); hs = grade(rows, board["length"], 1 / 32)
+    polys = []; y = 0.0
+    for j, h in enumerate(hs):
+        x = 0.0
+        for i, w in enumerate(ws):
+            polys.append(_poly([(x, y), (x + w, y), (x + w, y + h), (x, y + h)], "a" if (i + j) % 2 == 0 else "b", f"r{j:02d}"))
+            x += w
+        y += h
+    return {"polygons": polys, "trim": [0, 0, sum(ws), sum(hs)], "roles": ["a", "b"], "cells": {"kind": "panel", "graded": True},
+            "notes": [f"{rows} rows of {cols} pieces. Strip widths run from {_frac(min(ws))}\" at the edges to {_frac(max(ws))}\" in the middle; row thicknesses from {_frac(min(hs))}\" to {_frac(max(hs))}\".",
+                      "One panel makes every row. Each thickness is used once each side of the middle, and the slice above the middle is its partner turned end for end.",
+                      "The graded-width method is the one behind Andrei Muntian's optical illusion boards, documented step by step by Bob Chambers. Grading both directions on a sine curve is this skill's own layout."]}
+
+
+def triweave(p, board):
+    """Triaxial weave: three sets of strands, one per wood, cross at 60 degrees round hexagonal openings, as in
+    open hexagonal basketwork. At each crossing one strand is on top: a over b, b over c, c over a, so every
+    strand goes over one neighbour and under the next. Roles: a, b, c (the strands), hole."""
+    t = float(p.get("side", 0.75))
+    def colour(u, v):
+        v = v + 1      # phase: puts each opening across four logs, so no log holds a hexagon bar (a hexagon cannot be ripped on the sled)
+        i, j, w = math.floor(u), math.floor(v), math.floor(u + v)
+        A, B, C = j % 3 == 0, i % 3 == 0, w % 3 == 2
+        if A and B: return "a"
+        if B and C: return "b"
+        if C and A: return "c"
+        return "a" if A else "b" if B else "c" if C else "hole"
+    polys, trim, cells = _lattice(p, board, t, 3, colour)
+    ox, oy = cells["origin"]; cs = []
+    for i in range(-40, 60):
+        for j in range(-4, 40):
+            if all(colour(i + a, j + b) == "hole" for a, b in ((1/3, 1/3), (-1/3, 2/3), (-2/3, 1/3), (-1/3, -1/3), (1/3, -2/3), (2/3, -1/3))):
+                cs.append(((i + j / 2) * t + ox, j * t * S3 / 2 + oy))
+    return {"polygons": polys, "trim": trim, "roles": ["a", "b", "c", "hole"], "cells": cells,
+            "centers": cs, "period": 3 * t, "keep_phase": True, "band": (1 / 3, 1 / 3),      # crop: whole repeats across, all four cuts through the middle of the openings
+            "notes": [f"Strands are {t * S3 / 2:.3g}\" wide and {3 * t:g}\" apart, round {2 * t:g}\" hexagonal openings.",
+                      "This skill's own design. The weave is the open hexagonal weave of basketry; two web searches found only square basket-weave boards, none woven three ways."]}
+
+
+GENERATORS.update({"chevrons": chevrons, "gems": gems, "ziggurat": ziggurat, "ribbons": ribbons, "notched": notched, "tribars": tribars, "sierpinski": sierpinski, "swell": swell, "triweave": triweave})

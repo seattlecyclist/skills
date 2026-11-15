@@ -9,7 +9,7 @@ reads darker and more saturated than face grain of the same board.
 SPECIES = {
     # key: (name, end-grain colour, long-grain colour, janka, tangential %, radial %, notes)
     "maple":       ("Hard maple",        "#e6cf9f", "#efdcb4", 1450, 9.9, 4.8, "The standard board wood: hard, tight pores, pale."),
-    "walnut":      ("Black walnut",      "#4f3222", "#5e3d2a", 1010, 7.8, 5.5, "Dark contrast wood; a little soft, so keep it to accents or pair it with cherry."),
+    "walnut":      ("Black walnut",      "#4f3222", "#5e3d2a", 1010, 7.8, 5.5, "Dark contrast wood. Softer than maple, so it shows knife marks a little sooner; the usual partner for maple in a checker."),
     "cherry":      ("Cherry",            "#a95a37", "#b8693f", 950,  7.1, 3.7, "Medium tone that darkens with light; soft side of acceptable."),
     "white-oak":   ("White oak",         "#b08a5e", "#bf9a6c", 1350, 10.5, 5.6, "Tyloses close the pores, so it is fine; red oak is not."),
     "ash":         ("White ash",         "#d6c294", "#e0cda2", 1320, 7.8, 4.9, "Pale with strong rings; open pores, better as long grain than end grain."),
