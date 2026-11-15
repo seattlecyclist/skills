@@ -1,6 +1,6 @@
 {
  "name": "Ziggurat End-Grain Board",
- "description": "one stepped hexagonal pyramid seen from above and centred on the board, its terraces in maple, cherry and sapele by the way they face, with walnut steps between",
+ "description": "one stepped hexagonal pyramid seen from above and centred on the board, its terraces in maple, white oak and padauk by the way they face, with near-black wenge steps between",
  "pattern": "ziggurat",
  "params": {
   "side": 0.75
@@ -12,9 +12,9 @@
  },
  "species": {
   "light": "maple",
-  "mid": "cherry",
-  "dark": "sapele",
-  "line": "walnut"
+  "mid": "white-oak",
+  "dark": "padauk",
+  "line": "wenge"
  },
  "options": {
   "edge": "1/8\" chamfer",

@@ -170,6 +170,20 @@ def bars(plan):
         el = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}" font-family="{FONT}">'
               f'<title>Bar {bt["id"]}: cross-section and saw setup</title><rect width="100%" height="100%" fill="#fff"/>']
         pts = _flat(bt["pts"]); b = bbox_of([pts]); bw, bh = b[2] - b[0], b[3] - b[1]
+        uses_l = [f'{x["total_bars"]} + {x["total_spares"]} spare, {wood[x["species"]]["name"].split()[-1].lower()}' for x in used.get(bt["id"], [])]
+        if not bt.get("setup") and len(pts) == 4 and bw / bh > 5:
+            # a flat layer board: too thin to draw to scale, so the width is broken and each size is given once
+            Hs = 150 + 14 * max(0, (len(uses_l) - 1) // 2); fillb = wood[used[bt["id"]][0]["species"]]["end"] if bt["id"] in used else "#ddd"
+            x0, x1, y0, y1 = 50, W - 150, 52, 80; xm = (x0 + x1) / 2
+            el = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {Hs}" width="{W}" height="{Hs}" font-family="{FONT}">'
+                  f'<title>Layer {bt["id"]}: section</title><rect width="100%" height="100%" fill="#fff"/>', T(W / 2, 26.5, "The section, blade square", 11, weight="600")]
+            for xa, xb in ((x0, xm - 7), (xm + 7, x1)):
+                el.append(f'<rect x="{xa:.1f}" y="{y0}" width="{xb - xa:.1f}" height="{y1 - y0}" fill="{fillb}" stroke="{INK}" stroke-width="1.4"/>')
+            el.append(f'<path d="M{xm - 9:.1f},{y1 + 5} L{xm - 3:.1f},{y0 - 5} M{xm + 3:.1f},{y1 + 5} L{xm + 9:.1f},{y0 - 5}" stroke="{INK}" stroke-width="1" fill="none"/>')
+            el.append(f'<path d="M{x0},{y1 + 14} H{x1} M{x0},{y1 + 9} v10 M{x1},{y1 + 9} v10 M{x1 + 14},{y0} V{y1} M{x1 + 9},{y0} h10 M{x1 + 9},{y1} h10" stroke="{INK}" stroke-width="1" fill="none"/>')
+            el.append(T(xm, y1 + 31, f"{short(bw)} wide (drawn short)", 11.5)); el.append(T(x1 + 28, (y0 + y1) / 2 + 4, f"{short(bh)} thick", 11.5, anchor="start"))
+            for i in range(0, len(uses_l), 2): el.append(T(W / 2, 134 + 7 * i, "; ".join(uses_l[i:i + 2]), 11))
+            el.append("</svg>"); out[f"bar_{bt['id']}"] = "".join(el); continue
         sc = min(190 / bw, 104 / bh)
         P = lambda x, y: (W / 2 + (x - (b[0] + b[2]) / 2) * sc, 62 + 104 / 2 + bh * sc / 2 - (y - b[1]) * sc)
         fill = wood[used[bt["id"]][0]["species"]]["end"] if bt["id"] in used else "#ddd"
@@ -186,8 +200,9 @@ def bars(plan):
             v1 = (a_[0] - v[0], a_[1] - v[1]); v2 = (c_[0] - v[0], c_[1] - v[1])
             angd = math.degrees(math.acos(max(-1, min(1, (v1[0] * v2[0] + v1[1] * v2[1]) / (math.hypot(*v1) * math.hypot(*v2))))))
             el.append(T(q[0] + dx / d * 20, q[1] + dy / d * 13 + 4, f"{angd:.0f}°", 10.5, fill="#5b6167"))
-        uses = "; ".join(f'{x["total_bars"]} + {x["total_spares"]} spare, {wood[x["species"]]["name"].split()[-1].lower()}' for x in used.get(bt["id"], []))
-        el.append(T(W / 2, 206, uses, 11))
+        if len(uses_l) > 2:      # a long list wraps: nothing in a drawing is wider than its frame
+            el.append(T(W / 2, 199, "; ".join(uses_l[:(len(uses_l) + 1) // 2]) + ";", 10.5)); el.append(T(W / 2, 213, "; ".join(uses_l[(len(uses_l) + 1) // 2:]), 10.5))
+        else: el.append(T(W / 2, 206, "; ".join(uses_l), 11))
         # the saw from the front
         t = bt.get("stock") or bh; tilt = bt["tilt"] or 0; tt = t * math.tan(math.radians(tilt)); w = bt.get("stop") or bw; mode = bt.get("setup"); K = 0.125
         el.append(f'<line x1="16" y1="222" x2="{W - 16}" y2="222" stroke="#d9d4c7"/>')
@@ -401,15 +416,20 @@ def sbar_fig(plan, lg):
     R2 = (lambda p: (p[1], -p[0])) if cut["upright"] else (lambda p: p)                                                 # the slab lying on a sawn face
     box = [(-B / 2, -H / 2), (B / 2, -H / 2), (B / 2, H / 2), (-B / 2, H / 2)]
     s1 = [(r, [R1(v) for v in q]) for r, q in slab]; s2 = [(r, [R2(v) for v in q]) for r, q in slab]
-    xs1 = [v[0] for _, q in s1 for v in q]; w1 = max(xs1) - min(xs1); pitch = (cut["slab"] + 0.03125 + plan["shop"]["kerf"]) / math.cos(math.radians(cut["tilt"]))
+    xs1 = [v[0] for _, q in s1 for v in q]; w1 = max(xs1) - min(xs1); ovs = plan["shop"].get("slab_oversize", 1 / 16); pitch = (cut["slab"] + ovs + plan["shop"]["kerf"]) / math.cos(math.radians(cut["tilt"]))
     xs2 = [v[0] for _, q in s2 for v in q]; ys2 = [v[1] for _, q in s2 for v in q]
     left = min(xs1) - pitch - 0.5; right = max(xs1) + pitch + 0.5; gap = 1.6
+    tl0 = math.tan(math.radians(cut["tilt"])) * (1 if R1((0, 1) if cut["upright"] else (1, 0))[0] > 0 else -1)
+    fl = tl0 > 0                                    # the fence stands on the side the blade leans away from
+    if fl: left -= 3.3; right += 0.9; gap = 1.9
+    else: right += 3.3; gap = 1.9
+    sleft, sright = (left + 3.3, right - 0.9) if fl else (left, right - 3.3)
     ox = right + gap - min(xs2); oy = d0 - min(ys2)
     bb = (left - 0.3, d0 - 0.9, ox + max(xs2) + 0.6, max(d1, oy + max(ys2)) + 0.95)
     s = Svg(bb, min(74, 980 / (bb[2] - bb[0]), 250 / (bb[3] - bb[1])), pad=20, extra_h=0, title=f"{lg['name']}: ripped from sandwich {sw['id']}, then squared")
     # 1: the sandwich on the saw, layers level, blade tilted
     for (w, r, t), a, b in zip(st, bounds, bounds[1:]):
-        s.poly([(left, a), (right, a), (right, b), (left, b)], sp[r]["end"], "#1e232766", 0.6, op=0.5)
+        s.poly([(sleft, a), (sright, a), (sright, b), (sleft, b)], sp[r]["end"], "#1e232766", 0.6, op=0.5)
     for r, q in s1: s.poly(q, sp[r]["end"], "#1e232766", 0.6)
     out1 = [R1(v) for v in BR.ccw(BR._strip(strip, (0, 0), th, d0, d1))]
     s.poly(out1, "none", INK, 1.6)
@@ -420,9 +440,17 @@ def sbar_fig(plan, lg):
         xm = c1[0] + (k - 0.5) * pitch
         s.line((xm - tl * ((d1 - d0) / 2 + 0.35), d0 - 0.35), (xm + tl * ((d1 - d0) / 2 + 0.35), d1 + 0.35), CUT, 1.6, dash="7 4")
     s.poly([R1(v) for v in box], "none", INK, 0.9, dash="3 3")
-    s.text(((left + right) / 2, d1 + 0.72), f"1 · Sandwich {sw['id']} on the saw, blade at {cut['tilt']:g}°", 11.5, weight="600")
-    s.text(((left + right) / 2, d0 - 0.55), f"red: the rips, {short(cut['slab'] + 0.03125)} apart square to the cut; dotted: the bar inside one slab", 10)
-    s.dimy(d0, d1, left, short(d1 - d0))
+    s.text(((sleft + sright) / 2, d1 + 0.72), f"1 · Sandwich {sw['id']} on the saw, blade at {cut['tilt']:g}°", 11.5, weight="600")
+    s.text(((left + right) / 2, d0 - 0.55), f"from the infeed side · red: the rips, {short(cut['slab'] + ovs)} apart square to the cut · dotted: the bar · each slab falls to the open side, away from the fence", 10)
+    # the saw round it: table, fence on the side the blade leans away from, gauge strips and stop block behind the fence
+    sg = -1 if fl else 1; fx = sleft if fl else sright; hf = (d1 - d0) + 0.5
+    s.line((left - 0.1, d0), (right + 0.1, d0), INK, 1.4)
+    R = lambda xa, xb, h, fill: s.poly([(min(xa, xb), d0), (max(xa, xb), d0), (max(xa, xb), d0 + h), (min(xa, xb), d0 + h)], fill, INK, 1.0)
+    R(fx, fx + sg * 0.75, hf, "#e9e4d8")
+    for k in range(3): R(fx + sg * (0.8 + k * 0.42), fx + sg * (0.8 + k * 0.42 + 0.38), 0.6, "#fff")
+    R(fx + sg * 2.1, fx + sg * 3.0, 0.9, "#cfc8b8")
+    s.text((fx + sg * 0.375, d0 + hf + 0.12), "fence", 10); s.text((fx + sg * 1.4, d0 + 0.72), "strips", 10); s.text((fx + sg * 2.55, d0 + 1.02), "stop block", 10)
+    s.dimy(d0, d1, (sright + 0.75) if fl else left, short(d1 - d0))
     # 2: the slab on a sawn face, squared
     mv = lambda p: (p[0] + ox, p[1] + oy)
     for r, q in s2: s.poly([mv(v) for v in q], sp[r]["end"], "#1e232766", 0.6, op=0.45)
@@ -945,9 +973,20 @@ def cut_plank_fig(plan):
     s.text((xs + 1.8, 2.7), "1 in. spacer: out before the cut", 9.5, anchor="start")
     s.poly([(xs + 1.0, 0), (xs + 2.6, 0), (xs + 2.6, 2.2), (xs + 1.0, 2.2)], MDF, MDF_E, 1); s.text((xs + 1.8, 1.1), "stop", 10.5)
     s.dimx(xb + g / 2, xs, -es - 1.9, "row " + short(cut))
-    s.text((xb * 0.45, W + 0.6), "plank, glue-up face up, marked ends at the left, under the hold-down", 10.5)
+    s.text((xb - 0.4, W + 0.6), "plank, glue-up face up, marked ends at the left, under the hold-down", 10.5, anchor="end")
     _pencil(s, (xb + g / 2 + cut * 0.5, W - 0.3 * pl["height"]), (xb + g / 2 + cut * 0.5, W - 0.3 * pl["height"] - min(1.6, W / 5)), True)
     s.text((xs + 0.4, W * 0.5), "pencil arrow: from the far edge, toward the fence", 10, anchor="start")
+    return s.svg()
+
+
+def bar_end_fig(plan, lg):
+    """The end of one striped bar, large: the overview's building block for a rectangle build."""
+    sp = plan["species"]; B, H = lg["w"], lg["h"]
+    s = Svg((-0.9, -0.75, B + 0.5, H + 0.6), min(150, 330 / B), pad=20, title=f"{lg['name']}: end view")
+    for r, q in lg["cells"]: s.poly(q, sp[r]["end"], "#1e232766", 0.8)
+    s.poly([(0, 0), (B, 0), (B, H), (0, H)], "none", INK, 1.8)
+    s.dimx(0, B, 0, short(B)); s.dimy(0, H, 0, short(H))
+    s.text((B / 2, H + 0.3), f"{lg['name']}, seen from its marked end", 11.5, weight="600")
     return s.svg()
 
 
@@ -956,6 +995,7 @@ def make(plan):
     out["face"] = face(plan); out["layout"] = layout(plan); out.update(bars(plan))
     for lg in plan["logs"]:
         out[f"log_{lg['id']}"] = log_stages(plan, lg)
+        if lg.get("shape") == "sbar" and lg.get("cut"): out[f"end_{lg['id']}"] = bar_end_fig(plan, lg)
         if lg["kind"] != "panel": out[f"asm_log_{lg['id']}"] = asm_log(plan, lg)
     if plan["info"]["kind"] == "tri":
         out["jigs"] = jigs(plan); out["true"] = true_fig(plan)
