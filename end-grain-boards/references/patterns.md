@@ -15,9 +15,16 @@ rows shifted half a hexagon.
 | `side` | 1.25 | rhombus side, inches |
 | `cols`, `rows` | fitted | hexagons per row, rows |
 
-| `build` | `hexagon` | `hexagon` or `triangle` (below) |
+| `build` | sandwich bars | `hexagon` or `triangle` (below) for a log build |
 
-Build, `hexagon` (default): the way makers build this board (Tom Silva, This Old House; Degoose and
+Build, default: sandwich bars. Two sandwiches, lid : face : lid = 0.433 : 0.866 : 0.433 x `side`, one
+with the left wood in the middle and one with the right; ripped at 30 degrees into slabs 0.866·side
+thick; squared to bars 0.866·side x 1.5·side; bars alternate across the plank, the left-wood bar turned
+end for end; rows are slid one bar along each other. `side` 1.5 is the largest a 10" saw rips as one
+bar per cube row (sandwich 2.66" thick); above that the script picks shorter bars from two-layer
+sandwiches.
+
+Build, `hexagon` (`"build": "logs"` on the design, or `params.build`): the way Tom Silva builds this board (Tom Silva, This Old House; Degoose and
 lanwater on LumberJocks). Three diamond bars, one of each wood, are taped into a hexagon log; the logs
 are sliced into pucks; every puck is glued at once inside a clamped frame of four boards, from the
 centre out. One bar shape at a 30 degree tilt, no triangle bar. The long sides run through the
@@ -249,6 +256,11 @@ finds which cells are the same log turned or flipped. Choose the grid so that:
 Write a generator in `patterns.py` (and add it to `GENERATORS`) when a pattern will be reused; add a
 `design.json` to `examples/` and run `scripts/selftest.py`.
 ## Options every design takes
+
+`"build"` on the design: leave it out for the default, sandwich bars wherever the face allows
+(`cubes` and every lattice pattern that passes the bar rules in `references/repeats.md`); `"logs"`
+for the triangle or hexagon log build. The script falls back to logs by itself, with a warning, when
+no bar layout passes.
 
 ```json
 "frame": {"width": 0.75, "species": "walnut", "liner": {"width": 0.375, "species": "cherry"}},

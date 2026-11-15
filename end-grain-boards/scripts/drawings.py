@@ -318,6 +318,7 @@ def _ref_tick(s, part, sh=0.0):
 
 def log_stages(plan, lg):
     """End view of a log, one panel per glue-up: what goes in, where the glue goes, how it is held."""
+    if lg.get("shape") == "sbar" and lg.get("cut"): return sbar_fig(plan, lg)
     st = lg["stages"]; w, h = lg["w"], lg["h"]; tri = lg["kind"] == "tri"; shape = lg["shape"]
     if shape == "half":       # drawn as it is glued: the two trued star-corner faces down on the flat base, joint upright
         tp = lambda pts: [(y, w - x) for x, y in pts]
@@ -380,6 +381,62 @@ def log_stages(plan, lg):
         s.text((sh + (0 if tri else w / 2), h + 1.72), lab, 12, weight="600")
         if tri and not solo: s.text((sh, h + 1.42), _vb(plan, stg.get('vsize', w), top)['name'], 10.5)
         done += stg["parts"]
+    return s.svg()
+
+
+def sbar_fig(plan, lg):
+    """A striped bar, in two views: the sandwich with the tilted rips that free one slab, then the slab lying on a
+    sawn face with the two square cuts that make it a bar."""
+    import bars as BR
+    sp = plan["species"]; B, H = lg["w"], lg["h"]; cut = lg["cut"]; th = lg["theta"]; lay = lg["layers"]
+    sw = next(l for l in plan["logs"] if l["id"] == lg["sandwich"]); st = list(sw["stack"])
+    if [w for w, _, _ in st] != [w for w, _, _, _ in lay]: st = st[::-1]
+    d0 = lay[0][3] - st[0][2]; d1 = lay[-1][2] + st[-1][2]            # the sandwich's two faces, along the layers' normal
+    bounds = [d0] + [l[3] for l in lay[:-1]] + [d1]
+    big = 40.0
+    strip = ([(-B / 2, -big), (B / 2, -big), (B / 2, big), (-B / 2, big)] if cut["upright"] else [(-big, -H / 2), (big, -H / 2), (big, H / 2), (-big, H / 2)])
+    slab = [(r, BR.ccw(q)) for (w, r, _, _), a, b in zip(lay, bounds, bounds[1:]) for q in [BR._strip(strip, (0, 0), th, a, b)] if q]
+    rad = math.radians(th)
+    R1 = lambda p: (p[0] * math.cos(rad) + p[1] * math.sin(rad), -p[0] * math.sin(rad) + p[1] * math.cos(rad))      # layers level: the sandwich on the saw
+    R2 = (lambda p: (p[1], -p[0])) if cut["upright"] else (lambda p: p)                                                 # the slab lying on a sawn face
+    box = [(-B / 2, -H / 2), (B / 2, -H / 2), (B / 2, H / 2), (-B / 2, H / 2)]
+    s1 = [(r, [R1(v) for v in q]) for r, q in slab]; s2 = [(r, [R2(v) for v in q]) for r, q in slab]
+    xs1 = [v[0] for _, q in s1 for v in q]; w1 = max(xs1) - min(xs1); pitch = (cut["slab"] + 0.03125 + plan["shop"]["kerf"]) / math.cos(math.radians(cut["tilt"]))
+    xs2 = [v[0] for _, q in s2 for v in q]; ys2 = [v[1] for _, q in s2 for v in q]
+    left = min(xs1) - pitch - 0.5; right = max(xs1) + pitch + 0.5; gap = 1.6
+    ox = right + gap - min(xs2); oy = d0 - min(ys2)
+    bb = (left - 0.3, d0 - 0.9, ox + max(xs2) + 0.6, max(d1, oy + max(ys2)) + 0.95)
+    s = Svg(bb, min(74, 980 / (bb[2] - bb[0]), 250 / (bb[3] - bb[1])), pad=20, extra_h=0, title=f"{lg['name']}: ripped from sandwich {sw['id']}, then squared")
+    # 1: the sandwich on the saw, layers level, blade tilted
+    for (w, r, t), a, b in zip(st, bounds, bounds[1:]):
+        s.poly([(left, a), (right, a), (right, b), (left, b)], sp[r]["end"], "#1e232766", 0.6, op=0.5)
+    for r, q in s1: s.poly(q, sp[r]["end"], "#1e232766", 0.6)
+    out1 = [R1(v) for v in BR.ccw(BR._strip(strip, (0, 0), th, d0, d1))]
+    s.poly(out1, "none", INK, 1.6)
+    tl = math.tan(math.radians(cut["tilt"])) * (1 if R1((0, 1) if cut["upright"] else (1, 0))[0] > 0 else -1)
+    c1 = _cen(out1); hw = w1 / 2 - abs(tl) * (d1 - d0) / 2
+    for k in (-1, 0, 1, 2):
+        xm = c1[0] - (cut["slab"] / math.cos(math.radians(cut["tilt"]))) / 2 + k * pitch - (plan["shop"]["kerf"] / 2 if k <= 0 else -plan["shop"]["kerf"] / 2) * 0
+        xm = c1[0] + (k - 0.5) * pitch
+        s.line((xm - tl * ((d1 - d0) / 2 + 0.35), d0 - 0.35), (xm + tl * ((d1 - d0) / 2 + 0.35), d1 + 0.35), CUT, 1.6, dash="7 4")
+    s.poly([R1(v) for v in box], "none", INK, 0.9, dash="3 3")
+    s.text(((left + right) / 2, d1 + 0.72), f"1 · Sandwich {sw['id']} on the saw, blade at {cut['tilt']:g}°", 11.5, weight="600")
+    s.text(((left + right) / 2, d0 - 0.55), f"red: the rips, {short(cut['slab'] + 0.03125)} apart square to the cut; dotted: the bar inside one slab", 10)
+    s.dimy(d0, d1, left, short(d1 - d0))
+    # 2: the slab on a sawn face, squared
+    mv = lambda p: (p[0] + ox, p[1] + oy)
+    for r, q in s2: s.poly([mv(v) for v in q], sp[r]["end"], "#1e232766", 0.6, op=0.45)
+    bx = [mv(R2(v)) for v in box]; x0, x1 = min(v[0] for v in bx), max(v[0] for v in bx); y0, y1 = min(v[1] for v in bx), max(v[1] for v in bx)
+    for r, q in lg["cells"]:
+        s.poly([mv(R2((x - B / 2, y - H / 2))) for x, y in q], sp[r]["end"], "#1e232766", 0.6)
+    s.poly([(x0, y0), (x1, y0), (x1, y1), (x0, y1)], "none", INK, 1.6)
+    for x in (x0, x1): s.line((x, y0 - 0.35), (x, y1 + 0.35), CUT, 1.6, dash="7 4")
+    s.dimx(x0, x1, y0, short(x1 - x0)); s.dimy(y0, y1, min(xs2) + ox, short(y1 - y0))
+    s.text(((x0 + x1) / 2, max(d1, y1) + 0.72), "2 · A slab on a sawn face, blade square", 11.5, weight="600")
+    s.text(((x0 + x1) / 2, y1 + 0.3), f"{lg['name']}", 10.5, weight="600")
+    low = (th < 90) if cut["upright"] else (th > 90)          # the first square cut is the one at the low end
+    s.text((x0 if low else x1, y0 - 0.85), "first cut", 10, fill=CUT, anchor="end" if low else "start"); s.text((x1 if low else x0, y0 - 0.85), "second cut", 10, fill=CUT, anchor="start" if low else "end")
+    s.text(((max(xs2) if low else min(xs2)) + ox + (0.15 if low else -0.15), (y0 + y1) / 2), "to the fence first", 10, anchor="start" if low else "end")
     return s.svg()
 
 
