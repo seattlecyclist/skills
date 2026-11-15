@@ -162,7 +162,7 @@ def cut_of(B, H, bar, allow=0.03125):
 def per_sandwich(cut, width, shop):
     """Slabs one sandwich of this width gives. The first tilted cut takes a wedge off the open edge and the last
     leaves a wedge against the fence, each as wide as the sandwich's thickness times the tangent of the tilt."""
-    ov = shop.get("rip_oversize", 1 / 32); total = sum(t for _, _, t in cut["stack"])
+    ov = shop.get("slab_oversize", 1 / 16); total = sum(t for _, _, t in cut["stack"])
     if cut["tilt"] < 1e-6: return int((width - 0.25 + shop["kerf"]) // (cut["slab"] + ov + shop["kerf"]))
     cs = math.cos(math.radians(cut["tilt"])); lead = total * math.tan(math.radians(cut["tilt"]))
     return max(0, int((width - 2 * lead - 0.25) // ((cut["slab"] + ov + shop["kerf"]) / cs)))

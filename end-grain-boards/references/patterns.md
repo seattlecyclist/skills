@@ -50,7 +50,7 @@ inside a log merge into one bar, so every log is two to four bars and one glue-u
 |---|---|---|---|---|
 | `chevrons` | three-armed pinwheels that run into zigzag chains | `a`, `b`, `c` | 3 x side, one type | one trapezoid; no triangle bar |
 | `gems` | hexagonal cut gems: a table ringed by six shaded facets | `light`, `pale`, `shade`, `dark`, `table` | 2 x side, four types | trapezoid, small triangle |
-| `ziggurat` | one stepped hexagonal pyramid centred on the board | `light`, `mid`, `dark`, `line` | 2 x side, six types | trapezoid, small triangle |
+| `ziggurat` | one stepped hexagonal pyramid centred on the board; `tread` (default 2) is how many lattice steps wide a terrace is, the riser line is one | `light`, `mid`, `dark`, `line` | (tread + 1) x side, six types | trapezoid, small triangle |
 | `ribbons` | zigzag ribbons of diamonds, lit and shaded like pleated paper | `a_lit`, `a_shade`, `b_lit`, `b_shade` | 2 x side, four types | diamond, small triangle |
 | `notched` | tumbling blocks with a small cube bitten out of each near corner | `lid`, `left`, `right` | 2 x side (`log`), six types | trapezoid, small triangle |
 
@@ -279,7 +279,13 @@ no bar layout passes.
   cuts fall, as fractions; a cut on a row joint moves in by the edge clean-up), `keep_phase: true`
   (do not slide the crop sideways to avoid slivers; the generator has chosen the phase) and
   `edge_clean: [left, bottom, right, top]` (clean-up per edge, 0 for an edge that is already a
-  machined face).
+  machined face). Four more, added so both sides of a board end alike: `period_extra` (a fraction
+  of a repeat added to the whole ones, so the side cuts pass through the middle of a step and no
+  point just kisses an edge: `ziggurat`), `band_centred` (one centred motif: take the row count
+  whose top and bottom cuts sit the same distance from it), `band_joints` (both band cuts lie on
+  joints and lose the clean-up cut: with `band: (0, 0.5)` this gives `ribbons` an odd count of
+  courses, so top and bottom end on the same slope) and `row_edges` (in a sandwich bar build the
+  two edges along the rows fall on row joints, whole rows and planed faces, nothing sawn off).
 - `stars8` takes `params.border`: a plain border in the ground wood, cut as a border bar, so no
   star point is cut by the edge.
 

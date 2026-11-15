@@ -95,11 +95,11 @@ ol.steps ul li{break-inside:avoid;margin-bottom:5px}
 ol.steps .see{font-family:var(--f-mono);font-size:12px;color:var(--graphite);margin-top:6px}
 .kick{display:inline-block;font-family:var(--f-display);font-weight:800;font-size:12px;letter-spacing:.09em;color:#fff;background:var(--accent);padding:2px 8px;border-radius:2px;margin-bottom:6px}
 .stepgrid{display:grid;gap:12px}
-.jigcard{display:grid;gap:14px;border:1px solid var(--rule);background:var(--sheet);padding:14px;margin-top:10px}.jigcard .asm figure svg{width:100%}
+.jigcard{display:grid;gap:14px;border:1px solid var(--rule);background:var(--sheet);padding:14px;margin-top:10px}
 .asm{display:flex;flex-wrap:wrap;gap:10px;margin:0;align-items:stretch;justify-content:center}
-.asm figure{margin:0;border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden;flex:1 1 300px;max-width:620px;display:grid;align-items:center}
+.asm figure{margin:0;border:1px solid var(--rule);background:#fff;border-radius:2px;overflow:hidden;flex:0 1 auto;max-width:100%;display:grid;align-items:center}
 .asm svg{display:block;max-width:100%;height:auto;margin:0 auto}
-.asm figure.wide{flex-basis:100%;max-width:820px}.asm figure.full{flex-basis:100%;max-width:none}.asm figure.grow svg{width:100%}.rip{columns:2 320px;column-gap:36px}.rip p{margin:0 0 8px;break-inside:avoid}
+.rip{columns:2 320px;column-gap:36px}.rip p{margin:0 0 8px;break-inside:avoid}
 .logpair{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:12px;align-items:center}.logpair .ph svg{max-height:380px;width:auto}
 @media (max-width:760px){.logpair{grid-template-columns:1fr}}
 .dont{grid-column:2;margin-top:8px;border-left:3px solid var(--weak);padding:6px 10px;font-size:14px;background:color-mix(in srgb,var(--weak) 8%,transparent)}
@@ -200,7 +200,7 @@ def page(plan, svgs, photo, guide=None):
         hero = fig(svgs["face"], "Top face · finished size")
         top = max((l for l in logs if l["crosscut"]), key=lambda l: l["slices"])
         second = ""
-        hero2 = fig(svgs[f'log_{top["id"]}'], f'The building block · {Lg} {top["id"]}' + ("" if bb else ", end view"),
+        hero2 = fig(svgs.get(f'end_{top["id"]}') or svgs[f'log_{top["id"]}'], f'The building block · {Lg} {top["id"]}' + ("" if bb else ", end view"),
                      f'<span>{len(top["cells"])} pieces' + (f', {top["slices"]} lengths of it in the planks</span>' if planks else f', {top["slices"]} slices of it in the board</span>'))
     if not (photo and os.path.exists(photo)):
         hero = f'<div style="display:grid;gap:18px;align-content:start">{hero}{hero2}</div>'
@@ -209,7 +209,7 @@ def page(plan, svgs, photo, guide=None):
     tilts = sorted({round(b["tilt"], 1) for b in plan["bar_types"] if b["tilt"]})
     stilts = sorted({round(l["tilt"], 1) for l in sws if l["tilt"]})
     kind = plan["info"]["kind"]
-    tools = ["Table saw" + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in stilts)}), a riving knife or splitter, push blocks and a featherboard" if stilts else "") + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in tilts)})" if tilts else "") + (", rip sled with three toggle clamps" if tilts else ""),
+    tools = ["Table saw" + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in stilts)}), a riving knife or splitter and push blocks" if stilts else "") + (f", digital angle gauge (blade at {', '.join(f'{t:g}°' for t in tilts)})" if tilts else "") + (", rip sled with three toggle clamps" if tilts else ""),
              "Jointer and planer for the blanks and bars",
              {"tri": "Drum sander or thickness planer (helical head is best) to true bars and logs in the V blocks", "blocks": "Jointer and planer to true the logs",
               "panel": "Planer to true the panels", "hex": "Sanding board: 120 grit on a flat base, for the sides of the pucks",
@@ -219,7 +219,7 @@ def page(plan, svgs, photo, guide=None):
               "bars": "Flat cauls, a taped plank base and an auxiliary rip fence that sits tight on the saw table (step 2). No V blocks, no bevel sled"}[kind],
              "Bar clamps, taped cauls, Titebond III" + (" and Titebond II Extend for the puck glue-up" if kind == "hex" else ""), "Router sled or drum sander to flatten the board; never a planer on the finished end grain",
              "Random-orbit sander, router or block plane for the edges, mineral oil and board butter"]
-    how = {"tri": "Bars are glued two to four at a time into small triangular logs in a V block. Every face of every log is machined flat, then the long logs are glued side by side into planks. A plank is one row of the board made long: "
+    how = {"tri": "Bars are glued " + ("two" if max(len(l["cells"]) for l in logs) <= 2 else "two to four") + " at a time into small triangular logs in a V block. Every face of every log is machined flat, then the long logs are glued side by side into planks. A plank is one row of the board made long: "
                   "it is planed, crosscut into rows, and the rows are glued into the board. No row is assembled from loose slices, and no glue-up has a face that cannot be machined.",
            "blocks": "Each star block is built as a square log: two bars make a band, two bands and a square bar make a quarter log, two quarters make a half and two halves the block. "
                      "The faces of each glue-up that are glued next are machined flat first. The long block logs are then glued side by side into planks, the planks are planed and crosscut into rows, and the rows are glued into the board.",
@@ -270,13 +270,16 @@ def page(plan, svgs, photo, guide=None):
                  f'<td class="q">{b["total_bars"]} + {b["total_spares"]}</td><td class="m">' + "<br>".join(f'{l["bars"]} + {l["spares"]} @ {fr(short(l["bar_length"]))}' for l in b["lengths"])
                  + f'</td><td class="m">{fr(short(b["stock"]))}</td></tr>' for b in bars)
     one_ = len(plan["bar_types"]) == 1
+    bt_txt = plan.get("bar_true") or ""; bt_used = bool(bt_txt) and any(bt_txt in s_ for bt in plan["bar_types"] for s_ in bt["steps"])
+    if bt_used:      # the truing paragraph is the same for every bar: say it once, above the cards
+        for bt in plan["bar_types"]: bt["steps"] = [s_.replace(bt_txt, " How to true is at the top of this sheet.") for s_ in bt["steps"]]
     setups = "".join(f'<div class="joint"{" style=\"display:grid;grid-template-columns:minmax(0,500px) 1fr;gap:8px 28px;align-items:start\"" if one_ else ""}><div class="jh"{" style=\"grid-column:1/-1\"" if one_ else ""}><span class="jn">{bt["id"]}</span><div><h4>{fr(bt["label"])}</h4>'
                      f'<div class="jsub">{"blade " + format(bt["tilt"], ".1f") + "° from vertical" if bt["tilt"] else "blade square"}</div></div></div>'
                      f'<div class="ph">{svgs["bar_" + bt["id"]]}</div>'
                      f'<ol class="small" style="margin:0;padding-left:18px;display:grid;gap:4px">{"".join(f"<li>{fr(s)}</li>" for s in bt["steps"])}</ol></div>'
                      for bt in plan["bar_types"])
     H.append(f'<article class="sheet" id="bars">{tb("03", "Layer boards" if bb else "Bars & rip setups", "The flat boards that are glued face to face into the sandwiches. An inside layer's thickness is a width on the face of the board; an outside layer only has to be thick enough" if bb else "Every piece of the face is the end of one of these bars. Each drawing shows the section, then the table saw from the front for that rip", f"<div class=dims>{nbars} {"boards" if bb else "bars + spares"} · kerf {fr(short(sh["kerf"]))}</div>")}'
-             + (f'<div class="lower full" style="border-top:0;border-bottom:1px solid var(--rule)"><div class="panel"><h3>The bevel rip</h3><div class="rip">{"".join(f"<p><b>{e(h_)}.</b> {fr(t_)}</p>" for h_, t_ in RIP_POINTS if h_ != "Triangles" or any("triangle" in bt.get("kind", "") for bt in plan["bar_types"]))}<p><b>The cards below.</b> Each gives what differs for that bar: the strip to start from, how it is turned for the second bevel, and the figure to set the sled to.</p></div></div></div>' if tilts else '')
+             + (f'<div class="lower full" style="border-top:0;border-bottom:1px solid var(--rule)"><div class="panel"><h3>The bevel rip</h3><div class="rip">{"".join(f"<p><b>{e(h_)}.</b> {fr(t_)}</p>" for h_, t_ in RIP_POINTS if h_ != "Triangles" or any("triangle" in bt.get("kind", "") for bt in plan["bar_types"]))}{("<p><b>Truing the bars.</b>" + fr(bt_txt) + "</p>") if bt_used else ""}<p><b>The cards below.</b> Each gives what differs for that bar: the strip to start from, how it is turned for the second bevel, and the figure to set the sled to.</p></div></div></div>' if tilts else '')
              + f'<div class="jgrid setups" style="--n:{2 if len(plan["bar_types"]) in (2, 4) else min(3, len(plan["bar_types"]))}">{setups}</div>'
              f'<div class="lower full"><div class="panel"><h3>Cut list</h3><div class="tbl"><table class="d">'
              f'<tr><th>{"Layer" if bb else "Bar"}</th><th>Section</th><th style="text-align:right;padding-right:12px">Qty + spare</th><th>Lengths</th><th>Blank thickness</th></tr>{cl}</table></div>'
@@ -339,14 +342,14 @@ def page(plan, svgs, photo, guide=None):
         e1_ = end_(rows[0])
         def slide_(r):
             d_ = end_(r) - e1_
-            return "level with R1" if abs(d_) < 0.01 else f'{fr(short(abs(d_)))} {("right" if d_ > 0 else "left") if horiz_ else ("up" if d_ > 0 else "down")} of R1'
+            return "the reference row" if r is rows[0] else "level with R1" if abs(d_) < 0.01 else f'{fr(short(abs(d_)))} {("right" if d_ > 0 else "left") if horiz_ else ("up" if d_ > 0 else "down")} of R1'
         rowtab = "".join(f'<tr><td class="m" style="color:var(--accent-ink)">R{r["n"]}</td><td class="m">{e(r["plank"])}</td><td>{e(OP_TEXT[r["op"]])}</td><td class="m">{slide_(r)}</td></tr>' for r in rows)
         marks = ("<li>Each row, R1, R2 …, is one whole crosscut of the plank named beside it, drawn at its full length.</li>"
                  "<li>The red arrow is the pencil arrow you drew on each row at the saw, as on the plank drawing above. Lay each row so its arrow points the way the drawing shows.</li>"
                  + ("<li>A dashed arrow is on the underside: that row is turned over.</li>" if any(not r["slice"]["face_up"] for r in rows) else "<li>Every arrow is face up. No row is flipped over.</li>")
                  + ("<li>Turned end for end means spun half a turn flat on the bench, same face up.</li>" if any(r["op"] == "r" for r in rows) else "")
                  + 
-                 "<li>Rows from one plank are slid along each other until the pattern meets, as drawn; the ends that overhang are trimmed off.</li>"
+                 ("<li>Every row lies with its ends level with row 1; there is no slide on this board.</li>" if all(abs(end_(r) - e1_) < 0.01 for r in rows) else "<li>Rows from one plank are slid along each other until the pattern meets, as drawn; the ends that overhang are trimmed off.</li>") +
                  "<li>Dashed red is the trim line; the paler area is cut off.</li>")
         H.append(f'<article class="sheet" id="layout">{tb("05", "Planks & rows", "Each plank is a row of the board made long; each crosscut of it is a row. Then the top view before trimming: which row goes where, and which way round", f"<div class=dims>{pl(npl, "plank")} · {pl(len(rows), "row")}</div>")}'
                  f'<div class="jgrid logs">{pcards}</div>'

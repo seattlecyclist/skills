@@ -621,17 +621,19 @@ def gems(p, board):
 
 
 def ziggurat(p, board):
-    """Ziggurat: one stepped hexagonal pyramid seen from above, centred on the board. Hexagonal rings one
-    lattice step wide alternate between a dark line and a terrace; the terraces are shaded by which way they
-    face. Roles: light, mid, dark, line."""
-    t = float(p.get("side", 0.75))
+    """Ziggurat: one stepped hexagonal pyramid seen from above, centred on the board. Hexagonal terraces
+    `tread` lattice steps wide are parted by a dark riser line one step wide; the terraces are shaded by
+    which way they face. Roles: light, mid, dark, line."""
+    t = float(p.get("side", 0.75)); tread = max(1, int(p.get("tread", 2))); k = tread + 1
     def colour(u, v):
         d = int(_hexdist(u, v))
-        if d % 2: return "line"
+        if d % k == tread: return "line"
         return ["dark", "mid", "light", "light", "mid", "dark"][_sector(u, v)]     # lit from the left: the top half mirrors the bottom, so each plank gives two rows
-    polys, trim, cells = _lattice(p, board, t, 2, colour, centre=(0, 0))
+    polys, trim, cells = _lattice(p, board, t, k, colour, centre=(0, 0))
     return {"polygons": polys, "trim": trim, "roles": ["light", "mid", "dark", "line"], "cells": cells,
-            "notes": [f"Concentric hexagonal steps {t:g}\" wide round the middle of the board; the terraces face six ways and are shaded in three woods.",
+            "period": t, "period_extra": 0.5, "keep_phase": True,      # the side cuts pass through the middle of a step, so no point of a hexagon just kisses an edge
+            "band": (0.5, 0.5), "band_centred": True,                      # top and bottom are cut through the middle of a row, the same distance from the centre
+            "notes": [f"Concentric hexagonal terraces {tread * t:g}\" wide round the middle of the board, parted by riser lines {t:g}\" wide; the terraces face six ways and are shaded in three woods.",
                       "One motif, not a repeat: the top half mirrors the bottom half, so each plank gives one row for each half."]}
 
 
@@ -647,6 +649,7 @@ def ribbons(p, board):
         return ("a" if (c // wide) % 2 == 0 else "b") + ("_lit" if j % 2 == 0 else "_shade")
     polys, trim, cells = _lattice(p, board, t, 2, colour)
     return {"polygons": polys, "trim": trim, "roles": ["a_lit", "a_shade", "b_lit", "b_shade"], "cells": cells,
+            "period": 2 * wide * t, "row_edges": True, "band": (0, 0.5), "band_joints": True,      # an odd count of courses: top and bottom end on the same slope,      # both long edges end on a whole ribbon of the same kind
             "notes": [f"Every piece is a {t:g}\" diamond; a ribbon is a zigzag column of them, lit on one slope and shaded on the other."]}
 
 

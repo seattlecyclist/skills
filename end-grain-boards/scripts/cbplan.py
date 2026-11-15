@@ -245,9 +245,9 @@ def recipe(key, p, L, A, shop, outside=False):
                 st = [f"Mill the blank to {dim(H)} thick (the trapezoid's height).",
                       f"Blade square. Rip square-edged strips {dim(strip)} wide, the ordinary way, fence {short(strip)} from the blade.",
                       f"Tilt the blade {tilt:.1f} degrees from vertical (digital angle gauge). " + RIP +
-                      f" Clamp a strip against the locating fence and bevel one edge. Turn the strip end for end, the same face up, sawn edge against the locating fence, and bevel the other edge. "
-                      f"The bar sits wide face up, under the caul. Set the locating fence with test strips until the wide face measures {dim(long_ + e_)}; that one setting does both passes." + deep(H, tilt),
-                      (f"True the two sawn faces in a V block: wide face against one wall, a sawn face up and level. One light pass, turn the bar end for end, one more; "
+                      f" Clamp a strip against the locating fence and bevel one edge. Turn the strip end for end, the same face up, sawn edge against the locating fence, and bevel the other edge. For this second pass only the sharp top corner of the sawn edge would touch a square fence, and a sharp corner crushes: rip a filler strip at the same tilt and stick it to the locating fence with double-sided tape, slanted face out, so the whole sawn edge bears on it. "
+                      f"The bar sits wide face up, under the caul. The filler is a wedge as long as the strip and as high as the blank is thick, ripped at this same blade tilt so it tapers to a feather edge at the top; with it in place the fence line at the top face has not moved. Set the locating fence with test strips, both bevels cut, until the wide face measures {dim(long_ + e_)}." + deep(H, tilt),
+                      (f"True the two sawn faces in a V block: wide face against one wall, a sawn face up and level. One light pass on that face. Then roll the bar over so its wide face lies against the other wall: the sawn face just trued goes down into the V and the untouched sawn face comes up. One light pass on that face too; "
                        f"every bar at one setting, until the wide face is {dim(long_)} and the narrow face {dim(short_)}. By calipers: the wide face is {long_ + e_:.3f}\" off the saw, about {long_ + e_ / 2:.3f}\" after the first sawn face and {long_:.3f}\" after the second." + BAR_TRUE if v60 else
                        f"True the two sawn faces with the bar held in a carrier that tips a sawn face level, one light pass each, until the wide face is {dim(long_)} and the narrow face {dim(short_)}."),
                       f"Check: {th:.0f} degree corners on the wide face, slanted faces {dim(leg)}."]
@@ -554,15 +554,19 @@ def build(design, out, photo=None):
                 if best is None or sc_ < best[0]: best = (sc_, c, half)
             _, cen, half = best
             if g.get("period"):       # no mirror line across the rows: end both cuts at the same point of the repeat
-                along_req = max(1, round(along_req / (g["period"] * ku))) * g["period"] * ku
+                ex_ = float(g.get("period_extra", 0))      # a part repeat on top of the whole ones, so both sides end on the same wood
+                along_req = (max(1, math.floor(along_req / (g["period"] * ku) - ex_ + 0.5 + 1e-6)) + ex_) * g["period"] * ku
             cu, cv = G(cen); hu = along_req / ku / 2
             if g.get("band"):         # a stripe runs along every row: start and end the board on it, so both ends look alike
                 f0, f1 = g["band"]; nf = max(1, round((across_req - (f1 - f0) * Ht) / Ht))
+                if g.get("band_centred"):      # one centred motif: take the row count whose two cuts sit the same distance from it
+                    off = lambda n_: abs(((cv - v0) / H0 - (n_ + f0 + f1) / 2 + 0.5) % 1 - 0.5)
+                    nf = min((n_ for n_ in (nf, nf + 1, nf - 1) if n_ >= 1), key=lambda n_: (round(off(n_), 6), abs(n_ * Ht + (f1 - f0) * Ht - across_req)))
                 m0 = round((cv - v0) / H0 - (nf + f0 + f1) / 2)
-                j0 = ec / kv if abs(f0 - round(f0)) < 1e-6 else 0.0; j1 = ec / kv if abs(f1 - round(f1)) < 1e-6 else 0.0      # a cut on a row joint moves in by the clean-up cut
+                jt_ = g.get("band_joints"); j0 = ec / kv if jt_ or abs(f0 - round(f0)) < 1e-6 else 0.0; j1 = ec / kv if jt_ or abs(f1 - round(f1)) < 1e-6 else 0.0      # a cut on a row joint moves in by the clean-up cut
                 vlo = v0 + (m0 + f0) * H0 + j0; vhi = v0 + (m0 + nf + f1) * H0 - j1
                 cv = (vlo + vhi) / 2; half = (vhi - vlo) / 2
-            if g.get("period") and not g.get("keep_phase"):       # no slivers: slide the two side cuts along the repeat to where the narrowest piece they leave is widest
+            if g.get("period") and not g.get("keep_phase") and g.get("phase") is None:       # no slivers: slide the two side cuts along the repeat to where the narrowest piece they leave is widest
                 per_ = float(g["period"]); gp = [[G(v) for v in p["pts"]] for p in polys]
                 gp = [q for q in gp if max(v[1] for v in q) > cv - half and min(v[1] for v in q) < cv + half]
                 def narrowest(c):
@@ -573,6 +577,8 @@ def build(design, out, photo=None):
                             if lo < edge - 1e-6 and hi > edge + 1e-6: w = min(w, (hi - edge) if sg > 0 else (edge - lo))
                     return w
                 cu = max((cu + k * per_ / 24 for k in range(24)), key=lambda c: (round(narrowest(c), 4), -abs(c - cu)))
+            if g.get("phase") is not None:      # the generator names where a side cut belongs in the repeat
+                per_ = float(g["period"]); cu = float(g["phase"]) + hu + round((cu - hu - float(g["phase"])) / per_) * per_
             def rect(du, dv):
                 q = [Bd((cu + a * (hu + du), cv + b * (half + dv))) for a in (-1, 1) for b in (-1, 1)]
                 return [min(v[0] for v in q), min(v[1] for v in q), max(v[0] for v in q), max(v[1] for v in q)]
@@ -589,6 +595,13 @@ def build(design, out, photo=None):
         if kind0 != "tri": plan_trim = list(trim)
         else: plan_trim = [trim[0] - ec - 0.01, trim[1] - ec - 0.01, trim[2] + ec + 0.01, trim[3] + ec + 0.01]
         bcells = BR.layout(polys, plan_trim, wood, shop)
+        if bcells and g.get("row_edges"):      # the two edges along the rows fall on row joints: whole rows, planed faces, nothing sawn off
+            Gb, Bb = BR._frame(bcells["angle"]); Hb = float(bcells["row"]); ovb = bcells["origin"][1]
+            qb = [Gb((trim[a_], trim[b_])) for a_ in (0, 2) for b_ in (1, 3)]
+            U0b, U1b = min(v[0] for v in qb), max(v[0] for v in qb); V0b, V1b = min(v[1] for v in qb), max(v[1] for v in qb)
+            V0n = ovb + round((V0b - ovb) / Hb) * Hb; V1n = V0n + max(1, round((V1b - V0b) / Hb)) * Hb
+            qb = [Bb(p_) for p_ in ((U0b, V0n), (U1b, V1n))]
+            trim = [min(qb[0][0], qb[1][0]), min(qb[0][1], qb[1][1]), max(qb[0][0], qb[1][0]), max(qb[0][1], qb[1][1])]
         if bcells and kind0 == "tri":      # rows run past the trim by the clean-up cut; the outside rows end on planed faces and need none
             e_ = ec + 0.01; plan_trim = [trim[0] - e_, trim[1] + 1e-4, trim[2] + e_, trim[3] - 1e-4] if bcells["angle"] == 0 else [trim[0] + 1e-4, trim[1] - e_, trim[2] - 1e-4, trim[3] + e_]
         if bcells: break
@@ -718,7 +731,7 @@ def build(design, out, photo=None):
     for pl in planks:
         n = len(pl["uses"]); need = n + shop["spare_slices"]
         k = max(1, math.ceil(need * pitch / usable)); per = math.ceil(need / k)
-        pl.update(rows_cut=n, spares=k * per - n, per_plank=per, count=k, length=_up(per * pitch + ends + shop["length_slack"]))
+        pl.update(rows_cut=n, spares=k * per - n, per_plank=per, count=k, length=max(_up(per * pitch + ends + shop["length_slack"]), shop["planer_min_length"]))      # never shorter than the planer can feed
         # is this plank worth making: is its row repeated, as cut or turned?
         by = OrderedDict()
         for u in pl["uses"]: by[u["op"]] = by.get(u["op"], 0) + 1
@@ -916,7 +929,7 @@ def build(design, out, photo=None):
     check(max(W, Lb) / T <= 18, "Board not too large for its thickness", f"{W:.1f} x {Lb:.1f} x {T}", "warn")
 
     plan = {"name": design.get("name", design["pattern"]), "description": design.get("description", ""), "pattern": design["pattern"],
-            "board": {"width": W, "length": Lb, "thickness": T, "trim": trim, "glued": glued, "full": full, "zig": zig, "drawn": drawn, "margins": margins, "tip1": tip1, "center": list(cen), "field": [Wf, Lf], "frame": frame_out},
+            "bar_true": BAR_TRUE, "board": {"width": W, "length": Lb, "thickness": T, "trim": trim, "glued": glued, "full": full, "zig": zig, "drawn": drawn, "margins": margins, "tip1": tip1, "center": list(cen), "field": [Wf, Lf], "frame": frame_out},
             "shop": shop, "species": {r: sp[r] for r in list(roles) + [r[0] for r in rings]}, "woods": list(woods.values()),
             "notes": g.get("notes", []) + design.get("notes", []), "options": design.get("options", {}),
             "face": face, "polygons": polys,
@@ -931,6 +944,14 @@ def build(design, out, photo=None):
         check(True, "Repeat math", plan["repeats"]["summary"])
     plan["vblocks"] = vblocks(plan)
     plan["steps"] = steps(plan, design)
+    for w in plan["woods"]:      # what the wood list warns of is said again at the step where it bites
+        note = str(SP.SPECIES.get(w["key"], ("",) * 7)[6]); nm = w["name"]
+        if "wipe with solvent" in note:
+            for st in plan["steps"]:
+                if st.get("glue"): st["text"].append(f"{nm}: wipe every glue face of it with acetone or denatured alcohol just before the glue goes on, and let it flash off. Its colour and oil otherwise bleed into the paler wood beside it.")
+        if "splinters" in note:
+            for st in plan["steps"]:
+                if st["title"].startswith("Mill"): st["text"].append(f"{nm} splinters, and the splinters fester: wear gloves when handling it rough, ease the arrises of every blank with a pass of sandpaper, and take lighter cuts in it than in the other woods.")
     os.makedirs(os.path.join(out, "svg"), exist_ok=True)
     import drawings
     svgs = drawings.make(plan)
@@ -1026,6 +1047,16 @@ def _join(xs):
     return xs[0] if len(xs) == 1 else ", ".join(xs[:-1]) + " and " + xs[-1]
 
 
+def _rows_level(plan, rows):
+    """True when every row's end sits level with row 1's, so there is no slide to set."""
+    try:
+        a_ = math.radians(plan["info"].get("angle", 0)); ux, uy = math.cos(a_), math.sin(a_)
+        e_ = [min(v[0] * ux + v[1] * uy for v in r["slice"]["outline"]) for r in rows]
+        return all(abs(x - e_[0]) < 0.01 for x in e_)
+    except Exception:
+        return False
+
+
 def _plank_steps(S, plan):
     """Logs -> planks -> rows -> board, for every board whose rows are made of bevelled logs."""
     if plan["info"]["kind"] == "bars" and not plan.get("_words"):      # the same steps, said of bars
@@ -1074,17 +1105,21 @@ def _plank_steps(S, plan):
                "Line up the star points at both ends before tightening.",
                "Then glue the sections to each other the same way until the plank is whole."]
     if split:
-        tx.append(f"The plank is {short(wide)} wide, wider than a {short(sh['planer_width'])} planer, so it is built as two half planks ({halves_txt}). Leave the halves overnight, then true each half in the next step, both at the same planer setting, so they are the same thickness. Then glue the two halves together on the flat base with a caul clamped down each side of the joint and across it at both ends, so the planed faces stay in one plane. "
-                  "Check the joint on both faces with a straightedge. Planed halves glued on a flat base should show no step, and then the faces are finished. If there is a step, take it out on a drum sander wide enough for the plank, or with the router sled that flattens the board, the lightest pass that clears pencil scribble from both sides of the joint; re-measure the plank and use that thickness for every plank.")
+        tx.append(f"The plank is {short(wide)} wide, wider than a {short(sh['planer_width'])} planer, so it is built as two half planks ({halves_txt}). Leave the halves overnight, then true each half in the next step, both at the same planer setting, so they are the same thickness. They are joined at the end of that step, after planing.")
+        join_tx = ("Joining the halves. " + ("Then glue the two halves together on the flat base like a panel: clamps across, with a caul clamped down each side of the joint and across it at both ends, so the planed faces stay in one plane. " if kind == "bars" else "Run the two gluing edge strips through the planer with the halves at that same last setting, so strips and halves are one thickness and the cauls bear on all of them. Then glue the two halves together on the flat base, an edge strip against each outside face as before, the bevel-down strip clamped to the base, with a caul clamped down each side of the joint and across it at both ends, so the planed faces stay in one plane. ") +
+                  "Check the joint on both faces with a straightedge. Planed halves glued on a flat base should show no step, and then the faces are finished. If there is a step, take it out with the router sled that flattens the board (or a drum sander wide enough for the plank), the lightest pass that clears pencil scribble from both sides of the joint; re-measure the plank and use that thickness for every plank.")
     S.append({"title": "Glue the logs into planks", "text": tx, "figs": (["pair"] if kind == "tri" else []) + [f"plank_{pl['id']}" for pl in planks[:1]], "see": ["layout"], "glue": True,
               "dont": "glue a whole plank in one go. More than three joints open at once slide on the glue before the clamps are on."})
 
     tx = ["Scrape the glue from both wide faces. These two faces are the glue faces between the rows of the board, so both get machined.",
           f"Scribble pencil across a face and pass the plank through the planer or under the drum sander, light passes, until the scribble just goes: about {sk}. Turn it over and do the other face. "
           "A plank is long grain from end to end, so the planer is safe here; feed it with the grain of most logs and take 1/64\" or less a pass.",
-          f"The plank starts about {dim(rowh + 2 * skim)} thick. Finish every plank at the same machine setting, so every row comes out the same width: about {dim(rowh)}."]
+          (f"The plank starts at the size the bars were cut, {dim(rowh + 1 / 32)}. Plane the first-cut faces of the bars until the knifed glue line reaches the corner at the bar ends, then take the rest off the other face. " if kind == "bars" else f"The plank starts about {dim(rowh + 2 * skim)} thick. ") + f"Finish every plank at the same machine setting, so every row comes out the same width: about {dim(rowh)}."]
+    if any(pl["rows_cut"] * plan["slice_cut"] < sh["planer_min_length"] - 4 for pl in planks):
+        tx.append(f"Every plank is at least {short(sh['planer_min_length'])} long, longer than its rows need, because a planer cannot feed a shorter piece safely: the rollers lose it between them. The extra length is the price of planing the plank safely; it is waste or spare rows, and the material list counts it.")
     if any(pl["width"] > sh["planer_width"] for pl in planks):
         tx.insert(0, "A plank built as two halves: true both halves here first, at one setting, then glue the halves together as step " + str(len(S)) + " describes and check the joint with a straightedge. The order is halves glued, halves trued, halves joined, joint checked.")
+    if split: tx.append(join_tx)
     S.append({"title": "True the planks", "text": tx, "figs": [], "see": [],
               "dont": "leave one plank a pass thicker than the others. Rows of different widths walk the pattern out of line across the board."})
 
@@ -1105,7 +1140,7 @@ def _plank_steps(S, plan):
     turned = sorted({r["op"] for r in rows if r.get("op")})
     tx = [f"Lay the {nrow} rows out dry in the order on sheet 05, each with its pencil arrow pointing the way its red arrow is drawn. "
           + ("The table on sheet 05 says which rows go in as cut and which are " + _join(PK.OP_TEXT[o] for o in turned) + ". " if turned else "Every row goes in as cut, number at the same side. ")
-          + "Slide each row along its neighbour until the corners of the logs meet corner to corner along the whole joint, as drawn. The table on sheet 05 gives the slide as a figure: how far, and which way, the end of each row sits from the end of row 1. The figure is the starting point and the eye governs: truing took a few thousandths off every log, so points and strand edges land within about 1/64\" rather than dead on; split any difference evenly along the joint. Then draw a pencil line across every joint so the rows go back in register under glue.",
+          + (lambda lv_: "Every row lies with its ends level with row 1: there is no slide on this board. Check that the corners of the logs meet corner to corner along the whole joint, as drawn. Truing" if lv_ else "Slide each row along its neighbour until the corners of the logs meet corner to corner along the whole joint, as drawn. The table on sheet 05 gives the slide as a figure: how far, and which way, the end of each row sits from the end of row 1. The figure is the starting point and the eye governs: truing")(_rows_level(plan, rows)) + "  took a few thousandths off every log, so points and strand edges land within about 1/64\" rather than dead on; split any difference evenly along the joint. Then draw a pencil line across every joint so the rows go back in register under glue.",
           "Glue two or three rows at a time, then glue those sections together. Clamp across the rows every 4 to 5 inches with moderate pressure, "
           "with taped cauls clamped across the top and bottom near each end, inside the ragged ends, to keep the rows in one plane.",
           "Before any glue, take the saw fuzz off the sawn arrises of each row with one stroke of 220 paper on a block, and clamp a scrap block to the bench against the end of the first row so nothing can creep lengthwise.",
@@ -1152,11 +1187,13 @@ def steps(plan, design):
                 f"Fence deck: the {dkw}\" deck beside the rip fence" + (f" ({dkw}\" because it has to hold the back rail, the spacers, the 5\" carriage and a {short(sh['stock_width'])} blank at once)." if has_tri else ".") + " The locating fence is a straight strip, 3/4\" x 1-1/2\", screwed along the front edge of a clamp board (3/4\" plywood about 5\" wide, 1\" shorter than the space between the bridges) that carries three toggle clamps. Fence and clamps are one carriage: it lies flat on the deck parallel to the cut and is held by two 1/4\" carriage bolts, one near each end, that come up through the deck (heads counterbored flush underneath so the sled still slides) and through slots cut across the clamp board, with a washer and wing nut on top. Cut a row of bolt holes in the deck about 2\" apart across its width, so with the slots the carriage can be set anywhere on the deck for each bar shape, nudged by a tap and locked. For the first setting, tap it; for a change of a few thousandths, add a strip of masking tape to the face of the locating fence or to a spacer. For the bar rips set the blade one tooth higher than the work, not fully raised, "
                 "and the pads always reach the same distance over the work. The pads close on a caul, a straight strip 1/2\" wide and 3/4\" high laid along the top of the work, so the pressure is spread and no pad is near the blade. Lay the caul over the part of the work that has deck under it, toward the locating fence, never out over a leaning edge. "
                 ,
-                ("Back rail, for triangle bars: a straight strip screwed along the rip-fence edge of the fence deck, parallel to the cut. The carriage is set off it with spacer strips that lie on the deck between the rail and the back edge of the clamp board (each bar card gives their width), one more for every bar cut, so the blank steps toward the blade by exactly one bar each pass. "
+                ("Back rail, for triangle bars: a straight strip screwed along the rip-fence edge of the fence deck, parallel to the cut. The carriage is set off it with spacer strips that lie on the deck between the rail and the back edge of the clamp board (each bar card gives their width), one more for every bar cut, so the blank steps toward the blade by exactly one bar each pass. The rail is 3/4\" wide and the slots in the clamp board are as long as one blank's whole travel (the spacer width times the bars one blank gives, plus 1/2\"), so the bolts never have to move to other holes part way through a blank. The spacers only count from a fixed start. The start is the cut that takes the waste bevel off the edge of a fresh blank: when that position has been found by test cuts, fit a starter strip that just fills the gap between the rail and the back of the clamp board, and leave it there. Starter strip alone is the waste bevel; starter plus one spacer is bar 1; one more spacer for every bar after. If the bars come out wide or narrow, change the spacer width, not the start. Screw a small stop across the back end of both decks so neither the blank nor a freed bar can be pushed back along the sled, and switch off and let the blade stop before lifting a bar off the landing deck. "
                  "Landing deck: the other deck. Stick a strip of 120 grit sandpaper along it where the bars land, and fix nothing else to it: a freed bar must have open deck beside it. Leave the rip fence where it is for the whole run; every setting is made on the sled." if has_tri else
                  "Landing deck: the other deck. Only waste slivers land on it. Leave the rip fence where it is for the whole run; every setting is made on the sled.")]
     if kind == "tri":
         vb = plan["vblocks"]; longest = max(lg["length"] for lg in logs) + sh["glue_extra"]
+        nlog_ = sum(lg.get("count", 1) for lg in logs if lg["kind"] == "tri"); nblk_ = min(6, max(2, math.ceil(nlog_ / 20)))
+        njoint_ = sum(pl["count"] * (pl["n"] - 1) for pl in plan["planks"]); nstrip_ = min(4, max(2, math.ceil(njoint_ / 30)))
         thin = [v for v in vb if v["base"] < 0.5]; tallest = max(v["tall"] + v["base"] for v in vb)
         jig += ["V blocks: they hold every three-cornered part, for gluing and for truing. The sides of a block stop 3/16\" under the top of the part: high enough to bear on nearly the whole part, "
                 "low enough that the top stands proud for the caul or the sander. A V has no size except the height of its sides, so the blocks are named by that. Make "
@@ -1168,14 +1205,17 @@ def steps(plan, design):
                 "for truing it is screwed tight against the drafting triangle. The two faces form a 60 degree V with no gap at the bottom.",
                 f"Machine height: under the drum sander or planer the tallest block and log stand {short(_up(tallest, 0.125))} high: check your machine opens that far before starting. If it does not, true those logs in the block with a jack plane.",
                 f"Block length: make each gluing block 2\" longer than the longest part it holds (the longest part is {short(longest)}). Line its V with packing tape so glue lets go, and stand it on two battens when gluing so clamp jaws reach under the base. "
-                "Each log is an hour in the block and overnight out of it, so two or three gluing blocks of the largest size keep the job to a couple of days. "
-                f"Truing block: a separate block of each size, 6\" longer than the part, with its V lined with 120 grit paper instead of tape so the part cannot slip, and a stop screwed across each end, 1/4\" lower than the top of the part so the cutter clears it. The extra length holds a 3\" scrap of the same section in front of and behind the part, so planer snipe falls on the scrap. Under a drum sander the gluing block with one stop at the trailing end will do."]
+                f"Each log is an hour in the block. This board has {nlog_} logs, so with one block that is {nlog_} hours at the clamps: make {nblk_} gluing blocks of the largest size, which brings it to about {math.ceil(nlog_ / nblk_)} sessions of an hour. "
+                f"Truing block: a separate block of each size, 6\" longer than the part, with its V lined with 120 grit paper instead of tape so the part cannot slip, and a stop screwed across each end, 1/4\" lower than the top of the part so the cutter clears it. The extra length holds a 3\" scrap of the same section in front of and behind the part, so planer snipe falls on the scrap; cut the scraps from the spare bars and from one extra log glued for the purpose, and count that log into the bars you rip. Under a drum sander the gluing block with one stop at the trailing end will do."]
         jig += [f"Plank base: a flat piece of melamine or waxed MDF about {math.ceil(plw + 8)}\" x {math.ceil(pll + 2)}\", for gluing the logs side by side into planks. Stand it on two battens so clamps reach under it.",
-                f"Three edge strips: straight strips as long as the planks, as thick as the trued logs (about {short(rowh + 2 * sh['true_skim'])}; plane them to match a trued log) and 2\" wide on the wide face, with one edge ripped at 30 degrees from vertical (the V block setting). "
+                f"Three edge strips: straight strips as long as the planks, as thick as the trued logs (about {short(rowh + 2 * sh['true_skim'])}; plane them to match a trued log) and 2\" wide on the wide face, with one edge ripped at 30 degrees from vertical (the V block setting). Make them of straight scrap or of MDF glued up to thickness. Like the V block sides they are jig parts, wide and flat, and are ripped the ordinary way: wide face down on the saw table, square edge against the rip fence, fence on the side the blade leans away from. The rule that every bevel is cut on the rip sled is for the bars. "
+                + (f"The planks take {njoint_} glue-ups of 45 minutes, one joint at a time, and a pair of strips serves one glue-up: make {nstrip_} pairs of gluing strips and as many bases, or allow {math.ceil(njoint_ * 0.75)} hours at the clamps. " if njoint_ > 12 else "") +
                 "The outside faces of a plank section lean at 60 degrees; a strip lies against each, bevel to bevel, turned bevel down or bevel up as the face leans, and gives the clamps a square face. Tape the bevels so they do not get glued in. "
                 "The third strip is screwed to the crosscut sled's fence, on both sides of the blade line, as the fixed face the plank bears on at the crosscut.",
                 "Four flat cauls: straight 2x2s with packing tape on one face, a little longer than the planks are wide, to hold the logs down flat on the base.",
-                f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 2.0, 0.5))}, the width of the widest plank plus the 2\" edge strip on its fence, and cut square: check it with a five-cut test before the first row."]
+                f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 2.0, 0.5))}, the width of the widest plank plus the 2\" edge strip on its fence, and cut square: check it with a five-cut test before the first row. "
+                + (f"The plank is {short(rowh)} thick: the sled's base must be {short(sh['sled_base'])} or thinner and the blade must rise {short(rowh + sh['sled_base'] + 0.0625)} above the table. Check your saw before buying wood. If it cannot, crosscut the rows on a band saw against a fence and true the two sawn faces of every row on the router sled, or make the pattern smaller. " if rowh + sh["sled_base"] > 2.5 else "")
+                + "Put the hold-down over the middle of the plank, on the side of the blade away from the stop."]
     elif kind == "hex":
         bd_ = plan["board"]; gw = bd_["glued"][2] - bd_["glued"][0]; gl = bd_["glued"][3] - bd_["glued"][1]; lgh = sliced[0]
         jig += ["Sanding board: a flat offcut of MDF or melamine about 12\" x 18\" with a sheet of 120 grit paper stuck down with spray adhesive. The sides of the pucks are cleaned on it, and the sawn faces of the half pucks.",
@@ -1194,7 +1234,7 @@ def steps(plan, design):
                 "The legs are narrower than the log so the two cauls never touch each other before the log is tight.",
                 f"Plank base: a flat piece of melamine or waxed MDF about {math.ceil(plw + 8)}\" x {math.ceil(pll + 2)}\", for gluing the logs side by side into planks. Stand it on two battens so clamps reach under it.",
                 "Four flat cauls: straight 2x2s with packing tape on one face, a little longer than the planks are wide, to hold the logs down flat on the base.",
-                f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 0.5, 0.5))}, the width of the widest plank, and cut square: check it with a five-cut test before the first row."]
+                f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 0.5, 0.5))} or more (the widest plank is {short(plw)}), and cut square: check it with a five-cut test before the first row."]
     else:
         bd_ = plan["board"]; gw = bd_["glued"][2] - bd_["glued"][0]; gl = bd_["glued"][3] - bd_["glued"][1]
         jig += [f"Flat cauls: eight straight 2x2s (four pairs) with packing tape on one face, about {math.ceil(max(gw, gl) + 4)}\" long, so they overhang both the panels and the finished board and the clamps have something to bear on.",
@@ -1487,7 +1527,7 @@ def _square_marks(lg):
 
 def _bar_steps(S, plan):
     """Layer boards -> sandwiches -> slabs -> bars. The planks, rows and board follow in _plank_steps."""
-    sh = plan["shop"]; logs = plan["logs"]; kerf = sh["kerf"]; ov = sh.get("rip_oversize", 1 / 32)
+    sh = plan["shop"]; logs = plan["logs"]; kerf = sh["kerf"]; ov = sh.get("slab_oversize", 1 / 16)
     sws = [l for l in logs if l["shape"] == "sandwich"]; sbs = [l for l in logs if l["shape"] == "sbar"]
     cutb = [l for l in sbs if l.get("cut")]; solid = [l for l in sbs if not l.get("cut")]
     planks = plan["planks"]; plw = max(pl["width"] for pl in planks); pll = max(pl["length"] for pl in planks)
@@ -1496,18 +1536,18 @@ def _bar_steps(S, plan):
     tilts = sorted({l["tilt"] for l in sws if l["tilt"]}); maxh = max(l["h"] for l in sws) if sws else 0; maxw = max(l["w"] for l in sws) if sws else 0
     sl = max((l["length"] for l in sws), default=0)
     S.append({"title": "Make the jigs", "figs": [], "see": [], "text": [
-        f"Flat cauls: six straight 2x3s, jointed on one edge and taped on it, about {math.ceil(maxw + 4)}\" long, to clamp the sandwiches. Clamped in pairs, above and below, they keep the pressure even across the whole width.",
+        f"Flat cauls: eight straight 2x3s, jointed on one edge and taped on it, about {math.ceil(maxw + 4)}\" long, to clamp the sandwiches. Clamped in pairs, above and below, they keep the pressure even across the whole width. Eight make four pairs, enough for one sandwich: glue the sandwiches one at a time.",
         "Auxiliary rip fence: a straight board of 3/4\" plywood or MDF, 4\" high and as long as the rip fence, clamped to it with its lower edge tight on the saw table. "
         "The slabs have sharp edges; this fence leaves no gap for one to slide under.",
         f"Plank base: a flat piece of melamine or waxed MDF about {math.ceil(plw + 8)}\" x {math.ceil(pll + 2)}\", for gluing the bars side by side into planks. Stand it on two battens so clamps reach under it.",
         "Four more cauls: straight 2x2s with packing tape on one face, a little longer than the planks are wide, to hold the bars down flat on the base.",
-        f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 0.5, 0.5))}, the width of the widest plank, and cut square: check it with a five-cut test before the first row.",
+        f"Crosscut sled: with a hold-down clamp, a stop block and a 1\" spacer. It must crosscut {short(_up(plw + 0.5, 0.5))} or more (the widest plank is {short(plw)}), and cut square: check it with a five-cut test before the first row.",
         "That is all. This build has no V blocks, no bevel sled and no edge strips: every part is a rectangle or lies on a flat sawn face."]})
 
     inner = sorted({round(t, 4) for l in sws for i, (_, _, t) in enumerate(l["stack"]) if 0 < i < len(l["stack"]) - 1 or not l["tilt"]})
     tx = ["Sheet 02 lists the boards and sheet 03 the layers, one card for each thickness. Joint one face and one edge of every board, then plane to thickness.",
           ("An inside layer shows on the face of the board at its full thickness, so its thickness is a pattern size: " + _join(dim(t) for t in inner) + ". Set the planer with calipers and plane every inside layer of one thickness, in every wood, at the same setting. " if inner else "")
-          + "An outside layer is cut away at an angle by the squaring cuts, so it only has to be thick enough: the listed figure or a little over.",
+          + "An outside layer is cut away at an angle by the squaring cuts, so its thickness is not a pattern size, but it does set where the squaring fence finds the glue line: plane every outside layer of one kind at one setting too, to the listed figure or a little over, never under.",
           "Where a layer is wider than one board, edge-glue boards to make it, then plane the panel. The joint is one wood glued to itself.",
           "Plane both faces of every layer fresh on the day it is glued. Cut the layers of one sandwich to the same length and width."]
     for l in solid:
@@ -1518,27 +1558,29 @@ def _bar_steps(S, plan):
     tx = ["A sandwich is the layers glued face to face, flat. " + " ".join(
             f"{l['name']}: " + ", ".join(f"{wn(w)} {short(t)}" for w, _, t in l["stack"]) + f" (bottom to top), {short(l['w'])} wide and {short(l['h'])} thick. Make {_made(l)}." for l in sws),
           "Roll a thin, even coat of Titebond III on one face of each joint. Stack the layers on two cauls, edges and ends flush, and rub each one down to grab.",
-          "Clamp cauls in pairs, one above and one below, every 6 inches, snug in the middle first and then outward, with moderate pressure. Before the last turn, tap the layers flush at one long edge and check the ends: wet layers slide on each other. A brad or two in the waste at each end stops it.",
-          "Scrape the squeeze-out when rubbery. Leave the sandwiches in clamps two hours and out of clamps overnight.",
-          "Joint one long edge of each sandwich square to its faces: that edge runs against the rip fence. Pencil the sandwich's number on one end; that is the marked end of every slab and bar cut from it."]
+          "Clamp cauls in pairs, one above and one below, every 6 inches, snug in the middle first and then outward, with moderate pressure. Before the last turn, tap the layers flush at one long edge and check the ends: wet layers slide on each other. A brad in the waste at each end, within 1/4\" of the end, stops it.",
+          "Scrape the squeeze-out when rubbery. A wide face-to-face joint dries slowly: leave each sandwich in its clamps overnight.",
+          "When the glue has cured, crosscut both ends of every sandwich, taking the brads with them, to leave " + _join(f"{l['name']} {short(max((b['length'] for b in cutb if b.get('sandwich') == l['id']), default=l['length'] - 0.5))} long" for l in sws) + ". That is the length of the bars and of the plank; the layers were cut longer for this. Nothing with a brad in it goes near the rip blade or the planer. Then scrape the glue off both faces and lay a straightedge across each: the bottom face is what the tilted rip is measured from, so it must be flat and clean. If a face is cupped or the scraper leaves a bead, take one planer pass of 1/64\" or less off that face, the same on every sandwich; the outside layers carry 1/32\" for it and no more.",
+          "Joint one long edge of each sandwich square to its faces: that edge runs against the rip fence. Scribble pencil across the whole of one end and write the sandwich's number on it; that is the marked end, and every slab and bar cut from it carries a piece of the scribble."]
     S.append({"title": "Glue the sandwiches", "text": tx, "figs": [f"log_{l['id']}" for l in sws][:3], "see": ["logs"], "glue": True,
-              "dont": "glue more than three joints in one go. A tall wet stack skates out of line before the clamps are on; glue a five-layer sandwich in two sessions."})
+              "dont": "glue more than three joints in one go. A tall wet stack skates out of line before the clamps are on; glue a sandwich of more than four layers in two sessions."})
 
     tx = []
     for l in sws:
         if l["tilt"]:
             pitch = (l["slab"] + ov + kerf) / math.cos(math.radians(l["tilt"]))
             tx.append(f"{l['name']}: blade tilted {l['tilt']:g} degrees from vertical, checked with a digital angle gauge and a test cut. Each slab is {dim(l['slab'] + ov)} thick, measured square across its sawn faces "
-                      f"({short(ov)} over, for planing). The fence moves {dim(pitch)} toward the blade between cuts. One sandwich gives {l['per']} slabs; cut {l['slabs']} + {l['slab_spares']} spare in all.")
+                      f"({short(ov)} over, for planing). The fence moves {dim(pitch)} toward the blade between cuts: rip {l['per'] + 1} gauge strips exactly that wide from scrap and use them as below, never the tape. One sandwich gives {l['per']} slabs; cut {l['slabs']} + {l['slab_spares']} spare in all.")
         else:
             tx.append(f"{l['name']}: blade square. Rip slabs {dim(l['slab'] + ov)} wide; one sandwich gives {l['per']}. Cut {l['slabs']} + {l['slab_spares']} spare in all.")
     if tilts:
         tx += ["The sandwich lies flat on the table with its jointed edge against the rip fence, and the fence on the side the blade leans away from, so the blade never leans over the wood between itself and the fence. "
-               "The slab comes off the open side of the blade and lies free on the table; the part against the fence is the part you hold, and it gets narrower with each cut.",
-               "First cut: set the fence so the blade takes a wedge off the open edge and leaves that edge a clean slanted face from top to bottom. Then move the fence toward the blade by the figure above and cut the first slab. Check its thickness with calipers, square across the two sawn faces, and correct the fence before going on.",
-               f"The cut is deep: the thickest sandwich is {short(maxh)} and the blade is close to its full height. Use a sharp rip blade, the riving knife or a splitter, a featherboard ahead of the blade, and push blocks. Feed steadily. If the saw labours, make each cut in two passes, the first at half height.",
-               "Stop when the top face of the part against the fence is less than 1/2\" wide. That last piece is waste; so is the first wedge. Both are counted in the material list.",
-               "The pictures this method comes from show the slabs and the finished bars, not the saw setup. The fence side, the order of cuts and the stopping point above are this plan's working out. Rip a short offcut of a sandwich first and check the setup feels safe on your saw."]
+               "The slab comes off the open side of the blade, the side away from the fence. It is taller than it is wide on the table and it leans outward, so it tips over away from the blade as it comes free. That is expected and it is not trapped: clear the table on that side, let it fall, and keep both hands on the part against the fence. Finish the cut, switch off, wait for the blade to stop and only then lift the slab away. The part against the fence is the part you hold, and it gets narrower with each cut. The drawing below shows the setup from the infeed side.",
+               "First cut: set the fence so the blade takes a wedge off the open edge and leaves that edge a clean slanted face from top to bottom. Now clamp a stop block to the saw table (or the fence rail) touching the back of the fence, on the side away from the blade. For each slab: slacken the fence, slide it toward the blade, drop one more gauge strip between the stop block and the fence, push the fence back against the strips and lock it. Every move is then exactly one strip. Cut the first slab, check its thickness with calipers, square across the two sawn faces, and if it is off, re-rip the gauge strips before going on.",
+               f"The cut is deep: the thickest sandwich is {short(maxh)} and the blade is close to its full height. The riving knife or a splitter must be on the saw for this cut. Use a sharp rip blade and push blocks that bear down on the top face and in against the fence. No featherboard: the open edge is a slanted face and a featherboard has nothing square to press on. Feed steadily. If the saw labours, make each cut in two passes, the first at half height.",
+               "Cut the number of slabs given above from each sandwich and stop, whatever is left. The part against the fence is wider at the top than on the table, so judge it by its bottom face: never make a cut that would leave less than 1\" of it on the table. That last piece is waste; so is the first wedge. Both are counted in the material list.",
+               "The pictures this method comes from show the slabs and the finished bars, not the saw setup. The fence side, the order of cuts and the stopping point above are this plan's working out. Before the first real cut, glue up a short sandwich of scrap as thick as the real one and rip two slabs from it with this setup. If the cut does not feel controlled on your saw, stop there; do not go on to the real sandwiches. A band saw with its table tilted to the same angle and a fence makes the same cut with nothing that can be thrown; the sawn faces are rougher, so leave 1/32\" more for the planer. That is this plan's suggestion, not something its source shows.",
+               "The drawing shows a saw whose blade leans to the right. On a saw that leans left, everything is mirrored: fence on the right, slabs falling to the left."]
     tx += [f"Plane each slab on its two sawn faces to {dim(B if any(l['cut']['upright'] for l in cutb) else H)}, a light pass a face. The slab lies flat on a sawn face; the planer is safe here because the slab is long grain. "
            "Plane every slab of the board at the same setting, without moving the handwheel for the last pass: this thickness is the width of a bar, and it is a pattern size.",
            "Stack the slabs marked end to marked end. On each sawn face the glue lines now show as straight stripes."]
@@ -1546,16 +1588,16 @@ def _bar_steps(S, plan):
               "dont": "put the sandwich between a blade that leans toward the fence and the fence. A slab trapped under a leaning blade is thrown."})
 
     tx = ["Blade back to square; check it. Clamp the auxiliary fence to the rip fence, tight on the table. A slab lies on a sawn face and its two long edges slant: they are the old faces of the sandwich. Both slanted points come off square.",
-          "First cut: lay the slab with the sharp corner of one slanted edge down on the table and against the auxiliary fence. Mark the cut on the upper face at the far edge, as given below for each bar, set the fence to the mark and rip the far point off.",
+          "First cut: lay the slab with the sharp corner of one slanted edge down on the table and against the auxiliary fence. Which edge is labelled \"to the fence first\" on each bar's drawing on sheet 04. That corner is thin: bring it up to the fence gently and do not force it, because a crushed corner moves the cut. Mark the cut on the upper face at the far edge, as given below for each bar, set the fence to the mark and rip the far point off.",
           f"Second cut: turn the slab round so the fresh square edge is against the fence and rip the other point off. Set the fence {short(1 / 32)} over the bar's size; the planks are planed to size later, half off each face."]
     for l in cutb:
         top, bot = _square_marks(l); c = l["cut"]; sq = c["square"]
-        first = (f"the first cut goes exactly through the point where a glue line meets the upper face" if top and abs(top[0]) < 0.01 else
+        first = (f"knife a line where a glue line meets the upper face at the far edge; the first cut goes {short(1 / 64)} outside that line, and the plank planing brings the face back to it" if top and abs(top[0]) < 0.01 else
                  f"the first cut is {dim(top[0])} outside the nearest glue line on the upper face" if top else f"the first cut takes off just the point")
         chk = "; ".join(f"{nm} face, glue lines at " + _join(("the edge" if p < 0.01 or p > sq - 0.01 else short(p)) for p in ps) for nm, ps in (("upper", top), ("lower", bot)) if ps)
         tx.append(f"{l['name']} (from sandwich {l['sandwich']}): {first}. Second cut {dim(sq + 1 / 32)} from the first. Check against the drawing on sheet 04: measured from the first cut edge, {chk}. Make {_made(l)}.")
-    tx += ["Measure from the glue lines, never from the slanted edges: the glue lines are the pattern. Set up the first bar of each kind with a marking knife and a square, cut it, and hold its end against the sheet 04 drawing before cutting the rest.",
-           "As each bar comes off, hold its marked end toward you and turn it until the end matches its drawing on sheet 04. Pencil the bar's letter on that end, and a line along the face that is then underneath. Sheet 05 shows that line as the short heavy line on every bar.",
+    tx += ["Measure from the glue lines, never from the slanted edges: the glue lines are the pattern. Set up the first bar of each kind with a marking knife and a square, cut it, and hold its end against the sheet 04 drawing before cutting the rest. The fence bears on a slanted edge, so one setting holds only for slabs whose outside layer is the same thickness: check the first slab of every sandwich against the blade before cutting it, and reset the fence to the knifed line if the glue line has moved.",
+           "As each bar comes off, hold its marked end toward you and turn it until the end matches its drawing on sheet 04. Pencil the bar's letter on that end. Then stand the bar the way sheet 05 draws it in the plank, marked end still toward you and the woods matching the drawing, and pencil a line along the narrow edge that is then on the bench. That edge goes down on the plank base; sheet 05 shows it as the short heavy line on every bar.",
            "As with the tilted rip, the squaring setup is this plan's working out; the source shows only the result. Try it on a spare slab."]
     S.append({"title": "Square the slabs into bars", "text": tx, "figs": [f"log_{l['id']}" for l in cutb][1:3], "see": ["logs"],
               "dont": "measure a squaring cut from the slanted edge. The edge is wherever the sandwich's outside face happened to be; the glue line is where the pattern is."})

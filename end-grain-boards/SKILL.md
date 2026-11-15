@@ -145,7 +145,9 @@ Leave `build` out for the default (sandwich bars wherever the face allows); `"bu
 named exception. For bars the shop settings that matter are `max_cut_height` (a sandwich must pass
 under the tilted blade: 3-1/8" x cos 30 = 2.7" deep), `planer_width` and `stock_width` (a sandwich is
 one board wide, or two edge-glued when one board gives fewer than three slabs), `min_sandwich_bar`
-(0.4") and `sandwich_width` to force a width.
+(0.4"), `sandwich_width` to force a width and `slab_oversize` (1/16": how much thicker than the
+bar a slab is ripped, for planing). Every plank is made at least `planer_min_length` (14") long so
+it can go through the planer by itself.
 
 `description` is used word for word in the render prompt, so describe what a viewer sees. `shop`
 defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" waste at each log end, logs at
