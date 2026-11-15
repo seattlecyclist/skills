@@ -61,17 +61,36 @@ plan, errs = run(d); expect("red oak is refused", plan is None and "not a cuttin
 
 d = json.load(open(os.path.join(EX, "checkerboard", "design.json")))
 plan, _ = run(d)
-expect("checkerboard: one strip panel, every other slice turned", len(plan["logs"]) == 1 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False, True})
+expect("checkerboard: odd by odd, two strip panels taking turns, no slice turned, ends not trimmed",
+       len(plan["logs"]) == 2 and {pk["flip"] for r in plan["rows"] for pk in r["pucks"]} == {False} and len(plan["rows"]) % 2 == 1
+       and plan["face"][0]["role"] == plan["face"][-1]["role"] and plan["board"]["margins"][2] < 1e-6 and plan["board"]["margins"][3] < 1e-6)
 d = json.load(open(os.path.join(EX, "tumbling-blocks", "design.json")))
-plan, _ = run(d)
-expect("tumbling blocks: one hexagon log of three diamond bars, no triangle bar, half pucks on both long sides",
+plan, errs = run(d)
+sw = [l for l in plan["logs"] if l["shape"] == "sandwich"]; bk = [l for l in plan["logs"] if l["shape"] == "sbar"]
+expect("tumbling blocks build from rectangles by default: two three-layer sandwiches ripped at 30 degrees, two bar kinds, one plank, no triangle",
+       not errs and plan["info"]["kind"] == "bars" and len(sw) == 2 and len(bk) == 2 and all(len(l["stack"]) == 3 and l["tilt"] == 30 for l in sw)
+       and len(plan["planks"]) == 1 and all(l["kind"] == "rect" for l in plan["logs"]) and all(bt["kind"] == "board" for bt in plan["bar_types"]))
+expect("the lid : face : lid sandwich is 1 : 2 : 1 before the allowance, and the bar is 0.866 x 1.5 diamond sides",
+       abs(bk[0]["layers"][1][3] - bk[0]["layers"][1][2] - 1.5 * math.sqrt(3) / 2) < 1e-3 and abs(bk[0]["w"] - 1.5 * math.sqrt(3) / 2) < 1e-3 and abs(bk[0]["h"] - 2.25) < 1e-3
+       and abs((bk[0]["layers"][1][3] - bk[0]["layers"][1][2]) / (bk[0]["layers"][0][3] - bk[0]["layers"][0][2]) - 2) < 1e-3)
+expect("the face rebuilt from the sandwiches is checked against the pattern", any(c["ok"] and "rebuilt from the sandwiches" in c["what"] for c in plan["checks"]))
+import bars as BR
+wood = lambda r: plan["species"][r]["key"]
+n0, tot0, bad0 = BR.verify(plan["rows"], plan["polygons"], wood, plan["board"]["trim"])
+rows2 = copy.deepcopy(plan["rows"]); pk = rows2[3]["pucks"][4]; pk["cells"] = [("left" if r == "right" else "right" if r == "left" else r, q) for r, q in pk["cells"]]
+expect("the proof passes on the real bars and catches one bar made from the wrong sandwich", bad0 < 1e-3 and BR.verify(rows2, plan["polygons"], wood, plan["board"]["trim"])[2] > 0.5)
+d = dict(d, build="logs"); plan, _ = run(d)
+expect("tumbling blocks, build logs: one hexagon log of three diamond bars, no triangle bar, half pucks on both long sides",
        len(plan["logs"]) == 1 and plan["logs"][0]["shape"] == "hex" and len(plan["bar_types"]) == 1 and "triangle" not in plan["bar_types"][0]["kind"]
        and {pk.get("half") for r in plan["rows"] for pk in r["pucks"]} == {None, "left", "right"})
 t = copy.deepcopy(d); t["params"] = {"side": 1.0, "build": "triangle"}; plan, errs = run(t)
 expect("tumbling blocks, build triangle: one triangle log, two bar shapes, no glue-up over four parts",
        not errs and len(plan["logs"]) == 1 and len(plan["bar_types"]) == 2 and max(len(s["parts"]) for s in plan["logs"][0]["stages"]) <= 4)
-d["params"]["side"] = 1.75; plan, errs = run(d)
+d["params"] = dict(d["params"], side=1.75); plan, errs = run(d)
 expect("a log too tall for the saw is caught", errs and any("fits under the saw" in e for e in errs))
+big = dict(d, build="bars"); plan, errs = run(big)
+expect("a sandwich too thick for the tilted blade is never planned: larger cubes get shorter bars",
+       not errs and plan["info"]["kind"] == "bars" and all(l["h"] <= 3.125 * math.cos(math.radians(30)) for l in plan["logs"] if l["shape"] == "sandwich"))
 d = json.load(open(os.path.join(EX, "lemoyne-stars", "design.json")))
 plan, _ = run(d)
 expect("LeMoyne: bands, quarter, half and block logs plus a border bar; only the block and the border are sliced",
@@ -86,14 +105,16 @@ plan, errs = run({"pattern": "rosettes", "params": {"side": 0.75}, "board": {"wi
                   "species": {"hex": "purpleheart", "square": "maple", "tri": "walnut"}})
 expect("rosettes are refused with pinwheel offered", plan is None and "pinwheel" in errs)
 
-plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+plan, _ = run(dict(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))), build="logs"))
 expect("a repeating lattice is one plank, every row a crosscut of it", len(plan["planks"]) == 1 and plan["planks"][0]["rows_cut"] == len(plan["rows"])
        and all(r["plank"] == "P1" for r in plan["rows"]) and any("planks into rows" in s["title"] for s in plan["steps"]))
 plan, _ = run(json.load(open(os.path.join(EX, "ziggurat", "design.json"))))
 expect("mirrored rows share a plank, turned over", len(plan["planks"]) * 2 == len(plan["rows"]) and {r["op"] for r in plan["rows"]} == {"", "f"})
-plan, _ = run(json.load(open(os.path.join(EX, "tumbling-blocks", "design.json"))))
+expect("a face no workable bar fits falls back to triangle logs and says why", plan["info"]["kind"] == "tri"
+       and any(not c["ok"] and c["level"] == "warn" and "rectangles" in c["what"] for c in plan["checks"]))
+plan, _ = run(dict(json.load(open(os.path.join(EX, "tumbling-blocks", "design.json"))), build="logs"))
 expect("hexagon pucks are not planks", not plan["planks"])
-d = json.load(open(os.path.join(EX, "six-point-stars", "design.json"))); d7 = copy.deepcopy(d); d7["board"]["width"] = 13
+d = dict(json.load(open(os.path.join(EX, "six-point-stars", "design.json"))), build="logs"); d7 = copy.deepcopy(d); d7["board"]["width"] = 13
 plan, _ = run(d7)      # seven rows: an odd count has no mirror partner for most rows
 expect("a plank cut for one row is called not worth it, and the check warns", any(not p["worth"] and "Not repeated" in p["why"] for p in plan["planks"])
        and any(not c["ok"] and "worth making" in c["what"] for c in plan["checks"]))
@@ -115,12 +136,14 @@ expect("star lattice: a strip that would miss its star is caught", errs and any(
 plan, _ = run(d); rep = plan["repeats"]
 expect("repeat math: the star field's rows pair up end for end about the middle of the board",
        rep["rows"] % 2 == 0 and rep["orbits"] * 2 == rep["rows"] and any(t["op"] == "r" and t["centre"] == rep["rows"] / 2 + 0.5 for t in rep["turns"]))
-plan, _ = run(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))))
+plan, _ = run(dict(json.load(open(os.path.join(EX, "pinwheel-chevrons", "design.json"))), build="logs"))
 expect("repeat math: chevron rows repeat every row", plan["repeats"]["row_period"] == 1 and plan["repeats"]["orbits"] == 1)
 import repeats as RP
 vs = RP.variants(plan, plan["planks"][0])
 expect("variants: one chevron plank makes 16 different faces, rolled rows carry every colour across the seams",
        len(vs) == 16 and vs[0]["row2"] == "f" and vs[0]["carry"] == 1.0 and [v["name"] for v in vs] == [v["name"] for v in RP.variants(plan, plan["planks"][0])])
+plan, _ = run(json.load(open(os.path.join(EX, "six-point-stars", "design.json"))))
+expect("six-point stars from rectangles: one sandwich makes every striped bar", plan["info"]["kind"] == "bars" and sum(1 for l in plan["logs"] if l["shape"] == "sandwich") == 1)
 import hashlib, subprocess
 def digest(seed):
     with tempfile.TemporaryDirectory() as out:

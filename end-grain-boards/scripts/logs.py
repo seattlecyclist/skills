@@ -333,8 +333,9 @@ def _hull(pts):
 
 
 # ------------------------------------------------------------------------------------- panels (square-edged strips)
-def panel_plan(polys, trim, wood_of):
-    """Checkerboard, brick and other all-rectangle faces: each row is a slice of a flat strip panel."""
+def panel_plan(polys, trim, wood_of, graded=False):
+    """Checkerboard, brick and other all-rectangle faces: each row is a slice of a flat strip panel.
+    graded: rows differ only in height, so one panel makes them all, planed thinner between cuts."""
     by = {}
     for p in polys: by.setdefault(p["slice"], []).append(p)
     types = {}; logs = []; rows = []; ids = [a for a in "ABCDEFGHJKLMNPQRSTUVWXYZ"] + [a + b for a in "ABCDEFGH" for b in "ABCDEFGHJKLMNPQRSTUVWXYZ"]
@@ -343,22 +344,25 @@ def panel_plan(polys, trim, wood_of):
         x1 = max(v[0] for p in ps for v in p["pts"]); y1 = max(v[1] for p in ps for v in p["pts"])
         found = None
         for flip in (False, True):
-            loc = [(wood_of(p["role"]), p["role"], ccw([((x1 - v[0]) if flip else (v[0] - x0), v[1] - y0) for v in p["pts"]])) for p in ps]
+            loc = [(wood_of(p["role"]), p["role"], ccw([((x1 - v[0]) if flip else (v[0] - x0), (v[1] - y0) / ((y1 - y0) if graded else 1)) for v in p["pts"]])) for p in ps]
             kk = key_of(loc)
             if kk in types: found = (kk, flip); break
         if not found:
-            loc = [(wood_of(p["role"]), p["role"], ccw([(v[0] - x0, v[1] - y0) for v in p["pts"]])) for p in ps]
-            kk = key_of(loc); loc.sort(key=lambda t: min(v[0] for v in t[2]))
+            kk = key_of([(wood_of(p["role"]), p["role"], ccw([(v[0] - x0, (v[1] - y0) / ((y1 - y0) if graded else 1)) for v in p["pts"]])) for p in ps])
+            hmax = max(max(v[1] for q in by[s2] for v in q["pts"]) - min(v[1] for q in by[s2] for v in q["pts"]) for s2 in by) if graded else y1 - y0
+            f = hmax / (y1 - y0)       # the panel is drawn at its first, thickest setting
+            loc = [(wood_of(p["role"]), p["role"], ccw([(v[0] - x0, (v[1] - y0) * f) for v in p["pts"]])) for p in ps]
+            loc.sort(key=lambda t: min(v[0] for v in t[2]))
             types[kk] = ids[len(logs)]
-            logs.append({"id": ids[len(logs)], "key": kk, "kind": "panel", "level": 1, "w": x1 - x0, "h": y1 - y0,
-                         "outline": [(0, 0), (x1 - x0, 0), (x1 - x0, y1 - y0), (0, y1 - y0)], "cells": [(r, p) for _, r, p in loc],
+            logs.append({"id": ids[len(logs)], "key": kk, "kind": "panel", "level": 1, "w": x1 - x0, "h": hmax, "graded": graded,
+                         "outline": [(0, 0), (x1 - x0, 0), (x1 - x0, hmax), (0, hmax)], "cells": [(r, p) for _, r, p in loc],
                          "stages": [{"parts": [{"bar": True, "wood": w, "role": r, "pts": p} for w, r, p in loc], "jig": "flat cauls"}], "crosscut": True})
             found = (kk, False)
         box = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
         rows.append({"n": n + 1, "height": y1 - y0, "length": x1 - x0, "pts": box,
                      "pucks": [{"log": types[found[0]], "pts": box, "flip": found[1], "ref": (box[0], box[1]),
                                 "cells": [(p["role"], p["pts"]) for p in ps]}]})
-    return {"logs": logs, "rows": rows, "info": {"kind": "panel"}}
+    return {"logs": logs, "rows": rows, "info": {"kind": "panel", "graded": graded}}
 
 
 # ------------------------------------------------------------------------------------- eight-point star blocks
@@ -488,4 +492,4 @@ def plan(polys, trim, cells, wood_of, bar_ok=None):
     if kind == "hex": return hex_plan(polys, trim, cells, wood_of)
     if kind == "tri": return tri_plan(polys, trim, cells, wood_of, bar_ok)
     if kind == "blocks": return blocks_plan(polys, trim, cells, wood_of)
-    return panel_plan(polys, trim, wood_of)
+    return panel_plan(polys, trim, wood_of, bool(cells.get("graded")))

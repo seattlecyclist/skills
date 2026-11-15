@@ -1,9 +1,22 @@
 {
-  "name": "Checkerboard End-Grain Board",
-  "description": "a classic checkerboard of 1-1/2 inch squares, walnut and maple",
-  "pattern": "checker",
-  "params": {"side": 1.5},
-  "board": {"width": 12, "length": 16, "thickness": 1.75},
-  "species": {"a": "maple", "b": "walnut"},
-  "options": {"edge": "1/8\" round-over", "juice_groove": false, "feet": true}
+ "name": "Checkerboard End-Grain Board",
+ "description": "a checkerboard of 1-1/4 inch squares in walnut and maple, nine squares by thirteen, with a walnut square in every corner",
+ "pattern": "checker",
+ "params": {
+  "side": 1.25
+ },
+ "board": {
+  "width": 11.25,
+  "length": 16.25,
+  "thickness": 1.75
+ },
+ "species": {
+  "a": "walnut",
+  "b": "maple"
+ },
+ "options": {
+  "edge": "1/8\" round-over",
+  "juice_groove": false,
+  "feet": true
+ }
 }
