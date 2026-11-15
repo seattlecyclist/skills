@@ -37,6 +37,15 @@ python3 scripts/repeats.py --variants out.html a.json b.json   # every face one 
 9. **Thresholds are numbers, not judgment:** bevel 45 degrees or less, four parts or fewer in a
    glue-up, six log types before a warning, 1/8 in of trim on every edge, Janka 900 or more.
 10. **When two answers tie, the earlier row, the lower letter and the smaller turn win.**
+11. **Rectangles first.** A 60 degree pattern is built from sandwich bars when a layout passes; logs
+    are used only when `"build": "logs"` asks or no layout passes, and then the plan warns and says why.
+12. **A bar layout passes by numbers:** every bar on the board a slice of one flat sandwich; bar at
+    least 0.4 in on its narrow side (`min_sandwich_bar`); sandwich no thicker than
+    `max_cut_height` x cos(tilt) less 1/32 in; at least two slabs from a sandwich as wide as the
+    planer takes. **Among layouts that pass:** fewest sandwiches, then fewest bar kinds, then the
+    largest bar, the taller row, the fewest bars, rows across before rows along.
+13. **A sandwich is as wide as its slabs need and no wider,** in quarter inches, one board if that
+    still gives three slabs. One spare slab in ten, at least one, per sandwich type.
 
 ## The moves and what each does
 
@@ -87,6 +96,23 @@ needs. `planks` in the plan can be larger than `orbits` only when rule 5 kept ro
 
 **Counts to report.** Rows per plank type (higher is better), planks cut for one row (should be 0),
 log lengths glued (the real labour), widest plank (must fit the sled).
+
+### The proof that a bar build makes the face
+
+For a bar with glue lines at angle θ to its width, layers are intervals along the normal
+n = (−sin θ, cos θ) measured from the bar's centre. `bars.layers_of` takes the pattern's pieces inside
+the bar's rectangle, projects their corners on n, and requires exactly one wood in every interval
+between consecutive projections; if two woods share an interval the stripes are not parallel and the
+bar fails. φ = min(θ, 180 − θ). When φ < 45 the tilted rips are the bar's sides: blade tilt φ, slab
+thickness the bar's width B, squared to the row height H. Otherwise tilt 90 − φ, slab H, squared to B.
+A glue line at normal distance a meets the two sawn faces at (a ∓ (B/2) sin θ) / cos θ + H/2 from the
+first squared edge (sides case), which is what the plan prints as the squaring marks.
+
+`bars.verify` then forgets the pattern: it redraws every bar on the board from its type's layers
+alone, turned as the plank and row turn it, clips each redrawn piece to the trim, and measures the
+area where the pattern under it is a different wood. The check passes when that area is under
+2/100,000 of the board plus 2/100,000 sq in per bar (rounding hairs). `selftest.py` swaps the woods of
+one bar and requires the proof to fail.
 
 ## Finding new faces from one plank
 

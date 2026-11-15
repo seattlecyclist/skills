@@ -13,7 +13,30 @@ script proves the pieces tile the board, and every list, drawing and step is der
 brief → design.json → cbplan.py (checks, plan, diagrams, guide image) → read checks + look → render → deliver
 ```
 
-**How every board here is built.** An end-grain face is the cut end of a log. Each polygon on the
+**The default build for 60 degree patterns is rectangles: sandwich bars** (`scripts/bars.py`). Flat boards
+are glued face to face into a *sandwich*. The sandwich is ripped into slabs with the blade tilted (30
+degrees for these patterns), each slab is laid on a sawn face and its two points are ripped off square,
+and what is left is a rectangular *bar* with slanted stripes. Bars are glued side by side into a
+*plank*, the plank is planed and crosscut into *rows*, and the rows are glued into the board. Every
+glue-up is flat faces under ordinary clamps; no piece is ever a triangle. This is how production shops
+build tumbling blocks and their relatives, and it is what Mike asked for as the default (2026-11-15)
+after the photo sequence at https://imgur.com/a/3d-end-grain-cutting-board-maple-cherry-walnut-PFq4a.
+The script finds the build from the face: it cuts the face into rows and each row into bars, and a bar
+works exactly when every glue line inside it is parallel and runs right across it, so it is a slice of
+one stack of flat layers. It then **proves the build**: every bar is redrawn from nothing but its
+sandwich's layers, the blade tilt and the two squaring cuts, laid over the pattern, and compared (check
+"The face rebuilt from the sandwiches matches the pattern"). The tilted rip and the squaring setups are
+this skill's working out; the source shows the slabs and bars, not the saw. The plan says so in those
+steps. Say it to the user too.
+
+**The log builds are the named exception.** `"build": "logs"` in the design asks for them (triangle
+logs for lattice patterns, the taped hexagon log for `cubes`), and the script falls back to them, with
+a warning that says why, when no bar at least `shop.min_sandwich_bar` (0.4") on its narrow side is a
+slice of one sandwich that fits under the tilted blade. Today that is `tribars`, `sierpinski`,
+`ziggurat`, `triweave` and `pinwheel` at their example sizes; a larger `side` often brings a bar build.
+`stars8`, `checker`, `brick` and `swell` were never triangle builds and are unchanged.
+
+**How the log builds work.** An end-grain face is the cut end of a log. Each polygon on the
 face is a long *bar* of that cross-section, ripped on the table saw. Bars are glued three or four at a
 time into a small closed *log*: a triangle for 60 degree patterns (glued in a V block whose sides stop
 3/16" under the top of the log), a rectangle for 45 and 90 degree patterns (bands, then quarter logs in
@@ -32,7 +55,7 @@ field. Every truing pass takes a skim, so the plan lays the pattern out at the t
 pattern's log grid over it, merges same-wood neighbours into single bars, finds which cells are the
 same log turned or flipped, and orders each log's glue-ups in flat layers.
 
-One board is the exception: `cubes` (tumbling blocks) is built the way makers build it, three diamond
+`cubes` (tumbling blocks) with `"build": "logs"` is built Tom Silva's way, three diamond
 bars taped into a hexagon log, the logs sliced into pucks and all the pucks glued at once in a clamped
 frame. Its logs are not machined, so its plan stresses one-setup bars and keeps a gap-filling step.
 
@@ -43,7 +66,8 @@ has the rules and the reasons.
 | Path | What it is |
 |---|---|
 | `scripts/cbplan.py` | `design.json` → `out/`: `plan.html`, `plan.json`, `svg/*.svg`, `board.obj`, `guide.png`, `spec.md`, `room.md`. Exit 1 if a check fails. |
-| `scripts/logs.py` | The build: face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
+| `scripts/bars.py` | The default build for 60 degree patterns: face → rows of rectangular bars, each a slice of one flat sandwich; the sandwiches, blade tilt and squaring cuts; `verify`, the proof that the face rebuilt from the sandwiches is the pattern. |
+| `scripts/logs.py` | The log builds (the named exception): face + log grid → log types (bars, glue-up stages, jig), slices with their orientation, rows. Triangle logs (one or two levels), square star blocks, strip panels. |
 | `scripts/planks.py` | Groups the rows into planks: which rows are the same sequence of logs as cut, turned or slid along, and the end view of each plank. |
 | `scripts/repeats.py` | The repeat math: row period, turns, plank types, nearby sizes ranked by how well they repeat, and `--variants`, a page of every face one plank can make by turning and sliding rows. |
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `tribars`, `sierpinski`, `swell`, `triweave`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
@@ -52,9 +76,9 @@ has the rules and the reasons.
 | `scripts/plan_page.py` | The plan page: numbered sheets (overview, material list, bars & rip setups, logs, slice layout, building it) with title blocks, then the checks. Warm paper, Archivo / Source Serif 4 / IBM Plex Mono, walnut accent, light and dark. Change the look here, not in cbplan. |
 | `scripts/assembly.py` | `Scene`: the small 3D drawing engine behind the exploded views (solid parts in their woods, glue faces blue, orange clamp arrows, circled labels, grain arrow, red cut lines). |
 | `scripts/render_guide.py` | The colour-coded perspective of the board (called by cbplan; rerun with another `--az/--el`). |
-| `scripts/selftest.py` | Proves every example passes and the checks catch an overlap, a gap, a bevel past 45 degrees, a bad wood and an unbuildable pattern. |
+| `scripts/selftest.py` | Proves every example passes and the checks catch an overlap, a gap, a bevel past 45 degrees, a bad wood and an unbuildable pattern; that tumbling blocks come out as two 1:2:1 sandwiches ripped at 30 degrees; and that the face-match proof catches one bar made from the wrong sandwich. |
 | `references/patterns.md` | Each pattern's geometry and parameters, and how to write a `custom` design. **Read for anything not in the generators.** |
-| `references/technique.md` | The five rules, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
+| `references/technique.md` | The five rules, sandwich bars, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
 | `references/repeats.md` | The ten fixed rules that make a plan come out the same every time, the four moves and what each does on the face, and the math for finding repeats. **Read before changing a size or pattern to cut the plank count, or when asked for new looks from one plank.** |
 | `references/species.md` | Choosing and pairing woods. |
 | `examples/` | Seventeen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`, and three built from the concept sheet, `impossible-triangles`, `sierpinski`, `swell`, and one new design, `triaxial-weave`; each with `design.json`, `plan.html`, `guide.jpg` and, where one has been rendered, `photo.jpg`. |
@@ -101,10 +125,17 @@ Get, or ask once for only what you cannot infer:
   "board": {"width": 12, "length": 16, "thickness": 1.5},
   "species": {"lid": "maple", "left": "cherry", "right": "walnut"},
   "options": {"edge": "1/8\" chamfer", "feet": true, "juice_groove": false, "handles": false},
+  "build": "logs",
   "shop": {"kerf": 0.125, "max_log_length": 24, "stock_width": 5.5},
   "render": {"room": "optional room brief for the photo"}
 }
 ```
+
+Leave `build` out for the default (sandwich bars wherever the face allows); `"build": "logs"` is the
+named exception. For bars the shop settings that matter are `max_cut_height` (a sandwich must pass
+under the tilted blade: 3-1/8" x cos 30 = 2.7" deep), `planer_width` and `stock_width` (a sandwich is
+one board wide, or two edge-glued when one board gives fewer than three slabs), `min_sandwich_bar`
+(0.4") and `sandwich_width` to force a width.
 
 `description` is used word for word in the render prompt, so describe what a viewer sees. `shop`
 defaults: kerf 1/8", slices cut 1/8" over finished thickness, 3/4" waste at each log end, logs at
@@ -120,7 +151,8 @@ python3 scripts/cbplan.py design.json out/
 
 It prints the actual size, every bar shape with its blade tilt, each log (count, length, slices) and
 the board feet per species, then the checks: species hard enough (Janka 900+), pieces convex, **no
-overlaps and no gaps**, slices cover the board, every log's parts fill its section, every bar has a
+overlaps and no gaps**, slices cover the board, **every bar a slice of one flat sandwich and the face
+rebuilt from the sandwiches matching the pattern** (bar builds), every sandwich under the tilted blade, every log's parts fill its section, every bar has a
 table-saw setup with a bevel of 45 degrees or less, every sliced log fits under the saw, no glue-up has
 more than four parts, at least 1/8" to trim on every edge, board 1" or thicker; warnings for small bars,
 many log types, species that move differently and boards large for their thickness. A FAIL is a design
@@ -130,7 +162,8 @@ Then look at `plan.html`:
 - **Face** (sheet 01): does it read as what the user described? Contrast between roles is the usual
   problem (two mid-browns merge; a dark wood on the largest pieces takes over). Is the crop balanced
   and the same on opposite edges? Are motifs whole? If not, change `side` or move the size so the trim lands on a line of symmetry; a frame is the user's choice, not a fix.
-- **Logs** (sheet 04): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
+- **Sandwiches & bars** (sheet 04, bar builds): each sandwich's layers bottom to top, then each bar in two views: the tilted rips through its sandwich and the two square cuts on the slab. Hold the drawn bar against the face: its stripes must be the pattern's. Over four sandwiches or eight bar kinds is warned; say so and offer a larger `side`, fewer woods, or the log build.
+- **Logs** (sheet 04, log builds): every glue-up is drawn as it sits in the jig. Each should be flat layers, tip
   down, with a flat top for the caul. Count the log types; over six, try `levels`, another `side` or
   a simpler variant and say why.
 - **Planks & rows** (sheet 05): each plank's end view, letters, reference marks and primes must be legible; the row table says which plank each row comes from and how it is turned.
@@ -175,6 +208,16 @@ Say what moved besides what was asked: a new `side` changes the repeat count and
 new wood changes board feet and possibly the warnings.
 
 ## Pitfalls
+
+- A bar build spends wood to save work. Every sandwich loses a wedge at each edge to the tilted rip and
+  every slab loses its two points. Against the log builds the examples run from half the board feet
+  (snowflakes) through a third more (tumbling blocks) to more than double (notched cubes, faceted gems:
+  many sandwiches, each with its own wedges and spares). Tell the user the board feet, and that fewer
+  woods, a larger `side` or wider stock cut the waste. The embedded photos of the examples whose size
+  moved with the new build were dropped from their plans; `photo.jpg` beside them shows the old crop.
+- The sandwich for a tumbling block with 1.5" diamonds is 2-21/32" thick, 1/16" under what a 10" saw
+  cuts at 30 degrees. Larger diamonds get shorter bars from thinner sandwiches automatically; check
+  the user's saw really clears `max_cut_height`.
 
 - Bevel accuracy is everything: half a degree off on a 60 degree bar opens a gap in every log. The
   plan has the builder set tilt with a digital gauge and dry-fit three scrap bars; keep that advice.
