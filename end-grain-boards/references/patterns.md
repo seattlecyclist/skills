@@ -290,3 +290,53 @@ no bar layout passes.
   blank) or three rhombi per hexagon in one species.
 - Diamond lattice: 45 or 60 degree rhombi in two species, alternate along the row.
 - Borders: a ring of rectangular bars around any pattern; give them their own slices.
+
+## maze (two-wood maze, after Stammherz)
+
+Roles `light`, `dark`. `params`: `bar` (bar width, default 0.5), `cols` (tiles across, must be even), `rows`.
+
+One square tile, four bars on a side: two light bars in a dark ground, each stepping sideways by one bar
+width on a 45 degree jog of the same thickness. Every other tile is turned a quarter turn (a checkerboard),
+which makes the maze and the over-and-under look. Worked out from the stills of the maker's videos
+(https://www.youtube.com/shorts/TrEm6C_xBT8 and https://www.youtube.com/watch?v=rUjjSO708qE): glue lines
+every four bar widths mark the tiles, and the model matches a squared-up still on 90% of pixels. At phone
+resolution the jogs read as 60 degrees; they are 45.
+
+Build (`scripts/twoply.py`), in planks throughout: the tile is four identical slabs, each `bar` thick, in
+which light and dark meet on a 45 degree line. A slab is ripped with the blade at 45 degrees from a two-ply
+blank (light on dark, face glued; the ply thicknesses set where the line falls), planed, and ripped square.
+Four slabs, every other one rolled over, make a square log; logs side by side, every other one a quarter
+turn, make the plank; rows are crosscut from the plank and every other row is turned end for end (so
+`cols` must be even). The blank must pass under the blade at 45 degrees (about 2-1/8" on a 10" saw), which
+limits `bar` to about 9/16". The maker's stills show the laminating, the tilted rip, bevelled two-tone
+strips on the planer and the final glue-up; the exact blank and the slab squaring are this skill's
+reconstruction and no one has built from it yet. Say so when delivering the plan.
+
+## starlattice (star lattice, after Stammherz)
+
+Roles `ground`, `line`, `star` (defaults wenge, purpleheart, padauk). `params`: `tile` (side of the square
+tile, default 1.5), `strip` (thickness of the line, 3/16), `lean` (degrees between the strip and the log's
+side, 35; must be under 45), `star` (leg of each star corner, 3/8), `cols` (tiles across, even), `rows` (even).
+
+One square tile: a strip crossing a dark square on a lean, from near one corner to near the opposite one,
+with a small triangle of the star wood at those two corners. Upright the strip is steep; a quarter turn makes
+it shallow. Rows of upright tiles alternate with rows of quarter-turned ones, and in each row every other
+tile is the mirror image. Steep and shallow zigzags close into six-sided cells, and four star corners meet
+in a diamond at every other grid corner. Worked out from the cover photo of the maker's video
+(https://www.youtube.com/watch?v=vvD7LmchpLc, short https://www.youtube.com/shorts/GhvvXjdo7i4), squared
+up: the stars sit on a square grid like the black squares of a checkerboard. It is a simplified version, not
+a copy: the maker's stars are hourglass shapes boxed in purple and his ground is pieced from two dark tones.
+
+Build (`scripts/starlattice.py`), in planks throughout: a three-ply blank (ground, line, ground) is ripped
+into slabs with the blade tilted to `lean`, the slabs are planed to `tile` and ripped square, and each
+becomes a long square log. The tile is the same after half a turn, and a log turned end for end is its
+mirror image, so there is one log. Plank A is `cols` logs upright, plank B is `cols` logs on their sides,
+both with every other log end for end and a scrap strip on each outside edge. A 90 degree V-groove is routed
+along each glue line (alternating faces from one glue line to the next), a square stick of the star wood is
+glued in corner down and planed flush, and the scrap is ripped off, leaving half diamonds at the edges. Rows
+are crosscut from both planks and glued A, B, A, B with nothing turned. The checks confirm that both ends of
+every strip land inside a star (so small errors in where the strip sits never show), that the blank fits
+under the tilted blade, and that the star halves of neighbouring rows meet. About 30% of the ground wood in
+the blanks reaches the board. The maker's stills show wenge, a row of blocks with leaning purple strips
+being glued, and stripes through the thickness; the blank, the two-plank reading and the grooved-in stars
+are this skill's reconstruction and no one has built from it yet. Say so when delivering the plan.

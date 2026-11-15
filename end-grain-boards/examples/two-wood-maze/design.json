@@ -1,0 +1,10 @@
+{
+  "name": "Two-Wood Maze End-Grain Board",
+  "description": "a maze of pale maple bars in dark walnut: short bars that each step sideways once on a 45 degree jog, in square tiles turned a quarter turn in a checkerboard so the bars seem to pass over and under one another",
+  "pattern": "maze",
+  "params": {"bar": 0.5, "cols": 8, "rows": 6},
+  "board": {"width": 16, "length": 12, "thickness": 1.5},
+  "species": {"light": "maple", "dark": "walnut"},
+  "options": {"edge": "1/8 in. round-over", "feet": true, "juice_groove": false, "handles": false},
+  "guide": {"az": -20, "el": 48}
+}

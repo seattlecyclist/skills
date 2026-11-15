@@ -118,6 +118,20 @@ d = dict(json.load(open(os.path.join(EX, "six-point-stars", "design.json"))), bu
 plan, _ = run(d7)      # seven rows: an odd count has no mirror partner for most rows
 expect("a plank cut for one row is called not worth it, and the check warns", any(not p["worth"] and "Not repeated" in p["why"] for p in plan["planks"])
        and any(not c["ok"] and "worth making" in c["what"] for c in plan["checks"]))
+dm = json.load(open(os.path.join(EX, "two-wood-maze", "design.json")))
+plan, errs = run(dm)
+expect("maze: a plank build, one slab type, six rows from one plank", not errs and plan["method"] == "plank" and plan["N"]["nslab"] == 16 and len(plan["rows"]) == 6)
+dm["params"]["cols"] = 7; plan, errs = run(dm)
+expect("maze: an odd number of tiles across is caught", errs and any("even number" in e for e in errs))
+dm["params"] = {"bar": 0.75, "cols": 6, "rows": 4}; plan, errs = run(dm)
+expect("maze: a blank too thick for the tilted blade is caught", errs and any("45 degrees" in e for e in errs))
+
+ds = json.load(open(os.path.join(EX, "star-lattice", "design.json")))
+plan, errs = run(ds)
+expect("star lattice: a plank build, one log, two planks each cut for half the rows", not errs and plan["method"] == "plank" and len(plan["planks"]) == 2
+       and all(p["rows"] == 4 for p in plan["planks"]) and plan["repeats"]["log_types"] == 1)
+ds["params"]["star"] = 0.25; plan, errs = run(ds)
+expect("star lattice: a strip that would miss its star is caught", errs and any("land on a star" in e for e in errs))
 
 plan, _ = run(d); rep = plan["repeats"]
 expect("repeat math: the star field's rows pair up end for end about the middle of the board",
