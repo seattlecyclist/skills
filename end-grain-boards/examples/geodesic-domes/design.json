@@ -1,0 +1,25 @@
+{
+ "name": "Geodesic Domes End-Grain Board",
+ "description": "a honeycomb of domes: each hexagon steps from a pale maple crown through a cherry ring to a full walnut rim, so every dome is a closed figure",
+ "pattern": "geodomes",
+ "params": {
+  "side": 0.75,
+  "freq": 3,
+  "tones": 3,
+  "shade": "rings"
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "tone1": "maple",
+  "tone2": "cherry",
+  "tone3": "walnut"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}

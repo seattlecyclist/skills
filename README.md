@@ -169,13 +169,18 @@ Tumbling blocks in maple, cherry and walnut, 11-29/32" x 16-1/4" x 1-1/2": one b
 |---|---|
 | ![LeMoyne star board](end-grain-boards/examples/lemoyne-stars/photo.jpg) | ![Six-point star board](end-grain-boards/examples/six-point-stars/photo.jpg) |
 | LeMoyne stars: padauk and purpleheart points on maple, 20 blocks from one block log | Walnut six-point stars on maple, every piece the same 60-degree rhombus |
-| ![Purpleheart snowflake board](end-grain-boards/examples/snowflakes/photo.jpg) | |
-| Purpleheart snowflakes on maple: 252 rhombus bars, 7 row logs, 18 slices | |
+| ![Purpleheart snowflake board](end-grain-boards/examples/snowflakes/photo.jpg) | ![Geodesic domes board](end-grain-boards/examples/geodesic-domes/photo.jpg) |
+| Purpleheart snowflakes on maple: 252 rhombus bars, 7 row logs, 18 slices | Geodesic domes: faceted triangle domes in maple, canarywood, cherry and walnut; one triangle bar, 6 row logs |
+| ![Kagome star lattice board](end-grain-boards/examples/kagome-stars/photo.jpg) | ![Hex rosettes board](end-grain-boards/examples/hex-rosettes/photo.jpg) |
+| Kagome star lattice: walnut hexagons ringed by maple and cherry triangles, built from trapezoid half-hexagons | Hex rosettes: purpleheart hexagons, maple squares, walnut triangles; one unit, one log, three saw setups |
 
 - 🌐 Plans: [tumbling-blocks](end-grain-boards/examples/tumbling-blocks/plan.html),
   [lemoyne-stars](end-grain-boards/examples/lemoyne-stars/plan.html),
   [six-point-stars](end-grain-boards/examples/six-point-stars/plan.html),
   [snowflakes](end-grain-boards/examples/snowflakes/plan.html),
+  [geodesic-domes](end-grain-boards/examples/geodesic-domes/plan.html),
+  [kagome-stars](end-grain-boards/examples/kagome-stars/plan.html),
+  [hex-rosettes](end-grain-boards/examples/hex-rosettes/plan.html),
   [checkerboard](end-grain-boards/examples/checkerboard/plan.html) (download and open)
 - 📐 Guide drawings the photos were made from: `examples/*/guide.jpg`
 

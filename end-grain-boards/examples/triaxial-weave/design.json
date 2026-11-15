@@ -1,0 +1,23 @@
+{
+ "name": "Triaxial Weave End-Grain Board",
+ "description": "three sets of strands in yellowheart, red padauk and near-black wenge woven at 60 degrees round pale maple openings, each strand passing over one neighbour and under the next",
+ "pattern": "triweave",
+ "params": {
+  "side": 0.75
+ },
+ "board": {
+  "width": 12,
+  "length": 16,
+  "thickness": 1.5
+ },
+ "species": {
+  "a": "yellowheart",
+  "b": "padauk",
+  "c": "wenge",
+  "hole": "maple"
+ },
+ "options": {
+  "edge": "1/8\" chamfer",
+  "feet": true
+ }
+}
