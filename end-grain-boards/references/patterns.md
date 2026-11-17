@@ -340,3 +340,29 @@ under the tilted blade, and that the star halves of neighbouring rows meet. Abou
 the blanks reaches the board. The maker's stills show wenge, a row of blocks with leaning purple strips
 being glued, and stripes through the thickness; the blank, the two-plank reading and the grooved-in stars
 are this skill's reconstruction and no one has built from it yet. Say so when delivering the plan.
+
+## stringart (walnut string-art board, after Indigo Designs)
+
+Roles `ground` (upper zone), `dark` (lower zone), `accent`, `inlay` (defaults walnut, walnut, maple, maple).
+`params`: `row` (plank thickness = row width on the face, default 7/8), `rows` (27), `slide` (how far every
+other row is slid, 2-1/2), `joint` (distance of the upper accent line below the top edge, 6-1/8), `accent`
+(leg of the accent triangle, 5/8), `lines` (7), `line` (width of an inlaid line; must equal `shop.kerf`).
+
+A one-wood field in narrow rows with feather figure, two staggered lines of small pale triangles, and a
+fan of thin pale lines in the lower left corner: line k joins the k-th of `lines` evenly spaced marks down
+the left edge to the k-th mark along the bottom edge, which draws a curve the way string art does. Worked
+out from the user's screenshot and the cover photo and three published stills of the maker's video
+(https://www.youtube.com/watch?v=UfEnFkTSfvE); its description names walnut and maple.
+
+Build (`scripts/stringart.py`): one plank, two zones of the ground wood edge to edge. One corner of the
+upper zone, on the joint, is chamfered at 45 degrees, a stick of the accent wood is glued on, and the board
+is jointed and planed square again. Rows are crosscut from the plank; odd rows stay as cut, even rows are
+rolled over (other end up) and slid `slide` along their length, which mirrors the ring slant (feathers) and
+shows the one joint at two heights (the two lines of triangles and the two-tone band between). The slab is
+trimmed square. Each line is then one saw cut right through the slab with a strip exactly as thick as the
+kerf glued in, one line at a time, in a square corner jig; later cuts pass through earlier strips. The checks
+confirm the pieces add up to the board's area and that outside the lines every piece is where the slab had
+it. Tell the user: the roll-and-slide reading, the made-on-purpose accent corner (the maker's triangles may
+be sapwood), the corner jig and the cut order are this skill's reconstruction; long-grain strips across an
+end-grain board are a wood-movement risk (the plan offers end-grain strips as the safer version); the
+feather figure depends on the boards picked; nobody has built from it yet.

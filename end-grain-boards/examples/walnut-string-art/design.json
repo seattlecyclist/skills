@@ -1,0 +1,10 @@
+{
+  "name": "Walnut String-Art End-Grain Board",
+  "description": "a big walnut end-grain board in feathered rows, two staggered lines of small maple triangles across it, and seven thin maple lines fanning out of one corner like string art",
+  "pattern": "stringart",
+  "params": {"row": 0.875, "rows": 27, "slide": 2.5, "joint": 6.125, "accent": 0.625, "lines": 7, "line": 0.125},
+  "board": {"width": 23.625, "length": 16.5, "thickness": 1.5},
+  "species": {"ground": "walnut", "dark": "walnut", "accent": "maple", "inlay": "maple"},
+  "options": {"edge": "1/8 in. round-over", "feet": true, "juice_groove": false, "handles": false},
+  "guide": {"az": -24, "el": 48}
+}

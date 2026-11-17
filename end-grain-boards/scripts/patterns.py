@@ -509,7 +509,8 @@ GENERATORS = {"pinwheel": pinwheel, "pinwheel-rosettes": pinwheel, "cubes": cube
 
 
 # plank builds, each with its own module: slabs ripped from a laminated blank, logs, planks, rows
-PLANK = {"maze": "twoply", "two-wood-maze": "twoply", "starlattice": "starlattice", "star-lattice": "starlattice", "hex-lattice": "starlattice"}
+PLANK = {"maze": "twoply", "two-wood-maze": "twoply", "starlattice": "starlattice", "star-lattice": "starlattice", "hex-lattice": "starlattice",
+         "stringart": "stringart", "string-art": "stringart"}
 
 
 def generate(design):

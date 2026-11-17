@@ -63,6 +63,10 @@ that plank. Prefer this shape of build wherever a pattern allows it: long glued 
 blank, makes two planks (logs upright, logs on their sides); the stars are square sticks glued corner down into V-grooves
 routed along the planks' glue lines. See `references/patterns.md`.
 
+`stringart` is the third plank build (`scripts/stringart.py`, after Indigo Designs): a one-wood field from one wide two-zone plank,
+every other row rolled over and slid, then thin lines added as kerf inlays: one saw cut through the finished slab per line, with a
+strip as thick as the kerf glued in. See `references/patterns.md`.
+
 `cubes` (tumbling blocks) with `"build": "logs"` is built Tom Silva's way, three diamond
 bars taped into a hexagon log, the logs sliced into pucks and all the pucks glued at once in a clamped
 frame. Its logs are not machined, so its plan stresses one-setup bars and keeps a gap-filling step.
@@ -80,6 +84,7 @@ has the rules and the reasons.
 | `scripts/repeats.py` | The repeat math: row period, turns, plank types, nearby sizes ranked by how well they repeat, and `--variants`, a page of every face one plank can make by turning and sliding rows. |
 | `scripts/twoply.py` | The plank build, used by `maze`: a two-ply blank, slabs ripped off it at 45 degrees, four slabs to a square log, logs glued into one plank, rows crosscut from the plank. Its own checks, drawings and plan sheets (pattern, blanks & slabs, plank & rows, flattening & border, sources). |
 | `scripts/starlattice.py` | The plank build used by `starlattice` (after Stammherz's "Out of This World" board): a three-ply blank, slabs ripped at the strip's lean and squared into logs, plank A of upright logs and plank B of the same logs on their sides, V-grooves and star sticks, rows crosscut from both planks. Its own checks, drawings and plan sheets. |
+| `scripts/stringart.py` | The plank build used by `stringart` (after Indigo Designs' walnut board with maple lines): two zones of one wood edge glued into a plank with an accent corner let in along the joint, rows crosscut, every other row rolled over and slid, then string-art lines cut through the slab and filled with kerf-thick strips in a corner jig. Its checks confirm the lines move nothing. |
 | `scripts/patterns.py` | The pattern generators (`cubes`, `stars6`, `snowflakes`, `stars8`, `geodomes`, `kagome`, `pinwheel`, `chevrons`, `gems`, `ziggurat`, `ribbons`, `notched`, `tribars`, `sierpinski`, `swell`, `triweave`, `checker`, `brick`; `rosettes` draws but has no sound build) and the polygon format for `custom`. Each returns its log grid as `cells`. |
 | `scripts/drawings.py` | Every drawing: face, slice layout, bar sections and rip setups, each log's end view in its jig glue-up by glue-up, 3D exploded logs, jigs, crosscut, row jig, board glue-up, trim. |
 | `scripts/species.py` | Cutting-board woods: end-grain colour, Janka, shrinkage, notes; the woods to refuse. |
@@ -91,7 +96,7 @@ has the rules and the reasons.
 | `references/technique.md` | The five rules, sandwich bars, ripping, triangle and square logs, jigs, crosscutting, rows, flattening, finishing. **Read before writing advice the plan doesn't already give.** |
 | `references/repeats.md` | The ten fixed rules that make a plan come out the same every time, the four moves and what each does on the face, and the math for finding repeats. **Read before changing a size or pattern to cut the plank count, or when asked for new looks from one plank.** |
 | `references/species.md` | Choosing and pairing woods. |
-| `examples/` | Nineteen worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`, and three built from the concept sheet, `impossible-triangles`, `sierpinski`, `swell`, one new design, `triaxial-weave`, and the two plank builds after Stammherz, `two-wood-maze` and `star-lattice`; each with `design.json`, `plan.html`, `guide.jpg` and, where one has been rendered, `photo.jpg`. |
+| `examples/` | Twenty worked boards: `tumbling-blocks`, `six-point-stars`, `snowflakes`, `lemoyne-stars`, `checkerboard`, three expert ones, `geodesic-domes`, `kagome-stars`, `pinwheel-rosettes`, and five expert-plus ones, `pinwheel-chevrons`, `faceted-gems`, `ziggurat`, `folded-ribbons`, `notched-cubes`, and three built from the concept sheet, `impossible-triangles`, `sierpinski`, `swell`, one new design, `triaxial-weave`, and the two plank builds after Stammherz, `two-wood-maze` and `star-lattice`, `walnut-string-art`; each with `design.json`, `plan.html`, `guide.jpg` and, where one has been rendered, `photo.jpg`. |
 
 **Needs** Python 3 with numpy and Pillow. The render uses the `plan-to-photo` skill
 (`plan-to-photo/scripts/nano_banana.py`, needs `GEMINI_API_KEY`); look for it beside this skill, in
@@ -101,7 +106,7 @@ missing, the full skill is in `end-grain-boards/` of that repo.
 ## 1. Brief
 
 Get, or ask once for only what you cannot infer:
-- **Pattern.** Map the user's words to a generator: cubes, 3D boxes, tumbling blocks → `cubes`; pinwheels, chevron chains → `chevrons`; cut gems, faceted hexagons → `gems`; stepped pyramid, concentric hexagons → `ziggurat`; pleats, folded ribbons → `ribbons`; cubes with a notch → `notched`; a two-wood maze of stepped bars that seem to weave (Stammherz's "just 2 woods" board) → `maze` (roles light, dark; `params.bar` is the bar width, 1/2" by default, and the tile is four bars square); a dark board with a lattice of thin lines in six-sided cells and small diamonds where the lines meet (Stammherz's "Out of This World" board) → `starlattice` (roles ground, line, star; `params` tile, strip, lean, star, cols, rows);
+- **Pattern.** Map the user's words to a generator: string art, thin inlaid lines fanning from a corner, a one-wood board with kerf inlays → `stringart`; cubes, 3D boxes, tumbling blocks → `cubes`; pinwheels, chevron chains → `chevrons`; cut gems, faceted hexagons → `gems`; stepped pyramid, concentric hexagons → `ziggurat`; pleats, folded ribbons → `ribbons`; cubes with a notch → `notched`; a two-wood maze of stepped bars that seem to weave (Stammherz's "just 2 woods" board) → `maze` (roles light, dark; `params.bar` is the bar width, 1/2" by default, and the tile is four bars square); a dark board with a lattice of thin lines in six-sided cells and small diamonds where the lines meet (Stammherz's "Out of This World" board) → `starlattice` (roles ground, line, star; `params` tile, strip, lean, star, cols, rows);
   stars, Star of David, hexagram → `stars6`; snowflakes → `snowflakes`; eight-point, quilt or LeMoyne star, compass star →
   `stars8`; checkerboard → `checker`; brick, running bond, offset → `brick`; geodesic, domes, triangulated
   spheres → `geodomes`; kagome, trihexagonal, triaxial weave, star lattice → `kagome`; rosettes, hexagons ringed
