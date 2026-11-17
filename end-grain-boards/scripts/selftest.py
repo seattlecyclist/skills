@@ -133,6 +133,14 @@ expect("star lattice: a plank build, one log, two planks each cut for half the r
 ds["params"]["star"] = 0.25; plan, errs = run(ds)
 expect("star lattice: a strip that would miss its star is caught", errs and any("land on a star" in e for e in errs))
 
+dw = json.load(open(os.path.join(EX, "walnut-string-art", "design.json")))
+plan, errs = run(dw)
+expect("string art: one plank cut for every row, every other row rolled, and the kerf inlays move nothing", not errs and plan["method"] == "plank" and len(plan["planks"]) == 1
+       and plan["planks"][0]["rows_cut"] == 27 and sum(r["turned"] for r in plan["rows"]) == 13 and len(plan["N"]["lines"]) == 7
+       and all(c["ok"] for c in plan["checks"] if "where the slab had it" in c["what"] or "add up to the board" in c["what"]))
+dw["params"]["accent"] = 1.0; plan, errs = run(dw)
+expect("string art: an accent corner wider than a row is caught", errs and any("accent corner" in e for e in errs))
+
 plan, _ = run(d); rep = plan["repeats"]
 expect("repeat math: the star field's rows pair up end for end about the middle of the board",
        rep["rows"] % 2 == 0 and rep["orbits"] * 2 == rep["rows"] and any(t["op"] == "r" and t["centre"] == rep["rows"] / 2 + 0.5 for t in rep["turns"]))
