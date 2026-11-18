@@ -2,6 +2,7 @@
 """Photo (+ optional scene) -> painted open-world crime-game loading-screen poster art.
 
   GEMINI_API_KEY=... python3 scripts/gta_render.py photo.jpg out.jpg [--scene "..."] [--preset miami-sunset]
+                     [--hero "Your headline"] [--hero-position bottom|top|left]
                      [--takes 2] [--aspect auto] [--size 2K] [--model MODEL] [--compare]
 
 Tries Google's Nano Banana Pro first, then the other Gemini image models, then OpenAI's image edit
@@ -10,7 +11,7 @@ Writes out.jpg, or out-1.jpg, out-2.jpg ... with --takes > 1, and prints which m
 --compare also writes out-compare.jpg: the photo and the poster side by side (needs Pillow).
 
 The guardrails are part of the prompt and cannot be turned off from the command line: no logos,
-titles or lettering, and no weapons, gang signs, drugs, money piles or crime scenes.
+titles or lettering other than the user's own --hero line, and no weapons, gang signs, drugs, money piles or crime scenes.
 """
 import argparse, base64, io, json, mimetypes, os, sys, uuid, urllib.request, urllib.error
 from concurrent.futures import ThreadPoolExecutor
@@ -43,7 +44,16 @@ ART STYLE: thick, confident illustrated outlines; painted cel-style shading with
 
 SETTING: {scene}
 
-ABSOLUTE RULES: no logos, game titles, brand marks, lettering, captions or numbers anywhere; repaint any existing text on clothing, hats or signs as plain shapes or keep it unreadable. No weapons of any kind, no gang signs or gang tattoos, no drugs, money piles, police chases, fire or crime scenes. One single continuous illustration, no panels, borders, frames or split images."""
+{hero}ABSOLUTE RULES: no logos, game titles, brand marks, lettering, captions or numbers anywhere{hero_except}; repaint any existing text on clothing, hats or signs as plain shapes or keep it unreadable. No weapons of any kind, no gang signs or gang tattoos, no drugs, money piles, police chases, fire or crime scenes. One single continuous illustration, no panels, borders, frames or split images."""
+
+
+HERO = """HERO TEXT: paint this exact line as the poster's headline, spelled and capitalised exactly as given, nothing added or dropped: "{text}"
+Letter it like a modern crime-game wallpaper headline: huge, bold, tightly spaced, slightly slanted brush-script or condensed display lettering, filled with a hot-pink to orange to violet sunset gradient, a thin dark outline, a soft neon glow and a subtle drop shadow. Place it {where}, over the background, never over a face. Split it over two lines if it is long. It is the only text in the image.
+
+"""
+WHERE = {"bottom": "across the lower part of the poster, in front of the people's legs and the ground",
+         "top": "across the sky at the top of the poster, above the people's heads",
+         "left": "stacked down the left side of the poster, beside the group"}
 
 
 def closest_aspect(path):
@@ -123,6 +133,8 @@ def main():
     ap.add_argument("--aspect", default="auto", help="auto (closest to the photo) or e.g. 9:16 for a phone wallpaper")
     ap.add_argument("--size", default="2K", help="Nano Banana Pro output size: 1K, 2K or 4K")
     ap.add_argument("--model", help="use only this model id")
+    ap.add_argument("--hero", default="", help='optional headline painted into the art, e.g. "Frame compliance has you covered"')
+    ap.add_argument("--hero-position", default="bottom", choices=sorted(WHERE))
     ap.add_argument("--compare", action="store_true")
     a = ap.parse_args()
 
@@ -133,7 +145,8 @@ def main():
     mime = mimetypes.guess_type(a.photo)[0] or "image/jpeg"
     aspect = closest_aspect(a.photo) if a.aspect == "auto" else a.aspect
     scene = PRESETS[a.preset] if not a.scene else (a.scene if a.preset == "miami-sunset" else f"{PRESETS[a.preset]}; {a.scene}")
-    prompt = STYLE.format(scene=scene)
+    hero = HERO.format(text=a.hero.strip(), where=WHERE[a.hero_position]) if a.hero.strip() else ""
+    prompt = STYLE.format(scene=scene, hero=hero, hero_except=" except the hero text" if hero else "")
 
     def take(i):
         out = a.out if a.takes == 1 else "{0}-{2}{1}".format(*os.path.splitext(a.out), i + 1)

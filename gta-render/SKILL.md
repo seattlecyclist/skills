@@ -37,6 +37,11 @@ you chose:
 | `hills-sunset` | Hillside overlook above a glowing city at sunset. |
 | `keep` | The photo's own place, repainted in the same palette with a sunset sky. |
 
+**Hero text** (optional): `--hero "Frame compliance has you covered"` paints the user's own line as
+the poster headline, wallpaper style: big slanted brush-script or condensed lettering with a
+pink-orange-violet sunset gradient, dark outline and neon glow. `--hero-position bottom` (default),
+`top` or `left`. Keep it to the user's words, under about eight words; it is the only text allowed.
+
 `--scene "..."` alone replaces the default setting; with another `--preset` it adds to it ("a
 vintage convertible behind them", "their dog in sunglasses"). For a phone wallpaper use
 `--aspect 9:16`; otherwise the aspect follows the photo.
@@ -45,6 +50,7 @@ vintage convertible behind them", "their dog in sunglasses"). For a phone wallpa
 
 ```bash
 python3 scripts/gta_render.py photo.jpg out/poster.jpg --takes 2 --compare
+python3 scripts/gta_render.py photo.jpg out/poster.jpg --hero "Frame compliance has you covered" --takes 3
 python3 scripts/gta_render.py photo.jpg out/poster.jpg --preset neon-night --scene "an empty street in light rain" --aspect 9:16
 ```
 
@@ -58,7 +64,10 @@ when a model is missing (404), rate limited (429), refused, or returns no image.
 
 Open every take (and its `-compare.jpg`) and reject a take that:
 - changes, adds, drops or merges a person, or makes anyone look older, heavier, thinner, a different
-  ethnicity or caricatured. Faces are the whole point; this is the most common miss.
+  ethnicity or caricatured, or adds accessories nobody wore (one test take put glasses on all five
+  people). Faces are the whole point; this is the most common miss.
+- misspells, drops or adds a word in the hero text, or covers a face with it. Read it letter by letter.
+  With hero text, render 3 takes: the lettering style varies (brush caps vs script) and one usually misses.
 - has readable text or a logo (hat and shirt lettering survives often), or any weapon or gang sign.
 - is split into panels or has a border.
 - still looks like a photo. The flash fallbacks (`gemini-2.5-flash-image` especially) often only
@@ -72,9 +81,9 @@ Deliver the best one or two, say which you prefer and why in one line, and offer
 ## Guardrails
 
 These are in the prompt in the script and are not options:
-- No logos, game titles, wordmarks, lettering or numbers: a style tribute, not a copy of anyone's
-  art or trade dress. Don't add a "GTA" title even when asked; offer a title in the user's own words
-  as a separate overlay instead.
+- No logos, game titles, wordmarks, lettering or numbers beyond the user's own `--hero` line: a style
+  tribute, not a copy of anyone's art or trade dress. Don't add a "GTA" or "VI" title even when asked;
+  offer a headline in the user's own words instead.
 - No weapons, gang signs or tattoos, drugs, money piles, police chases or crime scenes on real people.
   Decline a scene that asks for them and offer the same mood without them (a parked sports car,
   a rooftop at night, sunglasses and a sunset).

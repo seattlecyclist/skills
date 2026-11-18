@@ -227,6 +227,8 @@ describe. Everyone stays in the same pose and outfit and keeps a recognisable fa
 **What you get**
 
 - Two takes from Google's Nano Banana Pro at 2K, plus a side-by-side sheet of photo and poster.
+- Optional hero text in your own words (`--hero "Frame compliance has you covered"`), lettered like a
+  game wallpaper headline: slanted brush script or condensed caps with a sunset gradient and neon glow.
 - Six scene presets (`miami-sunset`, `neon-night`, `desert-highway`, `beach-day`, `hills-sunset`,
   `keep`) or any scene in your own words; `--aspect 9:16` for a phone wallpaper.
 - Fallback when Nano Banana Pro is unavailable: the other Gemini image models, then OpenAI's
@@ -234,7 +236,7 @@ describe. Everyone stays in the same pose and outfit and keeps a recognisable fa
 
 **Why it is a guardrail**
 
-- No logos, game titles or lettering, so it is a style tribute and not a copy.
+- No logos, game titles or lettering other than your own headline, so it is a style tribute and not a copy.
 - No weapons, gang imagery, drugs or crime scenes on real people, baked into the prompt.
 - Claude reviews every take for changed faces, surviving text and panels before showing it.
 
@@ -259,6 +261,8 @@ python3 ~/.claude/skills/gta-render/scripts/gta_render.py photo.jpg poster.jpg -
 > Make this photo of my team GTA style.
 
 > Turn this into a Vice City loading screen at night in the rain, as a phone wallpaper.
+
+> Make this GTA style with the headline "Frame compliance has you covered".
 
 > GTA-render me and my dog on a desert highway at sunset.
 
