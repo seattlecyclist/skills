@@ -7,6 +7,7 @@ Each skill is a folder with a `SKILL.md`, and each has a section below with what
 |---|---|
 | [annotated-demo-video](#annotated-demo-video) | Record an annotated demo video of a feature or bug from the running app, as proof the work was verified. |
 | [end-grain-boards](#end-grain-boards) | Design end-grain cutting boards with 3D cubes, stars or any geometric pattern: a checked cut list, glue-up and re-cut sequence, diagrams and a photoreal render. |
+| [gta-render](#gta-render) | Turn a photo of people into painted open-world crime-game poster art with a neon sunset or any scene, keeping every face recognisable. |
 | [motion-video](#motion-video) | Make a short promo or explainer motion video for any product: real screens, 3D objects that assemble and get measured, captions, sound, voiceover, in 16:9 and 9:16. |
 | [plan-to-photo](#plan-to-photo) | Turn a furniture plan and a description of a room into a photorealistic render of the piece in that room, built from the plan's exact geometry. |
 | [woodworking-plans](#woodworking-plans) | Design furniture and shop projects as magazine-style woodworking plans with a 3D exploded view, cut list and drawings, with every design checked for fit and joinery. |
@@ -21,6 +22,7 @@ git clone https://github.com/seattlecyclist/skills ~/src/skills
 mkdir -p ~/.claude/skills
 ln -s ~/src/skills/annotated-demo-video ~/.claude/skills/annotated-demo-video
 ln -s ~/src/skills/end-grain-boards ~/.claude/skills/end-grain-boards
+ln -s ~/src/skills/gta-render ~/.claude/skills/gta-render
 ln -s ~/src/skills/motion-video ~/.claude/skills/motion-video
 ln -s ~/src/skills/plan-to-photo ~/.claude/skills/plan-to-photo
 ln -s ~/src/skills/woodworking-plans ~/.claude/skills/woodworking-plans
@@ -213,6 +215,54 @@ python3 $EG/scripts/cbplan.py $EG/examples/tumbling-blocks/design.json out/ --ph
 ```
 
 Full workflow, patterns and pitfalls: [end-grain-boards/SKILL.md](end-grain-boards/SKILL.md).
+
+---
+
+## gta-render
+
+Takes a photo of people and repaints it as bold loading-screen key art for an open-world
+crime-adventure game: thick outlines, painted cel shading, a neon Miami sunset or a scene you
+describe. Everyone stays in the same pose and outfit and keeps a recognisable face.
+
+**What you get**
+
+- Two takes from Google's Nano Banana Pro at 2K, plus a side-by-side sheet of photo and poster.
+- Six scene presets (`miami-sunset`, `neon-night`, `desert-highway`, `beach-day`, `hills-sunset`,
+  `keep`) or any scene in your own words; `--aspect 9:16` for a phone wallpaper.
+- Fallback when Nano Banana Pro is unavailable: the other Gemini image models, then OpenAI's
+  `gpt-image-1`. The script says which model made each file.
+
+**Why it is a guardrail**
+
+- No logos, game titles or lettering, so it is a style tribute and not a copy.
+- No weapons, gang imagery, drugs or crime scenes on real people, baked into the prompt.
+- Claude reviews every take for changed faces, surviving text and panels before showing it.
+
+### Demo
+
+A fictional group photo (AI-generated) and Nano Banana Pro's take with the default `miami-sunset`
+preset:
+
+![Group photo and the poster made from it](gta-render/examples/patio-friends/compare.jpg)
+
+### Usage
+
+**Prerequisites:** Python 3 (Pillow optional) and `GEMINI_API_KEY` or `OPENAI_API_KEY`.
+
+```bash
+python3 ~/.claude/skills/gta-render/scripts/gta_render.py photo.jpg poster.jpg --takes 2 --compare
+python3 ~/.claude/skills/gta-render/scripts/gta_render.py photo.jpg poster.jpg --preset desert-highway --scene "a vintage convertible behind them"
+```
+
+**Ask Claude:**
+
+> Make this photo of my team GTA style.
+
+> Turn this into a Vice City loading screen at night in the rain, as a phone wallpaper.
+
+> GTA-render me and my dog on a desert highway at sunset.
+
+Full workflow and review rules: [gta-render/SKILL.md](gta-render/SKILL.md).
 
 ---
 
